@@ -1,0 +1,16 @@
+Python wrapper for main function of HM HEVC model
+
+
+1. You must install python and swig
+  $ sudo port install python27 swig swig-python
+
+2. HM model download and patch and compile
+  $ svn checkout https://hevc.hhi.fraunhofer.de/svn/svn_HEVCSoftware/tags/HM-8.0/ hm-8.0
+  $ cd hm-8.0
+  $ patch -p0 < ../luuvc-0.8/swig/swig-hm-8.0.diff
+
+3. modify hm_dir in setup.py for location of HM model
+
+4. run swig/setup.sh
+
+5. test example/*.py

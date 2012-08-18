@@ -1,0 +1,275 @@
+diff -urN original/Lib/TLibCommon/NAL.h source/Lib/TLibCommon/NAL.h
+--- original/Lib/TLibCommon/NAL.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/NAL.h	2012-08-18 14:40:09.000000000 +0900
+@@ -88,7 +88,8 @@
+  */
+ struct NALUnitEBSP : public NALUnit
+ {
+-  std::ostringstream m_nalUnitData;
++//std::ostringstream m_nalUnitData;
++  std::ostream *m_nalUnitData;
+ 
+   /**
+    * convert the OutputNALUnit #nalu# into EBSP format by writing out
+diff -urN original/Lib/TLibCommon/TComCABACTables.cpp source/Lib/TLibCommon/TComCABACTables.cpp
+--- original/Lib/TLibCommon/TComCABACTables.cpp	2012-01-19 02:44:23.000000000 +0900
++++ source/Lib/TLibCommon/TComCABACTables.cpp	2012-08-17 16:41:56.000000000 +0900
+@@ -40,7 +40,7 @@
+ //! \ingroup TLibCommon
+ //! \{
+ 
+-const UChar TComCABACTables::sm_aucLPSTable[64][4] =
++const UChar sm_aucLPSTable[64][4] =
+ {
+   { 128, 176, 208, 240},
+   { 128, 167, 197, 227},
+@@ -108,7 +108,7 @@
+   {   2,   2,   2,   2}
+ };
+ 
+-const UChar TComCABACTables::sm_aucRenormTable[32] =
++const UChar sm_aucRenormTable[32] =
+ {
+   6,  5,  4,  4,
+   3,  3,  3,  3,
+diff -urN original/Lib/TLibCommon/TComCABACTables.h source/Lib/TLibCommon/TComCABACTables.h
+--- original/Lib/TLibCommon/TComCABACTables.h	2012-01-19 02:44:23.000000000 +0900
++++ source/Lib/TLibCommon/TComCABACTables.h	2012-08-17 16:41:37.000000000 +0900
+@@ -47,13 +47,8 @@
+  * \brief static class for CABAC tables
+  */
+ 
+-class TComCABACTables
+-{
+-public:
+-  const static UChar  sm_aucLPSTable[64][4];
+-  const static UChar  sm_aucRenormTable[32];
+-};
+-
++extern const UChar sm_aucLPSTable[64][4];
++extern const UChar sm_aucRenormTable[32];
+ 
+ //! \}
+ 
+diff -urN original/Lib/TLibCommon/TComRom.h source/Lib/TLibCommon/TComRom.h
+--- original/Lib/TLibCommon/TComRom.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/TComRom.h	2012-08-18 16:04:15.000000000 +0900
+@@ -53,7 +53,8 @@
+ #define     MAX_CU_DEPTH            7                           // log2(LCUSize)
+ #define     MAX_CU_SIZE             (1<<(MAX_CU_DEPTH))         // maximum allowable size of CU
+ #define     MIN_PU_SIZE             4
+-#define     MAX_NUM_SPU_W           (MAX_CU_SIZE/MIN_PU_SIZE)   // maximum number of SPU in horizontal line
++//#define     MAX_NUM_SPU_W           (MAX_CU_SIZE/MIN_PU_SIZE)   // maximum number of SPU in horizontal line
++#define     MAX_NUM_SPU_W           (32)   // maximum number of SPU in horizontal line
+ 
+ // ====================================================================================================================
+ // Initialize / destroy functions
+diff -urN original/Lib/TLibCommon/TComSlice.h source/Lib/TLibCommon/TComSlice.h
+--- original/Lib/TLibCommon/TComSlice.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/TComSlice.h	2012-08-18 00:05:40.000000000 +0900
+@@ -496,7 +496,7 @@
+   Void setScalingListFlag       ( Bool b ) { m_scalingListEnabledFlag  = b;       }
+   Bool getScalingListPresentFlag()         { return m_scalingListPresentFlag;     }
+   Void setScalingListPresentFlag( Bool b ) { m_scalingListPresentFlag  = b;       }
+-  Void setScalingList      ( TComScalingList *scalingList);
++  Void setScalingList      ( TComScalingList *scalingList) {}
+   TComScalingList* getScalingList ()       { return m_scalingList; }               //!< get ScalingList class pointer in SPS
+   UInt getMaxDecPicBuffering  (UInt tlayer)            { return m_uiMaxDecPicBuffering[tlayer]; }
+   Void setMaxDecPicBuffering  ( UInt ui, UInt tlayer ) { m_uiMaxDecPicBuffering[tlayer] = ui;   }
+@@ -517,8 +517,8 @@
+   TComRefPicListModification();
+   virtual ~TComRefPicListModification();
+   
+-  Void  create                    ();
+-  Void  destroy                   ();
++  Void  create                    () {}
++  Void  destroy                   () {}
+ 
+   Bool       getRefPicListModificationFlagL0() { return m_bRefPicListModificationFlagL0; }
+   Void       setRefPicListModificationFlagL0(Bool flag) { m_bRefPicListModificationFlagL0 = flag; }
+@@ -718,7 +718,7 @@
+   Int      getLoopFilterTcOffset()             {return m_loopFilterTcOffsetDiv2; }     //!< get tc offset for deblocking filter
+   Bool     getScalingListPresentFlag()         { return m_scalingListPresentFlag;     }
+   Void     setScalingListPresentFlag( Bool b ) { m_scalingListPresentFlag  = b;       }
+-  Void     setScalingList      ( TComScalingList *scalingList);
++  Void     setScalingList      ( TComScalingList *scalingList) {}
+   TComScalingList* getScalingList ()          { return m_scalingList; }         //!< get ScalingList class pointer in PPS
+   UInt getLog2ParallelMergeLevelMinus2      ()                    { return m_log2ParallelMergeLevelMinus2; }
+   Void setLog2ParallelMergeLevelMinus2      (UInt mrgLevel)       { m_log2ParallelMergeLevelMinus2 = mrgLevel; }
+@@ -1106,7 +1106,7 @@
+   Void setTLayer             ( UInt uiTLayer )             { m_uiTLayer = uiTLayer;                  }
+ 
+   Void setTLayerInfo( UInt uiTLayer );
+-  Void decodingMarking( TComList<TComPic*>& rcListPic, Int iGOPSIze, Int& iMaxRefPicNum ); 
++  Void decodingMarking( TComList<TComPic*>& rcListPic, Int iGOPSIze, Int& iMaxRefPicNum ) {}
+   Void applyReferencePictureSet( TComList<TComPic*>& rcListPic, TComReferencePictureSet *RPSList);
+   Bool isTemporalLayerSwitchingPoint( TComList<TComPic*>& rcListPic, TComReferencePictureSet *RPSList);
+   Int       checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, TComReferencePictureSet *pReferencePictureSet, Bool printErrors, Int pocRandomAccess = 0);
+diff -urN original/Lib/TLibDecoder/TDecBinCoderCABAC.cpp source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp
+--- original/Lib/TLibDecoder/TDecBinCoderCABAC.cpp	2012-06-26 16:19:43.000000000 +0900
++++ source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp	2012-08-17 16:42:23.000000000 +0900
+@@ -105,7 +105,7 @@
+ Void
+ TDecBinCABAC::decodeBin( UInt& ruiBin, ContextModel &rcCtxModel )
+ {
+-  UInt uiLPS = TComCABACTables::sm_aucLPSTable[ rcCtxModel.getState() ][ ( m_uiRange >> 6 ) - 4 ];
++  UInt uiLPS = sm_aucLPSTable[ rcCtxModel.getState() ][ ( m_uiRange >> 6 ) - 4 ];
+   m_uiRange -= uiLPS;
+   UInt scaledRange = m_uiRange << 7;
+   
+@@ -132,7 +132,7 @@
+   else
+   {
+     // LPS path
+-    Int numBits = TComCABACTables::sm_aucRenormTable[ uiLPS >> 3 ];
++    Int numBits = sm_aucRenormTable[ uiLPS >> 3 ];
+     m_uiValue   = ( m_uiValue - scaledRange ) << numBits;
+     m_uiRange   = uiLPS << numBits;
+     ruiBin      = 1 - rcCtxModel.getMps();
+diff -urN original/Lib/TLibEncoder/AnnexBwrite.h source/Lib/TLibEncoder/AnnexBwrite.h
+--- original/Lib/TLibEncoder/AnnexBwrite.h	2012-03-31 07:40:48.000000000 +0900
++++ source/Lib/TLibEncoder/AnnexBwrite.h	2012-08-17 23:27:49.000000000 +0900
+@@ -75,8 +75,9 @@
+       out.write(start_code_prefix+1, 3);
+       size += 3;
+     }
+-    out << nalu.m_nalUnitData.str();
+-    size += unsigned(nalu.m_nalUnitData.str().size());
++    std::ostream *ud = nalu.m_nalUnitData;
++    out << ((std::ostringstream *)ud)->str();
++    size += unsigned(((std::ostringstream *)ud)->str().size());
+ 
+     annexBsizes.push_back(size);
+   }
+diff -urN original/Lib/TLibEncoder/NALwrite.h source/Lib/TLibEncoder/NALwrite.h
+--- original/Lib/TLibEncoder/NALwrite.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibEncoder/NALwrite.h	2012-08-18 14:42:52.000000000 +0900
+@@ -83,7 +83,8 @@
+ inline NALUnitEBSP::NALUnitEBSP(OutputNALUnit& nalu)
+   : NALUnit(nalu)
+ {
+-  write(m_nalUnitData, nalu);
++  m_nalUnitData = new std::ostringstream();
++  write(*m_nalUnitData, nalu);
+ }
+ 
+ void copyNaluData(OutputNALUnit& naluDest, const OutputNALUnit& naluSrc);
+diff -urN original/Lib/TLibEncoder/TEncBinCoderCABAC.cpp source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp
+--- original/Lib/TLibEncoder/TEncBinCoderCABAC.cpp	2012-06-26 16:19:43.000000000 +0900
++++ source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp	2012-08-17 16:42:40.000000000 +0900
+@@ -218,12 +218,12 @@
+   m_uiBinsCoded += m_binCountIncrement;
+   rcCtxModel.setBinsCoded( 1 );
+   
+-  UInt  uiLPS   = TComCABACTables::sm_aucLPSTable[ rcCtxModel.getState() ][ ( m_uiRange >> 6 ) & 3 ];
++  UInt  uiLPS   = sm_aucLPSTable[ rcCtxModel.getState() ][ ( m_uiRange >> 6 ) & 3 ];
+   m_uiRange    -= uiLPS;
+   
+   if( binValue != rcCtxModel.getMps() )
+   {
+-    Int numBits = TComCABACTables::sm_aucRenormTable[ uiLPS >> 3 ];
++    Int numBits = sm_aucRenormTable[ uiLPS >> 3 ];
+     m_uiLow     = ( m_uiLow + m_uiRange ) << numBits;
+     m_uiRange   = uiLPS << numBits;
+     rcCtxModel.updateLPS();
+diff -urN original/Lib/TLibEncoder/TEncCavlc.h source/Lib/TLibEncoder/TEncCavlc.h
+--- original/Lib/TLibEncoder/TEncCavlc.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibEncoder/TEncCavlc.h	2012-08-17 16:27:23.000000000 +0900
+@@ -186,7 +186,6 @@
+   
+   Void xCodePredWeightTable          ( TComSlice* pcSlice );
+   Void updateContextTables           ( SliceType eSliceType, Int iQp, Bool bExecuteFinish=true ) { return;   }
+-  Void updateContextTables           ( SliceType eSliceType, Int iQp  )                          { return;   }
+ 
+ #if !REMOVE_APS
+   Void  codeAPSInitInfo(TComAPS* pcAPS);  //!< code APS flags before encoding SAO and ALF parameters
+diff -urN original/Lib/TLibEncoder/TEncEntropy.h source/Lib/TLibEncoder/TEncEntropy.h
+--- original/Lib/TLibEncoder/TEncEntropy.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibEncoder/TEncEntropy.h	2012-08-17 16:27:04.000000000 +0900
+@@ -141,8 +141,7 @@
+ #endif
+   virtual Void estBit               (estBitsSbacStruct* pcEstBitsSbac, Int width, Int height, TextType eTType) = 0;
+   
+-  virtual Void updateContextTables ( SliceType eSliceType, Int iQp, Bool bExecuteFinish )   = 0;
+-  virtual Void updateContextTables ( SliceType eSliceType, Int iQp )   = 0;
++  virtual Void updateContextTables ( SliceType eSliceType, Int iQp, Bool bExecuteFinish=true )   = 0;
+ 
+ #if !REMOVE_APS
+   virtual Void codeAPSInitInfo  (TComAPS* pcAPS)= 0;
+@@ -226,8 +225,7 @@
+ #endif
+   Void encodeQtRootCbf         ( TComDataCU* pcCU, UInt uiAbsPartIdx );
+   Void encodeQP                ( TComDataCU* pcCU, UInt uiAbsPartIdx, Bool bRD = false );
+-  Void updateContextTables     ( SliceType eSliceType, Int iQp, Bool bExecuteFinish )   { m_pcEntropyCoderIf->updateContextTables( eSliceType, iQp, bExecuteFinish );     }
+-  Void updateContextTables     ( SliceType eSliceType, Int iQp )                        { m_pcEntropyCoderIf->updateContextTables( eSliceType, iQp, true );               }
++  Void updateContextTables     ( SliceType eSliceType, Int iQp, Bool bExecuteFinish=true )   { m_pcEntropyCoderIf->updateContextTables( eSliceType, iQp, bExecuteFinish );     }
+ 
+ #if !REMOVE_APS
+   Void encodeAPSInitInfo          (TComAPS* pcAPS) {m_pcEntropyCoderIf->codeAPSInitInfo(pcAPS);}
+diff -urN original/Lib/TLibEncoder/TEncGOP.cpp source/Lib/TLibEncoder/TEncGOP.cpp
+--- original/Lib/TLibEncoder/TEncGOP.cpp	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibEncoder/TEncGOP.cpp	2012-08-17 23:25:46.000000000 +0900
+@@ -1682,7 +1682,9 @@
+   unsigned numRBSPBytes = 0;
+   for (AccessUnit::const_iterator it = accessUnit.begin(); it != accessUnit.end(); it++)
+   {
+-    unsigned numRBSPBytes_nal = unsigned((*it)->m_nalUnitData.str().size());
++    //unsigned numRBSPBytes_nal = unsigned((*it)->m_nalUnitData.str().size());
++    std::ostream *ud = (*it)->m_nalUnitData;
++    unsigned numRBSPBytes_nal = unsigned(((std::ostringstream*)ud)->str().size());
+ #if VERBOSE_RATE
+     printf("*** %6s numBytesInNALunit: %u\n", nalUnitTypeToString((*it)->m_nalUnitType), numRBSPBytes_nal);
+ #endif
+diff -urN original/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp
+--- original/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp	2012-08-17 23:46:37.000000000 +0900
+@@ -2386,7 +2386,7 @@
+  * \param yCbCr color component index
+  * \param lambda 
+  */
+-inline Int64 TEncSampleAdaptiveOffset::estSaoTypeDist(Int compIdx, Int typeIdx, Int shift, Double lambda, Int *currentDistortionTableBo, Double *currentRdCostTableBo)
++Int64 TEncSampleAdaptiveOffset::estSaoTypeDist(Int compIdx, Int typeIdx, Int shift, Double lambda, Int *currentDistortionTableBo, Double *currentRdCostTableBo)
+ {
+   Int64 estDist = 0;
+   Int classIdx;
+@@ -2432,11 +2432,11 @@
+   return estDist;
+ }
+ 
+-inline Int64 TEncSampleAdaptiveOffset::estSaoDist(Int64 count, Int64 offset, Int64 offsetOrg, Int shift)
++Int64 TEncSampleAdaptiveOffset::estSaoDist(Int64 count, Int64 offset, Int64 offsetOrg, Int shift)
+ {
+   return (( count*offset*offset-offsetOrg*offset*2 ) >> shift);
+ }
+-inline Int64 TEncSampleAdaptiveOffset::estIterOffset(Int typeIdx, Int classIdx, double lambda, Int64 offsetInput, Int64 count, Int64 offsetOrg, Int shift, Int bitIncrease, Int *currentDistortionTableBo, Double *currentRdCostTableBo )
++Int64 TEncSampleAdaptiveOffset::estIterOffset(Int typeIdx, Int classIdx, double lambda, Int64 offsetInput, Int64 count, Int64 offsetOrg, Int shift, Int bitIncrease, Int *currentDistortionTableBo, Double *currentRdCostTableBo )
+ {
+   //Clean up, best_q_offset.
+   Int64 iterOffset, tempOffset;
+diff -urN original/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h
+--- original/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h	2012-08-17 23:46:19.000000000 +0900
+@@ -140,9 +140,9 @@
+ #else
+   Void rdoSaoUnit(Int rx, Int ry, SAOParam *saoParam, Int addr, Int addrUp, Int addrLeft, Int yCbCr, Double lambda);
+ #endif
+-  inline Int64 estSaoDist(Int64 count, Int64 offset, Int64 offsetOrg, Int shift);
+-  inline Int64 estIterOffset(Int typeIdx, Int classIdx, double lambda, Int64 offsetInput, Int64 count, Int64 offsetOrg, Int shift, Int bitIncrease, Int *currentDistortionTableBo, Double *currentRdCostTableBo );
+-  inline Int64 estSaoTypeDist(Int compIdx, Int typeIdx, Int shift, Double lambda, Int *currentDistortionTableBo, Double *currentRdCostTableBo);
++  Int64 estSaoDist(Int64 count, Int64 offset, Int64 offsetOrg, Int shift);
++  Int64 estIterOffset(Int typeIdx, Int classIdx, double lambda, Int64 offsetInput, Int64 count, Int64 offsetOrg, Int shift, Int bitIncrease, Int *currentDistortionTableBo, Double *currentRdCostTableBo );
++  Int64 estSaoTypeDist(Int compIdx, Int typeIdx, Int shift, Double lambda, Int *currentDistortionTableBo, Double *currentRdCostTableBo);
+   Void setMaxNumOffsetsPerPic(Int iVal) {m_maxNumOffsetsPerPic = iVal; }
+   Int  getMaxNumOffsetsPerPic() {return m_maxNumOffsetsPerPic; }
+ };
+diff -urN original/Lib/TLibEncoder/TEncSbac.h source/Lib/TLibEncoder/TEncSbac.h
+--- original/Lib/TLibEncoder/TEncSbac.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibEncoder/TEncSbac.h	2012-08-17 16:27:37.000000000 +0900
+@@ -198,7 +198,6 @@
+   Void estSignificantCoefficientsBit ( estBitsSbacStruct* pcEstBitsSbac, UInt uiCTXIdx, TextType eTType );
+   
+   Void updateContextTables           ( SliceType eSliceType, Int iQp, Bool bExecuteFinish=true  );
+-  Void updateContextTables           ( SliceType eSliceType, Int iQp  ) { this->updateContextTables( eSliceType, iQp, true); };
+   
+   TEncBinIf* getEncBinIf()  { return m_pcBinIf; }
+ private:

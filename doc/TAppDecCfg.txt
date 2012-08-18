@@ -1,0 +1,52 @@
+class TAppDecTop
+
+  m_cTDecTop : TDecTop
+  m_cTVideoIOYuvReconFile : TVideoIOYuv
+
+  m_abDecFlag[MAX_GOP] : bool
+  m_iPOCLastDisplay : int
+
+  create()
+  destroy()
+
+  decode() {
+    bitstreamFile : ifstream < m_pchBitstreamFile
+    bytestream : InputByteStream < bitstreamFile
+
+    xCreateDecLib() {
+      m_cTDecTop.create()
+    }
+    xInitDecLib() {
+      m_cTDecTop.init()
+      m_cTDecTop.setPictureDigestEnabled(m_pictureDigestEnabled)
+    }
+
+    while (bitstreamFile) {
+      location : streampos
+      stats : AnnexBStats
+      nalUnit : vector<uint8_t>
+      nalu : InputNALUnit
+
+      byteStreamNALUnit(bytestream, nalUnit, stats)
+      read(nalu, nalUnit)
+      m_cTDecTop.decode(nalu, m_iSkipFrame, m_iPOCLastDisplay)
+      m_cTDecTop.executeDeblockAndAlf(uiPOC, pcListPic, m_iSkipFrame, m_iPOCLastDisplay)
+
+      m_cTVideoIOYuvReconFile.open(m_pchReconFile)
+      xFlushOutput() {
+        m_cTVideoIOYuvReconFile.write()
+        m_iPOCLastDisplay = -MAX_INT
+      }
+      xWriteOutput() {
+        m_cTVideoIOYuvReconFile.write()
+        m_iPOCLastDisplay = pcPic->getPOC()
+      }
+    }
+
+    xFlushOutput()
+    xDestroyDecLib() {
+      m_cTVideoIOYuvReconFile.close()
+      m_cTDecTop.deletePicBuffer()
+      m_cTDecTop.destroy()
+    }
+  }

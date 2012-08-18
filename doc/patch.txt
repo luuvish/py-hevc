@@ -1,0 +1,2 @@
+diff -urN hm-8.0-original/source hm-8.0/source > hm-8.0.diff
+patch -p0 < hm-8.0.diff

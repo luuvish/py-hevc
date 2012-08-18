@@ -1,0 +1,232 @@
+VPS [16]
+
+  int vps_max_temporal_layers_minus1            : 3
+  int vps_max_layers_minus1                     : 5
+  int video_parameter_set_id
+  int vps_temporal_id_nesting_flag              : 1
+  struct {
+    int vps_max_dec_pic_buffering
+    int vps_num_reorder_pics
+    int vps_max_latency_increase
+  }[vps_max_temporal_layers_minus1+1]
+  int vps_extension_flag                        : 1
+
+SPS [256]
+
+  int profile_space                             : 3
+  int profile_idc                               : 5
+  int reserved_indicator_flags                  : 16
+  int level_idc                                 : 8
+  int profile_compatibility                     : 32
+  int seq_parameter_set_id
+  int video_parameter_set_id
+  int chroma_format_idc
+  int max_temporal_layers_minus1                : 3
+  int pic_width_in_luma_samples
+  int pic_height_in_luma_samples
+  int pic_cropping_flag                         : 1
+  if (pic_cropping_flag) {
+    int pic_crop_left_offset
+    int pic_crop_right_offset
+    int pic_crop_top_offset
+    int pic_crop_bottom_offset
+  }
+
+  int bit_depth_luma_minus8
+  int bit_depth_chroma_minus8
+  int pcm_enabled_flag                          : 1
+  if (pcm_enabled_flag) {
+    int pcm_bit_depth_luma_minus1               : 4
+    int pcm_bit_depth_chroma_minus1             : 4
+  }
+
+  int log2_max_pic_order_cnt_lsb_minus4
+  struct {
+    int max_dec_pic_buffering
+    int num_reorder_pics
+    int max_latency_increase
+  }[max_temporal_layers_minus1+1]
+
+  int restricted_ref_pic_lists_flag             : 1
+  if (restricted_ref_pic_lists_flag) {
+    int lists_modification_present_flag         : 1
+  }
+
+  int log2_min_coding_block_size_minus3
+  int log2_diff_max_min_coding_block_size
+  int log2_min_transform_block_size_minus2
+  int log2_diff_max_min_transform_block_size
+  if (pcm_enabled_flag) {
+    int log2_min_pcm_coding_block_size_minus3
+    int log2_diff_max_min_pcm_coding_block_size
+  }
+
+  int max_transform_hierarchy_depth_inter
+  int max_transform_hierarchy_depth_intra
+  int scaling_list_enabled_flag                 : 1
+  if (scaling_list_enabled_flag) {
+    int sps_scaling_list_data_present_flag      : 1
+    if (sps_scaling_list_data_present_flag) {
+      struct {
+        int scaling_list_pred_mode_flag         : 1
+        if (scaling_list_pred_mode_flag == 0) {
+          int scaling_list_pred_matrix_id_delta
+        } else {
+          int scaling_list_dc_coef_minus8
+          for (coefNum)
+            int scaling_list_delta_coef
+        }
+      }[list][size]
+    }
+  }
+  int chroma_pred_from_luma_enabled_flag        : 1
+  int transform_skip_enabled_flag               : 1
+  int loop_filter_across_slice_flag             : 1
+  int asymmetric_motion_partitions_enabled_flag : 1
+  int non_square_quadtree_enabled_flag          : 1
+  int sample_adaptive_offset_enabled_flag       : 1
+  int adaptive_loop_filter_enabled_flag         : 1
+  if (pcm_enabled_flag) {
+    int pcm_loop_filter_disable_flag            : 1
+  }
+
+  int temporal_id_nesting_flag                  : 1
+
+  int num_short_term_ref_pic_sets
+  struct {
+    int inter_ref_pic_set_prediction_flag       : 1
+    if (inter_ref_pic_set_prediction_flag) {
+      int delta_idx_minus1
+      int delta_rps_sign                        : 1
+      int abs_delta_rps_minus1
+      for (nop) {
+        int used_by_curr_pic_flag               : 1
+        if (used_by_curr_pic_flag == 0)
+          int use_delta_flag                    : 1
+      }
+    } else {
+      int num_negative_pics
+      int num_positive_pics
+      for (num_negative_pics)
+        int delta_poc_s0_minus1
+        int used_by_curr_pic_s0_flag            : 1
+      for (num_positive_pics)
+        int delta_poc_s1_minus1
+        int used_by_curr_pic_s1_flag            : 1
+    }
+  }[num_short_term_ref_pic_sets]
+
+  int long_term_ref_pics_present_flag           : 1
+  int sps_temporal_mvp_enable_flag              : 1
+  for (log2_max_coding_block_size-log2_min_transform_block_size)
+    int amvp_mode                               : 1
+
+  int sps_extension_flag                        : 1
+  if (sps_extension_flag) {
+    int sps_extension_data_flag                 : 1
+  }
+
+PPS [16]
+
+  int pic_parameter_set_id
+  int seq_parameter_set_id
+
+  int sign_data_hiding_flag                     : 1
+  int cabac_init_present_flag                   : 1
+  int num_ref_idx_l0_default_active_minus1
+  int num_ref_idx_l1_default_active_minus1
+  int pic_init_qp_minus26
+  int constrained_intra_pred_flag               : 1
+  int slice_granularity                         : 2
+  int diff_cu_qp_delta_depth
+  int cb_qp_offset
+  int cr_qp_offset
+
+  int weighted_pred_flag                        : 1
+  int weighted_bipred_flag                      : 1
+  int output_flag_present_flag                  : 1
+  int dependent_slices_enabled_flag             : 1
+  int transquant_bypass_enable_flag             : 1
+
+  int tiles_or_entropy_coding_sync_idc          : 2
+  if (tiles_or_entropy_coding_sync_idc == 1) {
+    int num_tile_columns_minus1
+    int num_tile_rows_minus1
+    int uniform_spacing_flag                    : 1
+    if (uniform_spacing_flag == 0) {
+      int column_width[num_tile_columns_minus1]
+      int row_height[num_tile_rows_minus1]
+    }
+    if (num_tile_columns_minus1 || num_tile_rows_minus1) {
+      int loop_filter_across_tiles_enabled_flag : 1
+    }
+  }
+  if (tiles_or_entropy_coding_sync_idc == 3) {
+    int cabac_independent_flag                  : 1
+  }
+
+  int deblocking_filter_control_present_flag    : 1
+  if (deblocking_filter_control_present_flag) {
+    int pps_deblocking_filter_flag              : 1
+    if (pps_deblocking_filter_flag) {
+      int disable_deblocking_filter_flag        : 1
+      if (disable_deblocking_filter_flag == 0) {
+        int pps_beta_offset_div2
+        int pps_tc_offset_div2
+      }
+    }
+  }
+
+  int pps_scaling_list_data_present_flag        : 1
+  if (pps_scaling_list_data_present_flag) {
+    int sps_scaling_list_data_present_flag      : 1
+    if (sps_scaling_list_data_present_flag) {
+      struct {
+        int scaling_list_pred_mode_flag         : 1
+        if (scaling_list_pred_mode_flag == 0) {
+          int scaling_list_pred_matrix_id_delta
+        } else {
+          int scaling_list_dc_coef_minus8
+          for (coefNum)
+            int scaling_list_delta_coef
+        }
+      }[list][size]
+    }
+  }
+
+  int log2_parallel_merge_level_minus2
+  int slice_header_extension_present_flag       : 1
+  int pps_extension_flag                        : 1
+  if (pps_extension_flag) {
+    int pps_extension_data_flag                 : 1
+  }
+
+APS [64]
+
+  int aps_id
+
+  struct {
+    int alf_aps_filter_flag                     : 1
+    if (alf_aps_filter_flag) {
+      int alf_no_filters_minus1
+      if (alf_no_filters_minus1 == 1)
+        int alf_start_second_filter
+      if (alf_no_filters_minus1 == 2)
+        int alf_filter_pattern                  : 1
+    }
+    int alf_filt_coeff
+  }[3]
+
+  int aps_extension_flag                        : 1
+  if (aps_extension_flag) {
+    int aps_extension_data_flag                 : 1
+  }
+
+Slice
+
+  int first_slice_in_pic_flag                   : 1
+  int pic_parameter_set_id
+  int slice_address
+  int slice_type
+  int dependent_slice_flag                      : 1
+  

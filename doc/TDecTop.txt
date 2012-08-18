@@ -1,0 +1,95 @@
+class TDecTop
+
+  m_iGopSize                   : int
+  m_bGopSizeSet                : bool
+  m_iMaxRefPicNum              : int
+  m_bRefreshPending            : bool
+  m_pocCRA                     : int
+  m_prevRAPisBLA               : bool
+  m_pocRandomAccess            : int
+
+  m_uiValidPS                  : unsigned
+  m_cListPic                   : TComList<TComPic*>
+  m_parameterSetManagerDecoder : ParameterSetManagerDecoder
+  m_apcSlicePilot              : TComSlice*
+
+  m_SEIs                       : SEImessages*
+
+  m_cPrediction                : TComPrediction
+  m_cTrQuant                   : TComTrQuant
+  m_cGopDecoder                : TDecGop
+  m_cSliceDecoder              : TDecSlice
+  m_cCuDecoder                 : TDecCu
+  m_cEntropyDecoder            : TDecEntropy
+  m_cCavlcDecoder              : TDecCavlc
+  m_cSbacDecoder               : TDecSbac
+  m_cBinCABAC                  : TDecBinCABAC
+  m_cLoopFilter                : TComLoopFilter
+  m_cAdaptiveLoopFilter        : TComAdaptiveLoopFilter
+  m_cSAO                       : TComSampleAdaptiveOffset
+
+  m_pcPic                      : TComPic*
+  m_uiSliceIdx                 : unsigned
+  m_uiLastSliceIdx             : unsigned
+  m_prevPOC                    : int
+  m_bFirstSliceInPicture       : bool
+  m_bFirstSliceInSequence      : bool
+
+  create() {
+    m_cGopDecoder.create()
+  }
+  destroy() {
+    m_cGopDecoder.destroy()
+    m_cSliceDecoder.destroy()
+  }
+
+  init() {
+    initROM()
+    m_cGopDecoder.init(m_cEntropyDecoder, m_cSbacDecoder, m_cBinCABAC, m_cCavlcDecoder, m_cLoopFilter, m_cAdaptiveLoopFilter, m_cSAO)
+    m_cSliceDecoder.init(m_cEntropyDecoder, m_cCuDecoder)
+    m_cEntropyDecoder.init(m_cPrediction)
+  }
+  deletePicBuffer() {
+    m_cAdaptiveLoopFilter.destroy()
+    m_cSAO.destroy()
+    m_cLoopFilter.destroy()
+    destroyROM()
+  }
+
+  decode(nalu, iSkipFrame, iPOCLastDisplay) {
+    m_cEntropyDecoder.setEntropyDecoder(m_cCavlcDecoder)
+    m_cEntropyDecoder.setBitstream(nalu.m_Bitstream)
+
+    xDecodeVPS() {
+      m_cEntropyDecoder.decodeVPS(vps)
+      m_parameterSetManagerDecoder.storePrefetchedVPS(vps)
+    }
+    xDecodeSPS() {
+      m_cEntropyDecoder.decodeSPS(sps)
+      m_parameterSetManagerDecoder.storePrefetchedSPS(sps)
+      m_cAdaptiveLoopFilter.create()
+    }
+    xDecodePPS() {
+      m_cEntropyDecoder.decodePPS(pps, m_parameterSetManagerDecoder)
+      m_parameterSetManagerDecoder.storePrefetchedPPS(pps)
+      m_apcSlicePilot->setPPSId(pps->getPPSId())
+      m_apcSlicePilot->initTiles()
+    }
+    xDecodeAPS() {
+      aps->createSaoParam()
+      m_cSAO.allocSaoParam(aps->getSaoParam())
+      aps->createAlfParam()
+      m_cEntropyDecoder.decodeAPS(aps)
+      m_parameterSetManagerDecoder.storePrefetchedAPS(aps)
+    }
+    xDecodeSEI() {
+      m_cEntropyDecoder.decodeSEI(m_SEIs)
+    }
+    xDecodeSlice()
+  }
+  executeDeblockAndAlf(ruiPOC, rpcListPic, iSkipFrame, iPOCLastDisplay) {
+    pcPic : TComPic* < m_pcPic
+    m_cGopDecoder.filterPicture(pcPic)
+    m_cListPic.sort()
+    m_cCuDecoder.destroy()
+  }

@@ -5,13 +5,19 @@
 %include "argv.i"
 %typemap(in) (Int argc, Char *argv[]) = (int argc, char *argv[]);
 
-/*
+%include "typemaps.i"
+%apply int &INOUT { int & };
+%apply short &INOUT { short & };
+%apply long &INOUT { long & };
+%apply unsigned int &INOUT { unsigned int & };
+%apply unsigned short &INOUT { unsigned short & };
+%apply unsigned long &INOUT { unsigned long & };
+%apply double &INOUT { double & };
+%apply float &INOUT { float & };
+
+%include "std_list.i"
 %include "std_vector.i"
-namespace std {
-  %template(VectorInt)  vector<int>;
-  %template(VectorUint) vector<unsigned>;
-}
-*/
+
 
 %{
   #include "TLibCommon/TypeDef.h"
@@ -27,6 +33,10 @@ namespace std {
   #include "TLibCommon/TComBitStream.h"
   #include "TLibCommon/TComBitCounter.h"
   #include "TLibCommon/TComList.h"
+  #include "TLibCommon/TComPicSym.h"
+  #include "TLibCommon/TComPicYuv.h"
+  #include "TLibCommon/TComPic.h"
+  #include "TLibCommon/TComYuv.h"
   #include "TLibCommon/TComDataCU.h"
   #include "TLibCommon/TComSlice.h"
   #include "TLibCommon/TComTrQuant.h"
@@ -41,10 +51,6 @@ namespace std {
   #include "TLibCommon/TComLoopFilter.h"
   #include "TLibCommon/TComAdaptiveLoopFilter.h"
   #include "TLibCommon/TComSampleAdaptiveOffset.h"
-  #include "TLibCommon/TComPic.h"
-  #include "TLibCommon/TComPicSym.h"
-  #include "TLibCommon/TComPicYuv.h"
-  #include "TLibCommon/TComYuv.h"
 
   #include "TLibDecoder/AnnexBread.h"
   #include "TLibDecoder/NALread.h"
@@ -101,6 +107,9 @@ namespace std {
 %include "TLibCommon/TComRom.h"
 %include "TLibCommon/NAL.h"
 %include "TLibCommon/SEI.h"
+
+%template(ListNALUnitEBSP) std::list<NALUnitEBSP *>;
+
 %include "TLibCommon/AccessUnit.h"
 %include "TLibCommon/ContextModel.h"
 %include "TLibCommon/ContextModel3DBuffer.h"
@@ -109,6 +118,10 @@ namespace std {
 %include "TLibCommon/TComBitStream.h"
 %include "TLibCommon/TComBitCounter.h"
 %include "TLibCommon/TComList.h"
+%include "TLibCommon/TComPicSym.h"
+%include "TLibCommon/TComPicYuv.h"
+%include "TLibCommon/TComPic.h"
+%include "TLibCommon/TComYuv.h"
 %include "TLibCommon/TComDataCU.h"
 %include "TLibCommon/TComSlice.h"
 %include "TLibCommon/TComTrQuant.h"
@@ -123,10 +136,6 @@ namespace std {
 %include "TLibCommon/TComLoopFilter.h"
 %include "TLibCommon/TComAdaptiveLoopFilter.h"
 %include "TLibCommon/TComSampleAdaptiveOffset.h"
-%include "TLibCommon/TComPic.h"
-%include "TLibCommon/TComPicSym.h"
-%include "TLibCommon/TComPicYuv.h"
-%include "TLibCommon/TComYuv.h"
 
 %include "TLibDecoder/AnnexBread.h"
 %include "TLibDecoder/NALread.h"
@@ -174,3 +183,24 @@ namespace std {
 extern bool g_md5_mismatch;
 extern int decmain(int argc, char* argv[]);
 extern int encmain(int argc, char* argv[]);
+
+
+namespace std {
+  %template(VectorUint8) vector<uint8_t>;
+  %template(ListTComPic) list<TComPic *>;
+  %template(ListTComPicYuv) list<TComPicYuv *>;
+}
+%template(TComListTComPic) TComList<TComPic *>;
+%template(TComListTComPicYuv) TComList<TComPicYuv *>;
+
+%inline %{
+  std::istream &istream_open(const char *filename, const char *mode) {
+    std::ifstream *infile =
+      new ifstream(filename, std::ifstream::in | std::ifstream::binary);
+    return *infile;
+  }
+  void istream_clear(std::istream &is) { is.clear(); }
+  bool istream_not(std::istream &is) { return !is; }
+  unsigned long istream_tellg(std::istream &is) { return is.tellg(); }
+  std::istream &istream_seekg(std::istream &is, unsigned long pos) { return is.seekg(pos); }
+%}

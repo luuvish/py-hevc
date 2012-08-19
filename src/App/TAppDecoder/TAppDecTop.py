@@ -1,23 +1,28 @@
 #!/usr/bin/env python
 
 import sys
+sys.path.insert(0, '../../..')
 
-from hmpy import InputByteStream, AnnexBStats, byteStreamNALUnit
-from hmpy import TDecTop
-from hmpy import TVideoIOYuv
+from swig.hevc import MAX_INT, \
+                      NAL_UNIT_SPS, \
+                      NAL_UNIT_CODED_SLICE_IDR, \
+                      NAL_UNIT_CODED_SLICE_BLANT, \
+                      NAL_UNIT_CODED_SLICE_BLA
+from swig.hevc import TDecTop, TVideoIOYuv
+from swig.hevc import InputByteStream, AnnexBStats, byteStreamNALUnit
+from swig.hevc import InputNALUnit, read
 
-from ...Lib.TLibCommon.CommonDef import *
-from ...Lib.TLibCommon.TComRom import g_uiBitDepth, g_uiBitIncrement
+from swig.hevc import cvar
+from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
+from swig.hevc import VectorUint8
+
 from .TAppDecCfg import TAppDecCfg
-
-import InputNALUnit
-import read
 
 
 class TAppDecTop(TAppDecCfg):
 
     def __init__(self):
-        super(TAppDecTop, self).__init__(self)
+        super(TAppDecTop, self).__init__()
         self.m_cTDecTop = TDecTop()
         self.m_cTVideoIOYuvReconFile = TVideoIOYuv()
         self.m_abDecFlag = []
@@ -34,10 +39,10 @@ class TAppDecTop(TAppDecCfg):
 
     def decode(self):
         uiPOC = 0
-        pcListPic = []
+        pcListPic = None
 
-        bitstreamFile = open(m_pchBitstreamFile, 'rb')
-        if not bitstreamFile:
+        bitstreamFile = istream_open(self.m_pchBitstreamFile, 'rb')
+        if istream_not(bitstreamFile):
             sys.stderr.write("\nfailed to open bitstream file `%s' for reading\n" % self.m_pchBitstreamFile)
             sys.exit(False)
 
@@ -49,8 +54,8 @@ class TAppDecTop(TAppDecCfg):
 
         recon_opened = False
 
-        while bitstreamFile:
-            location = bitstream.tellg()
+        while not istream_not(bitstreamFile):
+            location = istream_tellg(bitstreamFile)
             stats = AnnexBStats()
             bPreviousPictureDecoded = False
 
@@ -72,21 +77,26 @@ class TAppDecTop(TAppDecCfg):
                     else:
                         bNewPicture = False
                 else:
-                    bNewPicture = self.m_cTDecTop.decode(nalu, self.m_iSkipFrame, self.m_iPOCLastDisplay)
+                    bNewPicture, self.m_iSkipFrame, self.m_iPOCLastDisplay = \
+                        self.m_cTDecTop.decode(nalu, self.m_iSkipFrame, self.m_iPOCLastDisplay)
                     if bNewPicture:
-                        bitstreamFile.clear()
-                        bitstreamFile.seek(location - streamoff(3))
+                        istream_clear(bitstreamFile)
+                        istream_seekg(bitstreamFile, location - 3)
                         bytestream.reset()
                     bPreviousPictureDecoded = True
-            if bNewPicture or not bitstreamFile:
-                self.m_cTDecTop.executeDeblockAndAlf(uiPoc, pcListPic, self.m_iSkipFrame, self.m_iPOCLastDisplay)
+            if bNewPicture or istream_not(bitstreamFile):
+                rpcListPic, uiPOC, self.m_iSkipFrame, self.m_iPOCLastDisplay = \
+                    self.m_cTDecTop.executeDeblockAndAlf(uiPOC, self.m_iSkipFrame, self.m_iPOCLastDisplay)
+                if rpcListPic:
+                    pcListPic = rpcListPic
 
             if pcListPic:
                 if self.m_pchReconFile and not recon_opened:
                     if self.m_outputBitDepth == 0:
-                        self.m_outputBitDepth = g_uiBitDepth + g_uiBitIncrement
+                        self.m_outputBitDepth = cvar.g_uiBitDepth + cvar.g_uiBitIncrement
 
-                    self.m_cTVideoIOYuvReconFile.open(self.m_pchReconFile, True, self.m_outputBitDepth, g_uiBitDepth + g_uiBitIncrement)
+                    self.m_cTVideoIOYuvReconFile.open(self.m_pchReconFile, True,
+                        self.m_outputBitDepth, cvar.g_uiBitDepth + cvar.g_uiBitIncrement)
                     recon_opened = True
                 if bNewPicture and \
                     (nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_IDR or
@@ -124,17 +134,21 @@ class TAppDecTop(TAppDecCfg):
         for pcPic in pcListPic:
             sps = pcPic.getSlice(0).getSPS()
 
-            if pcPic.getOutputMark() and not_displayed > pcPic.getSlice(0).getSPS().getNumReorderPics(iId) and pcPic.getPOC() > self.m_iPOCLastDisplay:
+            if pcPic.getOutputMark() and \
+               not_displayed > pcPic.getSlice(0).getSPS().getNumReorderPics(tId) and \
+               pcPic.getPOC() > self.m_iPOCLastDisplay:
                 not_displayed -= 1
                 if self.m_pchReconFile:
-                    self.m_cTVideoIOYuvReconFile.write(pcPic.getPicYuvRec(), sps.getPicCropLeftOffset(), sps.getPicCropRightOffset(), sps.getPicCropTopOffset(), sps.getPicCropBottomOffset())
+                    self.m_cTVideoIOYuvReconFile.write(pcPic.getPicYuvRec(),
+                        sps.getPicCropLeftOffset(), sps.getPicCropRightOffset(),
+                        sps.getPicCropTopOffset(), sps.getPicCropBottomOffset())
 
                 self.m_iPOCLastDisplay = pcPic.getPOC()
 
                 if not pcPic.getSlice(0).isReferenced() and pcPic.getReconMark():
                     pcPic.setReconMark(False)
                     pcPic.getPicYuvRec().setBorderExtension(False)
-                pcPic.getOutputMark(False)
+                pcPic.setOutputMark(False)
 
     def _xFlushOutput(self, pcListPic):
         if not pcListPic:
@@ -145,13 +159,20 @@ class TAppDecTop(TAppDecCfg):
 
             if pcPic.getOutputMark():
                 if self.m_pchReconFile:
-                    self.m_cTVideoIOYuvReconFile.write(pcPic.getPicYuvRec(), sps.getPicCropLeftOffset(), sps.getPicCropRightOffset(), sps.getPicCropTopOffset(), sps.getPicCropBottomOffset())
+                    self.m_cTVideoIOYuvReconFile.write(pcPic.getPicYuvRec(),
+                        sps.getPicCropLeftOffset(), sps.getPicCropRightOffset(),
+                        sps.getPicCropTopOffset(), sps.getPicCropBottomOffset())
 
                 self.m_iPOCLastDisplay = pcPic.getPOC()
 
                 if not pcPic.getSlice(0).isReferenced() and pcPic.getReconMark():
                     pcPic.setReconMark(False)
                     pcPic.getPicYuvRec().setBorderExtension(False)
-                pcPic.getOutputMark(False)
+                pcPic.setOutputMark(False)
+
+            if pcPic:
+                pcPic.destroy()
+                pcPic = None
+
         pcListPic.clear()
         self.m_iPOCLastDisplay = -MAX_INT

@@ -1,3 +1,17 @@
+diff -urN original/App/TAppDecoder/TAppDecTop.cpp source/App/TAppDecoder/TAppDecTop.cpp
+--- original/App/TAppDecoder/TAppDecTop.cpp	2012-07-24 02:27:48.000000000 +0900
++++ source/App/TAppDecoder/TAppDecTop.cpp	2012-08-19 17:39:36.000000000 +0900
+@@ -172,7 +172,9 @@
+     }
+     if (bNewPicture || !bitstreamFile)
+     {
+-      m_cTDecTop.executeDeblockAndAlf(uiPOC, pcListPic, m_iSkipFrame, m_iPOCLastDisplay);
++      TComList<TComPic*> *rpcListPic = m_cTDecTop.executeDeblockAndAlf(uiPOC, m_iSkipFrame, m_iPOCLastDisplay);
++      if (rpcListPic)
++        pcListPic = rpcListPic;
+     }
+ 
+     if( pcListPic )
 diff -urN original/Lib/TLibCommon/NAL.h source/Lib/TLibCommon/NAL.h
 --- original/Lib/TLibCommon/NAL.h	2012-08-05 06:08:01.000000000 +0900
 +++ source/Lib/TLibCommon/NAL.h	2012-08-18 14:40:09.000000000 +0900
@@ -51,9 +65,69 @@ diff -urN original/Lib/TLibCommon/TComCABACTables.h source/Lib/TLibCommon/TComCA
  
  //! \}
  
+diff -urN original/Lib/TLibCommon/TComList.h source/Lib/TLibCommon/TComList.h
+--- original/Lib/TLibCommon/TComList.h	2012-01-19 02:44:23.000000000 +0900
++++ source/Lib/TLibCommon/TComList.h	2012-08-19 06:14:49.000000000 +0900
+@@ -67,7 +67,7 @@
+   {
+     if( ! rcTComList.empty() )
+     {
+-      insert( this->end(), rcTComList.begin(), rcTComList.end());
++      this->insert( this->end(), rcTComList.begin(), rcTComList.end());
+     }
+     return *this;
+   } // leszek
+@@ -104,10 +104,10 @@
+     }
+   }
+   
+-  TComIterator find( const C& rcT ) // leszek
++/*TComIterator find( const C& rcT ) // leszek
+   {
+-    return find( this->begin(), this->end(), rcT );
+-  }
++    return this->find( this->begin(), this->end(), rcT );
++  }*/
+ };
+ 
+ //! \}
+diff -urN original/Lib/TLibCommon/TComRom.cpp source/Lib/TLibCommon/TComRom.cpp
+--- original/Lib/TLibCommon/TComRom.cpp	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/TComRom.cpp	2012-08-18 18:28:24.000000000 +0900
+@@ -402,6 +402,8 @@
+   {84,  -29,   -74,   55},
+   {55,  -84,    74,  -29},
+ };
++const UChar g_aucDCTDSTMode_Vert[NUM_INTRA_MODE] = {};
++const UChar g_aucDCTDSTMode_Hor[NUM_INTRA_MODE] = {};
+ 
+ 
+ // ====================================================================================================================
+@@ -432,6 +434,10 @@
+ };
+ #endif // FAST_UDI_USE_MPM
+ 
++const UChar g_aucIntraModeNumAng[7] = {};
++const UChar g_aucIntraModeBitsAng[7] = {};
++const UChar g_aucAngIntraModeOrder[NUM_INTRA_MODE] = {};
++
+ // chroma
+ 
+ const UChar g_aucConvertTxtTypeToIdx[4] = { 0, 1, 1, 2 };
+@@ -826,6 +832,10 @@
+   20,24,25,28,33,41,54,71,
+   24,25,28,33,41,54,71,91
+ };
++Int g_quantIntraDefault16x16[256] = {};
++Int g_quantIntraDefault32x32[1024] = {};
++Int g_quantInterDefault16x16[256] = {};
++Int g_quantInterDefault32x32[1024] = {};
+ UInt g_scalingListSize   [4] = {16,64,256,1024}; 
+ UInt g_scalingListSizeX  [4] = { 4, 8, 16,  32};
+ UInt g_scalingListNum[SCALING_LIST_SIZE_NUM]={6,6,6,2};
 diff -urN original/Lib/TLibCommon/TComRom.h source/Lib/TLibCommon/TComRom.h
 --- original/Lib/TLibCommon/TComRom.h	2012-08-05 06:08:01.000000000 +0900
-+++ source/Lib/TLibCommon/TComRom.h	2012-08-18 16:04:15.000000000 +0900
++++ source/Lib/TLibCommon/TComRom.h	2012-08-18 18:21:42.000000000 +0900
 @@ -53,7 +53,8 @@
  #define     MAX_CU_DEPTH            7                           // log2(LCUSize)
  #define     MAX_CU_SIZE             (1<<(MAX_CU_DEPTH))         // maximum allowable size of CU
@@ -126,6 +200,49 @@ diff -urN original/Lib/TLibDecoder/TDecBinCoderCABAC.cpp source/Lib/TLibDecoder/
      m_uiValue   = ( m_uiValue - scaledRange ) << numBits;
      m_uiRange   = uiLPS << numBits;
      ruiBin      = 1 - rcCtxModel.getMps();
+diff -urN original/Lib/TLibDecoder/TDecTop.cpp source/Lib/TLibDecoder/TDecTop.cpp
+--- original/Lib/TLibDecoder/TDecTop.cpp	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibDecoder/TDecTop.cpp	2012-08-19 17:55:13.000000000 +0900
+@@ -191,14 +191,15 @@
+ #endif
+ }
+ 
+-Void TDecTop::executeDeblockAndAlf(UInt& ruiPOC, TComList<TComPic*>*& rpcListPic, Int& iSkipFrame, Int& iPOCLastDisplay)
++TComList<TComPic*> *TDecTop::executeDeblockAndAlf(UInt& ruiPOC, Int& iSkipFrame, Int& iPOCLastDisplay)
+ {
+   if (!m_pcPic)
+   {
+     /* nothing to deblock */
+-    return;
++    return NULL;
+   }
+-  
++
++  TComList<TComPic*>* rpcListPic = NULL;
+   TComPic*&   pcPic         = m_pcPic;
+ 
+   // Execute Deblock and ALF only + Cleanup
+@@ -211,7 +212,7 @@
+   m_cCuDecoder.destroy();        
+   m_bFirstSliceInPicture  = true;
+ 
+-  return;
++  return rpcListPic;
+ }
+ 
+ Void TDecTop::xCreateLostPicture(Int iLostPoc) 
+diff -urN original/Lib/TLibDecoder/TDecTop.h source/Lib/TLibDecoder/TDecTop.h
+--- original/Lib/TLibDecoder/TDecTop.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibDecoder/TDecTop.h	2012-08-19 17:34:33.000000000 +0900
+@@ -116,7 +116,7 @@
+   
+   Void  deletePicBuffer();
+ 
+-  Void executeDeblockAndAlf(UInt& ruiPOC, TComList<TComPic*>*& rpcListPic, Int& iSkipFrame,  Int& iPOCLastDisplay);
++  TComList<TComPic*> *executeDeblockAndAlf(UInt& ruiPOC, Int& iSkipFrame,  Int& iPOCLastDisplay);
+ 
+ protected:
+   Void  xGetNewPicBuffer  (TComSlice* pcSlice, TComPic*& rpcPic);
 diff -urN original/Lib/TLibEncoder/AnnexBwrite.h source/Lib/TLibEncoder/AnnexBwrite.h
 --- original/Lib/TLibEncoder/AnnexBwrite.h	2012-03-31 07:40:48.000000000 +0900
 +++ source/Lib/TLibEncoder/AnnexBwrite.h	2012-08-17 23:27:49.000000000 +0900

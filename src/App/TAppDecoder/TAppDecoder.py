@@ -55,4 +55,4 @@ def TAppDecoder(argv):
     # destroy application decoder class
     cTAppDecTop.destroy()
 
-    return False if cvar.g_md5_mismatch else True
+    return False if g_md5_mismatch else True

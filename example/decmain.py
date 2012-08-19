@@ -3,7 +3,7 @@
 import sys
 sys.path.insert(0, '..')
 
-from src.App.TAppDecoder.TAppDecoder import TAppDecoder
+from swig.hevc import decmain as TAppDecoder
 
 
 config_dir = '../../h265'

@@ -185,6 +185,9 @@ extern int decmain(int argc, char* argv[]);
 extern int encmain(int argc, char* argv[]);
 
 
+%include "carrays.i"
+%array_class(Pel, PelArray);
+
 namespace std {
   %template(VectorUint8) vector<uint8_t>;
   %template(ListTComPic) list<TComPic *>;
@@ -195,12 +198,14 @@ namespace std {
 
 %inline %{
   std::istream &istream_open(const char *filename, const char *mode) {
-    std::ifstream *infile =
-      new ifstream(filename, std::ifstream::in | std::ifstream::binary);
-    return *infile;
+    std::ifstream *file =
+      new std::ifstream(filename, std::ifstream::in | std::ifstream::binary);
+    return *file;
   }
   void istream_clear(std::istream &is) { is.clear(); }
   bool istream_not(std::istream &is) { return !is; }
-  unsigned long istream_tellg(std::istream &is) { return is.tellg(); }
-  std::istream &istream_seekg(std::istream &is, unsigned long pos) { return is.seekg(pos); }
+  unsigned long
+  istream_tellg(std::istream &is) { return is.tellg(); }
+  std::istream &
+  istream_seekg(std::istream &is, unsigned long pos) { return is.seekg(pos); }
 %}

@@ -1,9 +1,18 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    module : src/App/TAppEncoder/TAppEncoder.py
+    HM 8.0 Python Implementation
+"""
 
 import sys
 from time import clock
 
-from .TAppEncTop import TAppEncTop
+use_swig = True
+if use_swig:
+    sys.path.insert(0, '../../..')
+    from swig.hevc import TAppEncTop
+else:
+    from .TAppEncTop import TAppEncTop
 
 CLOCKS_PER_SEC = 1
 
@@ -45,7 +54,7 @@ def TAppEncoder(argv):
 
     # ending time
     dResult = (clock()-lBefore) / CLOCKS_PER_SEC
-    print("\n Total Time: %12.3f sec.\n" % dResult)
+    sys.stdout.write("\n Total Time: %12.3f sec.\n" % dResult)
 
     # destroy application encoder class
     cTAppEncTop.destroy()

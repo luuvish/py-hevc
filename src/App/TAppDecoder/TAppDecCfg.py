@@ -1,7 +1,12 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    module : src/App/TAppDecoder/TAppDecCfg.py
+    HM 8.0 Python Implementation
+"""
 
 import sys
 import optparse
+
 
 class TAppDecCfg(object):
 

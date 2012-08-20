@@ -1,20 +1,42 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    module : src/App/TAppDecoder/TAppDecTop.py
+    HM 8.0 Python Implementation
+"""
 
 import sys
-sys.path.insert(0, '../../..')
 
-from swig.hevc import MAX_INT, \
-                      NAL_UNIT_SPS, \
-                      NAL_UNIT_CODED_SLICE_IDR, \
-                      NAL_UNIT_CODED_SLICE_BLANT, \
-                      NAL_UNIT_CODED_SLICE_BLA
-from swig.hevc import TDecTop, TVideoIOYuv
-from swig.hevc import InputByteStream, AnnexBStats, byteStreamNALUnit
-from swig.hevc import InputNALUnit, read
+use_swig = False
+if use_swig:
+    sys.path.insert(0, '../../..')
+    from swig.hevc import cvar
+    from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
+    from swig.hevc import VectorUint8
 
-from swig.hevc import cvar
-from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
-from swig.hevc import VectorUint8
+    from swig.hevc import MAX_INT, \
+                          NAL_UNIT_SPS, \
+                          NAL_UNIT_CODED_SLICE_IDR, \
+                          NAL_UNIT_CODED_SLICE_BLANT, \
+                          NAL_UNIT_CODED_SLICE_BLA
+    from swig.hevc import InputByteStream, AnnexBStats, byteStreamNALUnit
+    from swig.hevc import InputNALUnit, read
+    from swig.hevc import TDecTop
+    from swig.hevc import TVideoIOYuv
+else:
+    sys.path.insert(0, '../../..')
+    from swig.hevc import cvar
+    from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
+    from swig.hevc import VectorUint8
+
+    from swig.hevc import MAX_INT, \
+                          NAL_UNIT_SPS, \
+                          NAL_UNIT_CODED_SLICE_IDR, \
+                          NAL_UNIT_CODED_SLICE_BLANT, \
+                          NAL_UNIT_CODED_SLICE_BLA
+    from swig.hevc import InputByteStream, AnnexBStats, byteStreamNALUnit
+    from swig.hevc import InputNALUnit, read
+    from swig.hevc import TDecTop
+    from ...Lib.TLibVideoIO.TVideoIOYuv import TVideoIOYuv
 
 from .TAppDecCfg import TAppDecCfg
 

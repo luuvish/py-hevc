@@ -1,0 +1,9 @@
+python27
+pypy
+swig
+swig-python
+boost +python27
+py27-pyplusplus-devel
+py27-pyopencl
+py27-opengl
+py27-wxpython

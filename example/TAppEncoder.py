@@ -3,7 +3,11 @@
 import sys
 sys.path.insert(0, '..')
 
-from swig.hevc import encmain as TAppEncoder
+use_swig = True
+if use_swig:
+	from swig.hevc import encmain as TAppEncoder
+else:
+	from src.App.TAppEncoder.TAppEncoder import TAppEncoder
 
 
 config_dir = '../../h265/binary'

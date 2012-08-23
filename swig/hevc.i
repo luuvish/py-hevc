@@ -205,6 +205,10 @@ namespace std {
 %template(TComListTComPic) TComList<TComPic *>;
 %template(TComListTComPicYuv) TComList<TComPicYuv *>;
 
+%template(ParameterSetMapTComVPS) ParameterSetMap<TComVPS>;
+%template(ParameterSetMapTComSPS) ParameterSetMap<TComSPS>;
+%template(ParameterSetMapTComPPS) ParameterSetMap<TComPPS>;
+
 
 %inline %{
   std::istream &istream_open(const char *filename, const char *mode) {

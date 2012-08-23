@@ -28,8 +28,8 @@ if use_swig:
                           REF_PIC_LIST_1, \
                           B_SLICE
 
-    from swig.hevc import TComListTComPic
     from swig.hevc import ParameterSetManagerDecoder
+    from swig.hevc import TComListTComPic
     from swig.hevc import TComSlice
     from swig.hevc import SEImessages
     from swig.hevc import TComPrediction
@@ -68,14 +68,14 @@ else:
                           REF_PIC_LIST_1, \
                           B_SLICE
 
-    from swig.hevc import TComListTComPic
     from swig.hevc import ParameterSetManagerDecoder
+    from swig.hevc import TComListTComPic
     from swig.hevc import TComSlice
     from swig.hevc import SEImessages
     from swig.hevc import TComPrediction
     from swig.hevc import TComTrQuant
     from .TDecGop import TDecGop
-    from swig.hevc import TDecSlice
+    from .TDecSlice import TDecSlice
     from swig.hevc import TDecCu
     from swig.hevc import TDecEntropy
     from swig.hevc import TDecCavlc

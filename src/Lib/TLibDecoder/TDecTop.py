@@ -6,7 +6,7 @@
 
 import sys
 
-use_swig = True
+use_swig = False
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
@@ -35,6 +35,46 @@ if use_swig:
     from swig.hevc import TComPrediction
     from swig.hevc import TComTrQuant
     from swig.hevc import TDecGop
+    from swig.hevc import TDecSlice
+    from swig.hevc import TDecCu
+    from swig.hevc import TDecEntropy
+    from swig.hevc import TDecCavlc
+    from swig.hevc import TDecSbac
+    from swig.hevc import TDecBinCABAC
+    from swig.hevc import TComLoopFilter
+    from swig.hevc import TComSampleAdaptiveOffset
+    from swig.hevc import TComPic
+
+    from swig.hevc import TComVPS, TComSPS, TComPPS
+    from swig.hevc import initROM, destroyROM
+else:
+    sys.path.insert(0, '../../..')
+    from swig.hevc import cvar
+
+    from swig.hevc import MAX_INT, \
+                          NAL_UNIT_VPS, \
+                          NAL_UNIT_SPS, \
+                          NAL_UNIT_PPS, \
+                          NAL_UNIT_SEI, \
+                          NAL_UNIT_CODED_SLICE, \
+                          NAL_UNIT_CODED_SLICE_TFD, \
+                          NAL_UNIT_CODED_SLICE_TLA, \
+                          NAL_UNIT_CODED_SLICE_CRA, \
+                          NAL_UNIT_CODED_SLICE_CRANT, \
+                          NAL_UNIT_CODED_SLICE_BLA, \
+                          NAL_UNIT_CODED_SLICE_BLANT, \
+                          NAL_UNIT_CODED_SLICE_IDR, \
+                          REF_PIC_LIST_0, \
+                          REF_PIC_LIST_1, \
+                          B_SLICE
+
+    from swig.hevc import TComListTComPic
+    from swig.hevc import ParameterSetManagerDecoder
+    from swig.hevc import TComSlice
+    from swig.hevc import SEImessages
+    from swig.hevc import TComPrediction
+    from swig.hevc import TComTrQuant
+    from .TDecGop import TDecGop
     from swig.hevc import TDecSlice
     from swig.hevc import TDecCu
     from swig.hevc import TDecEntropy

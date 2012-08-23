@@ -5,6 +5,13 @@
 %include "argv.i"
 %typemap(in) (Int argc, Char *argv[]) = (int argc, char *argv[]);
 
+%include "std_vector.i"
+namespace std {
+  %template(VectorBool) vector<bool>;
+  %template(VectorInt) vector<int>;
+  %template(VectorUint8) vector<uint8_t>;
+}
+
 %include "typemaps.i"
 %apply bool &INOUT { bool & };
 %apply int &INOUT { int & };
@@ -15,9 +22,6 @@
 %apply unsigned long &INOUT { unsigned long & };
 %apply double &INOUT { double & };
 %apply float &INOUT { float & };
-
-%include "std_list.i"
-%include "std_vector.i"
 
 
 %{
@@ -91,6 +95,8 @@
 
   #include "TLibVideoIO/TVideoIOYuv.h"
 
+  #include "libmd5/MD5.h"
+
   #include "TAppDecCfg.h"
   #include "TAppDecTop.h"
   #include "TAppEncCfg.h"
@@ -109,6 +115,7 @@
 %include "TLibCommon/NAL.h"
 %include "TLibCommon/SEI.h"
 
+%include "std_list.i"
 %template(ListNALUnitEBSP) std::list<NALUnitEBSP *>;
 
 %include "TLibCommon/AccessUnit.h"
@@ -176,6 +183,8 @@
 
 %include "TLibVideoIO/TVideoIOYuv.h"
 
+%include "libmd5/MD5.h"
+
 %include "TAppDecCfg.h"
 %include "TAppDecTop.h"
 %include "TAppEncCfg.h"
@@ -190,12 +199,12 @@ extern int encmain(int argc, char* argv[]);
 %array_class(Pel, PelArray);
 
 namespace std {
-  %template(VectorUint8) vector<uint8_t>;
   %template(ListTComPic) list<TComPic *>;
   %template(ListTComPicYuv) list<TComPicYuv *>;
 }
 %template(TComListTComPic) TComList<TComPic *>;
 %template(TComListTComPicYuv) TComList<TComPicYuv *>;
+
 
 %inline %{
   std::istream &istream_open(const char *filename, const char *mode) {
@@ -209,4 +218,34 @@ namespace std {
   istream_tellg(std::istream &is) { return is.tellg(); }
   std::istream &
   istream_seekg(std::istream &is, unsigned long pos) { return is.seekg(pos); }
+%}
+
+%inline %{
+  typedef struct ArrayTComInputBitstream {
+    TComInputBitstream **data;
+    ArrayTComInputBitstream(int size) { data = new TComInputBitstream*[size]; }
+    ~ArrayTComInputBitstream() { delete []data; }
+    void set(int index, TComInputBitstream *item) { data[index] = item; }
+    TComInputBitstream *get(int index) { return data[index]; }
+  } ArrayTComInputBitstream;
+
+  typedef struct ArrayTDecSbac {
+    TDecSbac *data;
+    ArrayTDecSbac(int size) { data = new TDecSbac[size]; }
+    ~ArrayTDecSbac() { delete []data; }
+    TDecSbac &get(int index) { return data[index]; }
+  } ArrayTDecSbac;
+
+  typedef struct ArrayTDecBinCABAC {
+    TDecBinCABAC *data;
+    ArrayTDecBinCABAC(int size) { data = new TDecBinCABAC[size]; }
+    ~ArrayTDecBinCABAC() { delete []data; }
+    TDecBinCABAC &get(int index) { return data[index]; }
+  } ArrayTDecBinCABAC;
+
+  void ArrayBool_Set(bool *obj, int index, bool value) { obj[index] = value; }
+  bool ArrayBool_Get(bool *obj, int index) { return obj[index]; }
+
+  unsigned char
+  digest_get(unsigned char digest[3][16], int i, int j) { return digest[i][j]; }
 %}

@@ -65,6 +65,27 @@ diff -urN original/Lib/TLibCommon/TComCABACTables.h source/Lib/TLibCommon/TComCA
  
  //! \}
  
+diff -urN original/Lib/TLibCommon/TComDataCU.cpp source/Lib/TLibCommon/TComDataCU.cpp
+--- original/Lib/TLibCommon/TComDataCU.cpp	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/TComDataCU.cpp	2012-08-22 21:35:58.000000000 +0900
+@@ -1057,7 +1057,7 @@
+ // It is used to predict for next part
+ Void TComDataCU::copyToPic( UChar uhDepth )
+ {
+-  TComDataCU*& rpcCU = m_pcPic->getCU( m_uiCUAddr );
++  TComDataCU* rpcCU = m_pcPic->getCU( m_uiCUAddr );
+   
+   rpcCU->getTotalCost()       = m_dTotalCost;
+   rpcCU->getTotalDistortion() = m_uiTotalDistortion;
+@@ -1135,7 +1135,7 @@
+ 
+ Void TComDataCU::copyToPic( UChar uhDepth, UInt uiPartIdx, UInt uiPartDepth )
+ {
+-  TComDataCU*&  rpcCU       = m_pcPic->getCU( m_uiCUAddr );
++  TComDataCU*   rpcCU       = m_pcPic->getCU( m_uiCUAddr );
+   UInt          uiQNumPart  = m_uiNumPartition>>(uiPartDepth<<1);
+   
+   UInt uiPartStart          = uiPartIdx*uiQNumPart;
 diff -urN original/Lib/TLibCommon/TComList.h source/Lib/TLibCommon/TComList.h
 --- original/Lib/TLibCommon/TComList.h	2012-01-19 02:44:23.000000000 +0900
 +++ source/Lib/TLibCommon/TComList.h	2012-08-19 06:14:49.000000000 +0900
@@ -91,6 +112,30 @@ diff -urN original/Lib/TLibCommon/TComList.h source/Lib/TLibCommon/TComList.h
  };
  
  //! \}
+diff -urN original/Lib/TLibCommon/TComPic.h source/Lib/TLibCommon/TComPic.h
+--- original/Lib/TLibCommon/TComPic.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/TComPic.h	2012-08-22 21:33:26.000000000 +0900
+@@ -106,7 +106,7 @@
+   TComPicSym*   getPicSym()           { return  m_apcPicSym;    }
+   TComSlice*    getSlice(Int i)       { return  m_apcPicSym->getSlice(i);  }
+   Int           getPOC()              { return  m_apcPicSym->getSlice(m_uiCurrSliceIdx)->getPOC();  }
+-  TComDataCU*&  getCU( UInt uiCUAddr )  { return  m_apcPicSym->getCU( uiCUAddr ); }
++  TComDataCU*   getCU( UInt uiCUAddr )  { return  m_apcPicSym->getCU( uiCUAddr ); }
+   
+   TComPicYuv*   getPicYuvOrg()        { return  m_apcPicYuv[0]; }
+   TComPicYuv*   getPicYuvRec()        { return  m_apcPicYuv[1]; }
+diff -urN original/Lib/TLibCommon/TComPicSym.h source/Lib/TLibCommon/TComPicSym.h
+--- original/Lib/TLibCommon/TComPicSym.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/TComPicSym.h	2012-08-22 21:33:43.000000000 +0900
+@@ -123,7 +123,7 @@
+   UInt        getMinCUWidth()           { return m_uiMinCUWidth;                }
+   UInt        getMinCUHeight()          { return m_uiMinCUHeight;               }
+   UInt        getNumberOfCUsInFrame()   { return m_uiNumCUsInFrame;  }
+-  TComDataCU*&  getCU( UInt uiCUAddr )  { return m_apcTComDataCU[uiCUAddr];     }
++  TComDataCU* getCU( UInt uiCUAddr )  { return m_apcTComDataCU[uiCUAddr];     }
+   
+   Void        setSlice(TComSlice* p, UInt i) { m_apcTComSlice[i] = p;           }
+   UInt        getNumAllocatedSlice()    { return m_uiNumAllocatedSlice;         }
 diff -urN original/Lib/TLibCommon/TComRom.cpp source/Lib/TLibCommon/TComRom.cpp
 --- original/Lib/TLibCommon/TComRom.cpp	2012-08-05 06:08:01.000000000 +0900
 +++ source/Lib/TLibCommon/TComRom.cpp	2012-08-18 18:28:24.000000000 +0900
@@ -200,6 +245,122 @@ diff -urN original/Lib/TLibDecoder/TDecBinCoderCABAC.cpp source/Lib/TLibDecoder/
      m_uiValue   = ( m_uiValue - scaledRange ) << numBits;
      m_uiRange   = uiLPS << numBits;
      ruiBin      = 1 - rcCtxModel.getMps();
+diff -urN original/Lib/TLibDecoder/TDecCAVLC.cpp source/Lib/TLibDecoder/TDecCAVLC.cpp
+--- original/Lib/TLibDecoder/TDecCAVLC.cpp	2012-08-07 03:11:44.000000000 +0900
++++ source/Lib/TLibDecoder/TDecCAVLC.cpp	2012-08-22 19:51:14.000000000 +0900
+@@ -802,7 +802,7 @@
+   return;
+ }
+ 
+-Void TDecCavlc::parseSliceHeader (TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager)
++Void TDecCavlc::parseSliceHeader (TComSlice* rpcSlice, ParameterSetManagerDecoder *parameterSetManager)
+ {
+   UInt  uiCode;
+   Int   iCode;
+diff -urN original/Lib/TLibDecoder/TDecCAVLC.h source/Lib/TLibDecoder/TDecCAVLC.h
+--- original/Lib/TLibDecoder/TDecCAVLC.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibDecoder/TDecCAVLC.h	2012-08-22 19:51:21.000000000 +0900
+@@ -108,7 +108,7 @@
+ #if !REMOVE_APS
+   Void  parseAPS            ( TComAPS* pAPS );
+ #endif
+-  Void  parseSliceHeader    ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager);
++  Void  parseSliceHeader    ( TComSlice* rpcSlice, ParameterSetManagerDecoder *parameterSetManager);
+   Void  parseTerminatingBit ( UInt& ruiBit );
+   
+   Void  parseMVPIdx         ( Int& riMVPIdx );
+diff -urN original/Lib/TLibDecoder/TDecEntropy.h source/Lib/TLibDecoder/TDecEntropy.h
+--- original/Lib/TLibDecoder/TDecEntropy.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibDecoder/TDecEntropy.h	2012-08-22 19:51:48.000000000 +0900
+@@ -75,7 +75,7 @@
+ #endif
+   virtual void parseSEI(SEImessages&) = 0;
+ 
+-  virtual Void parseSliceHeader          ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager)       = 0;
++  virtual Void parseSliceHeader          ( TComSlice* rpcSlice, ParameterSetManagerDecoder *parameterSetManager)       = 0;
+ 
+   virtual Void  parseTerminatingBit       ( UInt& ruilsLast )                                     = 0;
+   
+@@ -149,7 +149,7 @@
+ #endif
+   void decodeSEI(SEImessages& seis) { m_pcEntropyDecoderIf->parseSEI(seis); }
+ 
+-  Void    decodeSliceHeader           ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager)  { m_pcEntropyDecoderIf->parseSliceHeader(rpcSlice, parameterSetManager);         }
++  Void    decodeSliceHeader           ( TComSlice* rpcSlice, ParameterSetManagerDecoder *parameterSetManager)  { m_pcEntropyDecoderIf->parseSliceHeader(rpcSlice, parameterSetManager);         }
+ 
+   Void    decodeTerminatingBit        ( UInt& ruiIsLast )       { m_pcEntropyDecoderIf->parseTerminatingBit(ruiIsLast);     }
+   
+diff -urN original/Lib/TLibDecoder/TDecGop.cpp source/Lib/TLibDecoder/TDecGop.cpp
+--- original/Lib/TLibDecoder/TDecGop.cpp	2012-08-07 03:11:44.000000000 +0900
++++ source/Lib/TLibDecoder/TDecGop.cpp	2012-08-22 23:09:50.000000000 +0900
+@@ -109,7 +109,7 @@
+ // Public member functions
+ // ====================================================================================================================
+ 
+-Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic)
++Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* rpcPic)
+ {
+   TComSlice*  pcSlice = rpcPic->getSlice(rpcPic->getCurrSliceIdx());
+   // Table of extracted substreams.
+@@ -198,7 +198,7 @@
+   m_dDecTime += (double)(clock()-iBeforeTime) / CLOCKS_PER_SEC;
+ }
+ 
+-Void TDecGop::filterPicture(TComPic*& rpcPic)
++Void TDecGop::filterPicture(TComPic* rpcPic)
+ {
+   TComSlice*  pcSlice = rpcPic->getSlice(rpcPic->getCurrSliceIdx());
+ 
+diff -urN original/Lib/TLibDecoder/TDecGop.h source/Lib/TLibDecoder/TDecGop.h
+--- original/Lib/TLibDecoder/TDecGop.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibDecoder/TDecGop.h	2012-08-22 23:09:56.000000000 +0900
+@@ -113,8 +113,8 @@
+   Void  create  ();
+   Void  destroy ();
+ //  Void  decompressGop(TComInputBitstream* pcBitstream, TComPic*& rpcPic, Bool bExecuteDeblockAndAlf );
+-  Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic );
+-  Void  filterPicture  (TComPic*& rpcPic );
++  Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic* rpcPic );
++  Void  filterPicture  (TComPic* rpcPic );
+   Void  setGopSize( Int i) { m_iGopSize = i; }
+ 
+   void setPictureDigestEnabled(Int enabled) { m_pictureDigestEnabled = enabled; }
+diff -urN original/Lib/TLibDecoder/TDecSbac.h source/Lib/TLibDecoder/TDecSbac.h
+--- original/Lib/TLibDecoder/TDecSbac.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibDecoder/TDecSbac.h	2012-08-22 19:52:06.000000000 +0900
+@@ -85,7 +85,7 @@
+ #endif
+   void parseSEI(SEImessages&) {}
+ 
+-  Void  parseSliceHeader          ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager) {}
++  Void  parseSliceHeader          ( TComSlice* rpcSlice, ParameterSetManagerDecoder *parameterSetManager) {}
+   Void  parseTerminatingBit       ( UInt& ruiBit );
+   Void  parseMVPIdx               ( Int& riMVPIdx          );
+   Void  parseSaoMaxUvlc           ( UInt& val, UInt maxSymbol );
+diff -urN original/Lib/TLibDecoder/TDecSlice.cpp source/Lib/TLibDecoder/TDecSlice.cpp
+--- original/Lib/TLibDecoder/TDecSlice.cpp	2012-08-07 03:11:44.000000000 +0900
++++ source/Lib/TLibDecoder/TDecSlice.cpp	2012-08-22 21:11:19.000000000 +0900
+@@ -90,7 +90,7 @@
+   m_pcCuDecoder       = pcCuDecoder;
+ }
+ 
+-Void TDecSlice::decompressSlice(TComInputBitstream* pcBitstream, TComInputBitstream** ppcSubstreams, TComPic*& rpcPic, TDecSbac* pcSbacDecoder, TDecSbac* pcSbacDecoders)
++Void TDecSlice::decompressSlice(TComInputBitstream* pcBitstream, TComInputBitstream** ppcSubstreams, TComPic* rpcPic, TDecSbac* pcSbacDecoder, TDecSbac* pcSbacDecoders)
+ {
+   TComDataCU* pcCU;
+   UInt        uiIsLast = 0;
+diff -urN original/Lib/TLibDecoder/TDecSlice.h source/Lib/TLibDecoder/TDecSlice.h
+--- original/Lib/TLibDecoder/TDecSlice.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibDecoder/TDecSlice.h	2012-08-22 21:11:29.000000000 +0900
+@@ -79,7 +79,7 @@
+   Void  create            ( TComSlice* pcSlice, Int iWidth, Int iHeight, UInt uiMaxWidth, UInt uiMaxHeight, UInt uiMaxDepth );
+   Void  destroy           ();
+   
+-  Void  decompressSlice   ( TComInputBitstream* pcBitstream, TComInputBitstream** ppcSubstreams,   TComPic*& rpcPic, TDecSbac* pcSbacDecoder, TDecSbac* pcSbacDecoders );
++  Void  decompressSlice   ( TComInputBitstream* pcBitstream, TComInputBitstream** ppcSubstreams,   TComPic* rpcPic, TDecSbac* pcSbacDecoder, TDecSbac* pcSbacDecoders );
+ };
+ 
+ 
 diff -urN original/Lib/TLibDecoder/TDecTop.cpp source/Lib/TLibDecoder/TDecTop.cpp
 --- original/Lib/TLibDecoder/TDecTop.cpp	2012-08-05 06:08:01.000000000 +0900
 +++ source/Lib/TLibDecoder/TDecTop.cpp	2012-08-19 17:55:13.000000000 +0900
@@ -390,3 +551,24 @@ diff -urN original/Lib/TLibEncoder/TEncSbac.h source/Lib/TLibEncoder/TEncSbac.h
    
    TEncBinIf* getEncBinIf()  { return m_pcBinIf; }
  private:
+diff -urN original/Lib/TLibEncoder/TEncSlice.cpp source/Lib/TLibEncoder/TEncSlice.cpp
+--- original/Lib/TLibEncoder/TEncSlice.cpp	2012-08-07 03:11:44.000000000 +0900
++++ source/Lib/TLibEncoder/TEncSlice.cpp	2012-08-22 21:38:48.000000000 +0900
+@@ -805,7 +805,7 @@
+        uiCUAddr = rpcPic->getPicSym()->getCUOrderMap(++uiEncCUOrder) )
+   {
+     // initialize CU encoder
+-    TComDataCU*& pcCU = rpcPic->getCU( uiCUAddr );
++    TComDataCU* pcCU = rpcPic->getCU( uiCUAddr );
+     pcCU->initCU( rpcPic, uiCUAddr );
+ 
+     if(m_pcCfg->getUseRateCtrl())
+@@ -1235,7 +1235,7 @@
+       }
+     }
+ 
+-    TComDataCU*& pcCU = rpcPic->getCU( uiCUAddr );    
++    TComDataCU* pcCU = rpcPic->getCU( uiCUAddr );    
+ #if !SAO_LUM_CHROMA_ONOFF_FLAGS
+     if ( pcSlice->getSPS()->getUseSAO() && pcSlice->getSaoEnabledFlag() )
+ #else

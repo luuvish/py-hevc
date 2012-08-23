@@ -35,8 +35,9 @@ else:
                           NAL_UNIT_CODED_SLICE_BLA
     from swig.hevc import InputByteStream, AnnexBStats, byteStreamNALUnit
     from swig.hevc import InputNALUnit, read
-    from swig.hevc import TDecTop
-    from ...Lib.TLibVideoIO.TVideoIOYuv import TVideoIOYuv
+    from ...Lib.TLibDecoder.TDecTop import TDecTop
+    #from ...Lib.TLibVideoIO.TVideoIOYuv import TVideoIOYuv
+    from swig.hevc import TVideoIOYuv
 
 from .TAppDecCfg import TAppDecCfg
 

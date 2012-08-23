@@ -6,6 +6,7 @@
 %typemap(in) (Int argc, Char *argv[]) = (int argc, char *argv[]);
 
 %include "typemaps.i"
+%apply bool &INOUT { bool & };
 %apply int &INOUT { int & };
 %apply short &INOUT { short & };
 %apply long &INOUT { long & };

@@ -8,3 +8,5 @@ py27-pyopencl
 py27-opengl
 py27-wxpython
 ogre
+
+sudo installer -pkg /Volumes/wxPython2.9-osx-2.9.4.0-cocoa-py2.7/wxPython2.9-osx-cocoa-py2.7.pkg -target /

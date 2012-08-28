@@ -18,8 +18,8 @@ if use_swig:
     from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
 
     from swig.hevc import VectorBool, VectorInt
+    from swig.hevc import ArrayBool
     from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
-    from swig.hevc import ArrayBool_Set, ArrayBool_Get
     from swig.hevc import SEIpictureDigest, digest_get
 else:
     sys.path.insert(0, '../../..')
@@ -31,8 +31,8 @@ else:
     from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
 
     from swig.hevc import VectorBool, VectorInt
+    from swig.hevc import ArrayBool
     from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
-    from swig.hevc import ArrayBool_Set, ArrayBool_Get
     from swig.hevc import SEIpictureDigest, digest_get
     
 CLOCKS_PER_SEC = 1
@@ -139,18 +139,18 @@ class TDecGop(object):
         self.m_pcSbacDecoders = ArrayTDecSbac(uiNumSubstreams)
         self.m_pcBinCABACs = ArrayTDecBinCABAC(uiNumSubstreams)
         for ui in range(uiNumSubstreams):
-            self.m_pcSbacDecoders.get(ui).init(self.m_pcBinCABACs.get(ui))
-            ppcSubstreams.set(ui, pcBitstream.extractSubstream(
-                puiSubstreamSizes[ui] if ui+1 < uiNumSubstreams else pcBitstream.getNumBitsLeft()))
+            self.m_pcSbacDecoders[ui].init(self.m_pcBinCABACs[ui])
+            ppcSubstreams[ui] = pcBitstream.extractSubstream(
+                puiSubstreamSizes[ui] if ui+1 < uiNumSubstreams else pcBitstream.getNumBitsLeft())
 
         if uiNumSubstreams > 1:
             for ui in range(uiNumSubstreams-1):
-                self.m_pcEntropyDecoder.setEntropyDecoder(self.m_pcSbacDecoders.get(uiNumSubstreams-1-ui))
-                self.m_pcEntropyDecoder.setBitstream(ppcSubstreams.get(uiNumSubstreams-1-ui))
+                self.m_pcEntropyDecoder.setEntropyDecoder(self.m_pcSbacDecoders[uiNumSubstreams-1-ui])
+                self.m_pcEntropyDecoder.setBitstream(ppcSubstreams[uiNumSubstreams-1-ui])
                 self.m_pcEntropyDecoder.resetEntropy(pcSlice)
 
         self.m_pcEntropyDecoder.setEntropyDecoder(self.m_pcSbacDecoder)
-        self.m_pcEntropyDecoder.setBitstream(ppcSubstreams.get(0))
+        self.m_pcEntropyDecoder.setBitstream(ppcSubstreams[0])
         self.m_pcEntropyDecoder.resetEntropy(pcSlice)
 
         if uiSliceStartCuAddr == uiStartCUAddr:
@@ -164,16 +164,15 @@ class TDecGop(object):
                 ctx.load(self.m_pcSbacDecoder)
                 pcSlice.setCTXMem_dec(ctx, st)
 
-        self.m_pcSbacDecoders.get(0).load(self.m_pcSbacDecoder)
+        self.m_pcSbacDecoders[0].load(self.m_pcSbacDecoder)
         self.m_pcSliceDecoder.decompressSlice(
-            pcBitstream, ppcSubstreams.data, rpcPic,
-            self.m_pcSbacDecoder, self.m_pcSbacDecoders.data)
-        self.m_pcEntropyDecoder.setBitstream(ppcSubstreams.get(uiNumSubstreams-1))
+            pcBitstream, ppcSubstreams.cast(), rpcPic,
+            self.m_pcSbacDecoder, self.m_pcSbacDecoders.cast())
+        self.m_pcEntropyDecoder.setBitstream(ppcSubstreams[uiNumSubstreams-1])
         # deallocate all created substreams, including internal buffers.
         for ui in range(uiNumSubstreams):
-            ppcSubstreams.get(ui).deleteFifo()
-            stream = ppcSubstreams.get(ui)
-            del stream
+            ppcSubstreams[ui].deleteFifo()
+            p = ppcSubstreams[ui]; del p
         del ppcSubstreams
         del self.m_pcSbacDecoders
         self.m_pcSbacDecoders = None
@@ -214,8 +213,9 @@ class TDecGop(object):
         if pcSlice.getSPS().getUseSAO():
             if pcSlice.getSaoEnabledFlag() or pcSlice.getSaoEnabledFlagChroma():
                 saoParam = rpcPic.getPicSym().getSaoParam()
-                ArrayBool_Set(saoParam.bSaoFlag, 0, pcSlice.getSaoEnabledFlag())
-                ArrayBool_Set(saoParam.bSaoFlag, 1, pcSlice.getSaoEnabledFlagChroma())
+                abSaoFlag = ArrayBool.frompointer(saoParam.bSaoFlag)
+                abSaoFlag[0] = pcSlice.getSaoEnabledFlag()
+                abSaoFlag[1] = pcSlice.getSaoEnabledFlagChroma()
                 self.m_pcSAO.setSaoLcuBasedOptimization(1)
                 self.m_pcSAO.createPicSaoInfo(rpcPic, self.m_sliceStartCUAddress.size()-1)
                 self.m_pcSAO.SAOProcess(rpcPic, saoParam)

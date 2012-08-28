@@ -15,8 +15,8 @@ if use_swig:
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
 
+    from swig.hevc import ArrayBool
     from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
-    from swig.hevc import ArrayBool_Set, ArrayBool_Get
 else:
     sys.path.insert(0, '../../..')
     from swig.hevc import MAX_NUM_VPS, MAX_NUM_SPS, MAX_NUM_PPS
@@ -24,8 +24,63 @@ else:
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
 
+    from swig.hevc import ArrayBool
     from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
-    from swig.hevc import ArrayBool_Set, ArrayBool_Get
+
+dump_cu = False
+if dump_cu:
+    from swig.hevc import ArrayInt
+    fpTCoeff = open('./dumpTCoeff.txt', 'wt')
+def dumpTCoeff(pcCU):
+    if dump_cu:
+        uiWidth = 64
+        uiHeight = 64
+        cuAddr = pcCU.getAddr()
+        coeffY = ArrayInt.frompointer(pcCU.getCoeffY())
+        coeffCb = ArrayInt.frompointer(pcCU.getCoeffCb())
+        coeffCr = ArrayInt.frompointer(pcCU.getCoeffCr())
+        fpTCoeff.write('CU[%d]\n' % cuAddr)
+        for uiY in range(uiHeight):
+            for uiX in range(uiWidth):
+                fpTCoeff.write('%2x ' % coeffY[uiY * uiWidth + uiX])
+            fpTCoeff.write('\n')
+        for uiY in range(uiHeight/2):
+            for uiX in range(uiWidth/2):
+                fpTCoeff.write('%2x ' % coeffCb[uiY * uiWidth/2 + uiX])
+            fpTCoeff.write('   ')
+            for uiX in range(uiWidth/2):
+                fpTCoeff.write('%2x ' % coeffCr[uiY * uiWidth/2 + uiX])
+            fpTCoeff.write('\n')
+        fpTCoeff.write('\n')
+
+if dump_cu:
+    from swig.hevc import ArrayPel
+    fpTComPic = open('./dumpTComPic.txt', 'wt')
+def dumpTComPic(pcCU):
+    if dump_cu:
+        uiWidth = 64
+        uiHeight = 64
+        cuAddr = pcCU.getAddr()
+        uiZOrder = pcCU.getZorderIdxInCU()
+        picYuv = pcCU.getPic().getPicYuvRec()
+        reconY = ArrayPel.frompointer(picYuv.getLumaAddr(cuAddr, uiZOrder))
+        reconCb = ArrayPel.frompointer(picYuv.getCbAddr(cuAddr, uiZOrder))
+        reconCr = ArrayPel.frompointer(picYuv.getCrAddr(cuAddr, uiZOrder))
+        strideY = picYuv.getStride()
+        strideC = picYuv.getCStride()
+        fpTComPic.write('CU[%d]\n' % cuAddr)
+        for uiY in range(uiHeight):
+            for uiX in range(uiWidth):
+                fpTComPic.write('%2x ' % reconY[uiY * strideY + uiX])
+            fpTComPic.write('\n')
+        for uiY in range(uiHeight/2):
+            for uiX in range(uiWidth/2):
+                fpTComPic.write('%2x ' % reconCb[uiY * strideC + uiX])
+            fpTComPic.write('   ')
+            for uiX in range(uiWidth/2):
+                fpTComPic.write('%2x ' % reconCr[uiY * strideC + uiX])
+            fpTComPic.write('\n')
+        fpTComPic.write('\n')
 
 
 class TDecSlice(object):
@@ -62,12 +117,8 @@ class TDecSlice(object):
             self.m_pcBufferLowLatBinCABACs = None
 
     def decompressSlice(self, pcBitstream, ppcSubstreams, rpcPic, pcSbacDecoder, pcSbacDecoders):
-        p = ArrayTComInputBitstream(0)
-        p.data = ppcSubstreams
-        ppcSubstreams = p
-        p = ArrayTDecSbac(0)
-        p.data = pcSbacDecoders
-        pcSbacDecoders = p
+        ppcSubstreams = ArrayTComInputBitstream.frompointer(ppcSubstreams)
+        pcSbacDecoders = ArrayTDecSbac.frompointer(pcSbacDecoders)
 
         pcCU = None
         uiIsLast = 0
@@ -92,10 +143,10 @@ class TDecSlice(object):
         self.m_pcBufferSbacDecoders = ArrayTDecSbac(uiTilesAcross)
         self.m_pcBufferBinCABACs = ArrayTDecBinCABAC(uiTilesAcross)
         for ui in range(uiTilesAcross):
-            self.m_pcBufferSbacDecoders.get(ui).init(self.m_pcBufferBinCABACs.get(ui))
+            self.m_pcBufferSbacDecoders[ui].init(self.m_pcBufferBinCABACs[ui])
         #save init. state
         for ui in range(uiTilesAcross):
-            self.m_pcBufferSbacDecoders.get(ui).load(pcSbacDecoder)
+            self.m_pcBufferSbacDecoders[ui].load(pcSbacDecoder)
 
         # free memory if already allocated in previous call
         if self.m_pcBufferLowLatSbacDecoders:
@@ -105,10 +156,10 @@ class TDecSlice(object):
         self.m_pcBufferLowLatSbacDecoders = ArrayTDecSbac(uiTilesAcross)
         self.m_pcBufferLowLatBinCABACs = ArrayTDecBinCABAC(uiTilesAcross)
         for ui in range(uiTilesAcross):
-            self.m_pcBufferLowLatSbacDecoders.get(ui).init(self.m_pcBufferLowLatBinCABACs.get(ui))
+            self.m_pcBufferLowLatSbacDecoders[ui].init(self.m_pcBufferLowLatBinCABACs[ui])
         #save init. state
         for ui in range(uiTilesAcross):
-            self.m_pcBufferLowLatSbacDecoders.get(ui).load(pcSbacDecoder)
+            self.m_pcBufferLowLatSbacDecoders[ui].load(pcSbacDecoder)
 
         uiWidthInLCUs = rpcPic.getPicSym().getFrameWidthInCU()
         uiCol = uiLin = uiSubStrm = 0
@@ -126,7 +177,7 @@ class TDecSlice(object):
             if not rpcPic.getSlice(rpcPic.getCurrSliceIdx()).isNextSlice():
                 uiTileCol = 0
                 if pcSlice.getPPS().getTilesOrEntropyCodingSyncIdx() == 2:
-                    self.m_pcBufferSbacDecoders.get(uiTileCol).loadContexts(
+                    self.m_pcBufferSbacDecoders[uiTileCol].loadContexts(
                         rpcPic.getSlice(rpcPic.getCurrSliceIdx()-1).getCTXMem_dec(0)) #2.LCU
                 pcSbacDecoder.loadContexts(rpcPic.getSlice(rpcPic.getCurrSliceIdx()-1).getCTXMem_dec(1)) # end of depSlice-1
                 pcSbacDecoders.get(uiSubStrm).loadContexts(pcSbacDecoder)
@@ -174,12 +225,12 @@ class TDecSlice(object):
                         if iCUAddr != 0 and \
                            (pcCUTR.getSCUAddr() + uiMaxParts - 1) >= pcSlice.getSliceCurStartCUAddr() and \
                            bAllowDependence:
-                            pcSbacDecoders.get(uiSubStrm).loadContexts(self.m_pcBufferSbacDecoders.get(uiTileCol))
+                            pcSbacDecoders[uiSubStrm].loadContexts(self.m_pcBufferSbacDecoders[uiTileCol])
                         # TR not available.
                     else:
                         # TR is available, we use it.
-                        pcSbacDecoders.get(uiSubStrm).loadContexts(self.m_pcBufferSbacDecoders.get(uiTileCol))
-                pcSbacDecoder.load(pcSbacDecoders.get(uiSubStrm))
+                        pcSbacDecoders[uiSubStrm].loadContexts(self.m_pcBufferSbacDecoders[uiTileCol])
+                pcSbacDecoder.load(pcSbacDecoders[uiSubStrm])
                 # this load is used to simplify the code (avoid to change all the call to pcSbacDecoders)
             elif pcSlice.getPPS().getNumSubstreams() <= 1:
                 # Set variables to appropriate values to avoid later code change.
@@ -212,9 +263,10 @@ class TDecSlice(object):
             if pcSlice.getSPS().getUseSAO() and \
                (pcSlice.getSaoEnabledFlag() or pcSlice.getSaoEnabledFlagChroma()):
                 saoParam = rpcPic.getPicSym().getSaoParam()
-                ArrayBool_Set(saoParam.bSaoFlag, 0, pcSlice.getSaoEnabledFlag())
+                abSaoFlag = ArrayBool.frompointer(saoParam.bSaoFlag)
+                abSaoFlag[0] = pcSlice.getSaoEnabledFlag()
                 if iCUAddr == iStartCUAddr:
-                    ArrayBool_Set(saoParam.bSaoFlag, 1, pcSlice.getSaoEnabledFlagChroma())
+                    abSaoFlag[1] = pcSlice.getSaoEnabledFlagChroma()
                 numCuInWidth = saoParam.numCuInWidth
                 cuAddrInSlice = iCUAddr - rpcPic.getPicSym().getCUOrderMap(pcSlice.getSliceCurStartCUAddr() / rpcPic.getNumPartInCU())
                 cuAddrUpInSlice = cuAddrInSlice - numCuInWidth
@@ -231,34 +283,30 @@ class TDecSlice(object):
                 pcSbacDecoder.parseSaoOneLcuInterleaving(rx, ry, saoParam, pcCU,
                     cuAddrInSlice, cuAddrUpInSlice, allowMergeLeft, allowMergeUp)
 
-            self.m_pcCuDecoder.decodeCU(pcCU, uiIsLast)
+            uiIsLast = self.m_pcCuDecoder.decodeCU(pcCU, uiIsLast)
+            dumpTCoeff(pcCU)
             self.m_pcCuDecoder.decompressCU(pcCU)
+            dumpTComPic(pcCU)
 
             # If at the end of a LCU line but not at the end of a substream, perform CABAC flush
             if not uiIsLast and pcSlice.getPPS().getNumSubstreams() > 1:
                 if uiCol == uiTileLCUX + uiTileWidth - 1 and \
                    uiLin + iNumSubstreamsPerTile < uiTileLCUY + uiTileHeight:
                     self.m_pcEntropyDecoder.decodeFlush()
-            pcSbacDecoders.get(uiSubStrm).load(pcSbacDecoder)
+            pcSbacDecoders[uiSubStrm].load(pcSbacDecoder)
 
             # Store probabilities of second LCU in line into buffer
             if uiCol == uiTileLCUX + 1 and \
                (bAllowDependence or pcSlice.getPPS().getNumSubstreams() > 1) and \
                pcSlice.getPPS().getTilesOrEntropyCodingSyncIdx() == 2:
-                self.m_pcBufferSbacDecoders.get(uiTileCol).loadContexts(pcSbacDecoders.get(uiSubStrm))
+                self.m_pcBufferSbacDecoders[uiTileCol].loadContexts(pcSbacDecoders[uiSubStrm])
             if uiIsLast and bAllowDependence:
                 if pcSlice.getPPS().getTilesOrEntropyCodingSyncIdx() == 2:
-                    rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getCTXMem_dec(0).loadContexts(self.m_pcBufferSbacDecoders.get(uiTileCol)) #ctx 2.LCU
+                    rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getCTXMem_dec(0).loadContexts(self.m_pcBufferSbacDecoders[uiTileCol]) #ctx 2.LCU
                 rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getCTXMem_dec(1).loadContexts(pcSbacDecoder) #ctx end of dep.slice
-
-                ppcSubstreams.data = None
-                pcSbacDecoders.data = None
                 return
 
             iCUAddr = rpcPic.getPicSym().xCalculateNxtCUAddr(iCUAddr)
-
-        ppcSubstreams.data = None
-        pcSbacDecoders.data = None
 
 
 class ParameterSetManagerDecoder(ParameterSetManager):

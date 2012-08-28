@@ -196,7 +196,27 @@ extern int encmain(int argc, char* argv[]);
 
 
 %include "carrays.i"
+%include "carray_value.i"
+
 %array_class(Pel, PelArray);
+
+%inline %{
+  typedef TComInputBitstream *PtrTComInputBitstream;
+%}
+
+%array_class(Bool, ArrayBool);
+%array_class(Char, ArrayChar);
+%array_class(UChar, ArrayUChar);
+%array_class(Int, ArrayInt);
+%array_class(UInt, ArrayUInt);
+%array_class(Pel, ArrayPel);
+
+%array_class(PtrTComInputBitstream, ArrayTComInputBitstream);
+%array_value(TDecSbac, ArrayTDecSbac);
+%array_value(TDecBinCABAC, ArrayTDecBinCABAC);
+%array_value(TComYuv, ArrayTComYuv);
+%array_value(TComDataCU, ArrayTComDataCU);
+%array_value(TComMvField, ArrayTComMvField);
 
 namespace std {
   %template(ListTComPic) list<TComPic *>;
@@ -225,31 +245,10 @@ namespace std {
 %}
 
 %inline %{
-  typedef struct ArrayTComInputBitstream {
-    TComInputBitstream **data;
-    ArrayTComInputBitstream(int size) { data = new TComInputBitstream*[size]; }
-    ~ArrayTComInputBitstream() { delete []data; }
-    void set(int index, TComInputBitstream *item) { data[index] = item; }
-    TComInputBitstream *get(int index) { return data[index]; }
-  } ArrayTComInputBitstream;
-
-  typedef struct ArrayTDecSbac {
-    TDecSbac *data;
-    ArrayTDecSbac(int size) { data = new TDecSbac[size]; }
-    ~ArrayTDecSbac() { delete []data; }
-    TDecSbac &get(int index) { return data[index]; }
-  } ArrayTDecSbac;
-
-  typedef struct ArrayTDecBinCABAC {
-    TDecBinCABAC *data;
-    ArrayTDecBinCABAC(int size) { data = new TDecBinCABAC[size]; }
-    ~ArrayTDecBinCABAC() { delete []data; }
-    TDecBinCABAC &get(int index) { return data[index]; }
-  } ArrayTDecBinCABAC;
-
-  void ArrayBool_Set(bool *obj, int index, bool value) { obj[index] = value; }
-  bool ArrayBool_Get(bool *obj, int index) { return obj[index]; }
-
   unsigned char
   digest_get(unsigned char digest[3][16], int i, int j) { return digest[i][j]; }
+
+  TCoeff *TCoeffAdd(TCoeff *base, Int offset) { return base + offset; }
+  Int CharToInt(Char c) { return (Int)c; }
+  UInt UCharToUInt(UChar c) { return (UInt)c; }
 %}

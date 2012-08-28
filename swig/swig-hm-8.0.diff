@@ -86,6 +86,57 @@ diff -urN original/Lib/TLibCommon/TComDataCU.cpp source/Lib/TLibCommon/TComDataC
    UInt          uiQNumPart  = m_uiNumPartition>>(uiPartDepth<<1);
    
    UInt uiPartStart          = uiPartIdx*uiQNumPart;
+diff -urN original/Lib/TLibCommon/TComDataCU.h source/Lib/TLibCommon/TComDataCU.h
+--- original/Lib/TLibCommon/TComDataCU.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/TComDataCU.h	2012-08-25 14:31:36.000000000 +0900
+@@ -263,8 +263,8 @@
+   
+   TComPic*      getPic                ()                        { return m_pcPic;           }
+   TComSlice*    getSlice              ()                        { return m_pcSlice;         }
+-  UInt&         getAddr               ()                        { return m_uiCUAddr;        }
+-  UInt&         getZorderIdxInCU      ()                        { return m_uiAbsIdxInLCU; }
++  UInt          getAddr               ()                        { return m_uiCUAddr;        }
++  UInt          getZorderIdxInCU      ()                        { return m_uiAbsIdxInLCU; }
+   UInt          getSCUAddr            ();
+   UInt          getCUPelX             ()                        { return m_uiCUPelX;        }
+   UInt          getCUPelY             ()                        { return m_uiCUPelY;        }
+@@ -341,18 +341,18 @@
+   
+   TComCUMvField* getCUMvField         ( RefPicList e )          { return  &m_acCUMvField[e];  }
+   
+-  TCoeff*&      getCoeffY             ()                        { return m_pcTrCoeffY;        }
+-  TCoeff*&      getCoeffCb            ()                        { return m_pcTrCoeffCb;       }
+-  TCoeff*&      getCoeffCr            ()                        { return m_pcTrCoeffCr;       }
++  TCoeff*       getCoeffY             ()                        { return m_pcTrCoeffY;        }
++  TCoeff*       getCoeffCb            ()                        { return m_pcTrCoeffCb;       }
++  TCoeff*       getCoeffCr            ()                        { return m_pcTrCoeffCr;       }
+ #if ADAPTIVE_QP_SELECTION
+-  Int*&         getArlCoeffY          ()                        { return m_pcArlCoeffY;       }
+-  Int*&         getArlCoeffCb         ()                        { return m_pcArlCoeffCb;      }
+-  Int*&         getArlCoeffCr         ()                        { return m_pcArlCoeffCr;      }
++  Int*          getArlCoeffY          ()                        { return m_pcArlCoeffY;       }
++  Int*          getArlCoeffCb         ()                        { return m_pcArlCoeffCb;      }
++  Int*          getArlCoeffCr         ()                        { return m_pcArlCoeffCr;      }
+ #endif
+   
+-  Pel*&         getPCMSampleY         ()                        { return m_pcIPCMSampleY;     }
+-  Pel*&         getPCMSampleCb        ()                        { return m_pcIPCMSampleCb;    }
+-  Pel*&         getPCMSampleCr        ()                        { return m_pcIPCMSampleCr;    }
++  Pel*          getPCMSampleY         ()                        { return m_pcIPCMSampleY;     }
++  Pel*          getPCMSampleCb        ()                        { return m_pcIPCMSampleCb;    }
++  Pel*          getPCMSampleCr        ()                        { return m_pcIPCMSampleCr;    }
+ 
+   UChar         getCbf    ( UInt uiIdx, TextType eType )                  { return m_puhCbf[g_aucConvertTxtTypeToIdx[eType]][uiIdx];  }
+   UChar*        getCbf    ( TextType eType )                              { return m_puhCbf[g_aucConvertTxtTypeToIdx[eType]];         }
+@@ -548,7 +548,7 @@
+   Double&       getTotalCost()                  { return m_dTotalCost;        }
+   UInt&         getTotalDistortion()            { return m_uiTotalDistortion; }
+   UInt&         getTotalBits()                  { return m_uiTotalBits;       }
+-  UInt&         getTotalNumPart()               { return m_uiNumPartition;    }
++  UInt          getTotalNumPart()               { return m_uiNumPartition;    }
+ 
+   UInt          getCoefScanIdx(UInt uiAbsPartIdx, UInt uiWidth, Bool bIsLuma, Bool bIsIntra);
+ 
 diff -urN original/Lib/TLibCommon/TComList.h source/Lib/TLibCommon/TComList.h
 --- original/Lib/TLibCommon/TComList.h	2012-01-19 02:44:23.000000000 +0900
 +++ source/Lib/TLibCommon/TComList.h	2012-08-19 06:14:49.000000000 +0900
@@ -138,8 +189,35 @@ diff -urN original/Lib/TLibCommon/TComPicSym.h source/Lib/TLibCommon/TComPicSym.
    UInt        getNumAllocatedSlice()    { return m_uiNumAllocatedSlice;         }
 diff -urN original/Lib/TLibCommon/TComRom.cpp source/Lib/TLibCommon/TComRom.cpp
 --- original/Lib/TLibCommon/TComRom.cpp	2012-08-05 06:08:01.000000000 +0900
-+++ source/Lib/TLibCommon/TComRom.cpp	2012-08-18 18:28:24.000000000 +0900
-@@ -402,6 +402,8 @@
++++ source/Lib/TLibCommon/TComRom.cpp	2012-08-25 11:18:03.000000000 +0900
+@@ -179,7 +179,7 @@
+ 
+ UInt g_auiPUOffset[8] = { 0, 8, 4, 4, 2, 10, 1, 5};
+ 
+-Void initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx )
++UInt *initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt* rpuiCurrIdx )
+ {
+   Int iStride = 1 << ( iMaxDepth - 1 );
+   
+@@ -191,11 +191,13 @@
+   else
+   {
+     Int iStep = iStride >> iDepth;
+-    initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal,                     rpuiCurrIdx );
+-    initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep,               rpuiCurrIdx );
+-    initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep*iStride,       rpuiCurrIdx );
+-    initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep*iStride+iStep, rpuiCurrIdx );
++    rpuiCurrIdx = initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal,                     rpuiCurrIdx );
++    rpuiCurrIdx = initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep,               rpuiCurrIdx );
++    rpuiCurrIdx = initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep*iStride,       rpuiCurrIdx );
++    rpuiCurrIdx = initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep*iStride+iStep, rpuiCurrIdx );
+   }
++
++  return rpuiCurrIdx;
+ }
+ 
+ Void initRasterToZscan ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth )
+@@ -402,6 +404,8 @@
    {84,  -29,   -74,   55},
    {55,  -84,    74,  -29},
  };
@@ -148,7 +226,7 @@ diff -urN original/Lib/TLibCommon/TComRom.cpp source/Lib/TLibCommon/TComRom.cpp
  
  
  // ====================================================================================================================
-@@ -432,6 +434,10 @@
+@@ -432,6 +436,10 @@
  };
  #endif // FAST_UDI_USE_MPM
  
@@ -159,7 +237,7 @@ diff -urN original/Lib/TLibCommon/TComRom.cpp source/Lib/TLibCommon/TComRom.cpp
  // chroma
  
  const UChar g_aucConvertTxtTypeToIdx[4] = { 0, 1, 1, 2 };
-@@ -826,6 +832,10 @@
+@@ -826,6 +834,10 @@
    20,24,25,28,33,41,54,71,
    24,25,28,33,41,54,71,91
  };
@@ -172,7 +250,7 @@ diff -urN original/Lib/TLibCommon/TComRom.cpp source/Lib/TLibCommon/TComRom.cpp
  UInt g_scalingListNum[SCALING_LIST_SIZE_NUM]={6,6,6,2};
 diff -urN original/Lib/TLibCommon/TComRom.h source/Lib/TLibCommon/TComRom.h
 --- original/Lib/TLibCommon/TComRom.h	2012-08-05 06:08:01.000000000 +0900
-+++ source/Lib/TLibCommon/TComRom.h	2012-08-18 18:21:42.000000000 +0900
++++ source/Lib/TLibCommon/TComRom.h	2012-08-25 11:17:57.000000000 +0900
 @@ -53,7 +53,8 @@
  #define     MAX_CU_DEPTH            7                           // log2(LCUSize)
  #define     MAX_CU_SIZE             (1<<(MAX_CU_DEPTH))         // maximum allowable size of CU
@@ -183,6 +261,15 @@ diff -urN original/Lib/TLibCommon/TComRom.h source/Lib/TLibCommon/TComRom.h
  
  // ====================================================================================================================
  // Initialize / destroy functions
+@@ -75,7 +76,7 @@
+ extern       UInt   g_auiRasterToZscan[ MAX_NUM_SPU_W*MAX_NUM_SPU_W ];
+ extern       UInt   g_motionRefer[ MAX_NUM_SPU_W*MAX_NUM_SPU_W ];
+ 
+-Void         initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx );
++UInt        *initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt* rpuiCurrIdx );
+ Void         initRasterToZscan ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth         );
+ 
+ Void          initMotionReferIdx ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth );
 diff -urN original/Lib/TLibCommon/TComSlice.h source/Lib/TLibCommon/TComSlice.h
 --- original/Lib/TLibCommon/TComSlice.h	2012-08-05 06:08:01.000000000 +0900
 +++ source/Lib/TLibCommon/TComSlice.h	2012-08-18 00:05:40.000000000 +0900

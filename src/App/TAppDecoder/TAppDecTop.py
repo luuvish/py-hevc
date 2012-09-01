@@ -46,6 +46,7 @@ class TAppDecTop(TAppDecCfg):
 
     def __init__(self):
         super(TAppDecTop, self).__init__()
+
         self.m_cTDecTop = TDecTop()
         self.m_cTVideoIOYuvReconFile = TVideoIOYuv()
         self.m_abDecFlag = []

@@ -7,3 +7,8 @@ Lib/TLibDecoder/TDecTop.py
 Lib/TLibDecoder/TDecGop.py
 Lib/TLibDecoder/TDecSlice.py
 Lib/TLibDecoder/TDecCu.py
+Lib/TLibDecoder/TDecEntropy.py
+
+Lib/TLibCommon/TComLoopFilter.py
+
+Lib/TLibCommon/TComPrediction.py, TComWeightPrediction.py

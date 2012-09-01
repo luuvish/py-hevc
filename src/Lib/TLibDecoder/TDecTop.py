@@ -24,8 +24,7 @@ if use_swig:
                           NAL_UNIT_CODED_SLICE_BLA, \
                           NAL_UNIT_CODED_SLICE_BLANT, \
                           NAL_UNIT_CODED_SLICE_IDR, \
-                          REF_PIC_LIST_0, \
-                          REF_PIC_LIST_1, \
+                          REF_PIC_LIST_0, REF_PIC_LIST_1, \
                           B_SLICE
 
     from swig.hevc import ParameterSetManagerDecoder
@@ -64,8 +63,7 @@ else:
                           NAL_UNIT_CODED_SLICE_BLA, \
                           NAL_UNIT_CODED_SLICE_BLANT, \
                           NAL_UNIT_CODED_SLICE_IDR, \
-                          REF_PIC_LIST_0, \
-                          REF_PIC_LIST_1, \
+                          REF_PIC_LIST_0, REF_PIC_LIST_1, \
                           B_SLICE
 
     from swig.hevc import ParameterSetManagerDecoder
@@ -75,13 +73,16 @@ else:
     from .TDecGop import TDecGop
     from .TDecSlice import TDecSlice
     from .TDecCu import TDecCu
+#   from .TDecEntropy import TDecEntropy
     from swig.hevc import TDecEntropy
     from swig.hevc import TDecCavlc
     from swig.hevc import TDecSbac
     from swig.hevc import TDecBinCABAC
+#   from ..TLibCommon.TComPrediction import TComPrediction
     from swig.hevc import TComPrediction
     from swig.hevc import TComTrQuant
-    from swig.hevc import TComLoopFilter
+    from ..TLibCommon.TComLoopFilter import TComLoopFilter
+#   from swig.hevc import TComLoopFilter
     from swig.hevc import TComSampleAdaptiveOffset
     from swig.hevc import TComPic
 

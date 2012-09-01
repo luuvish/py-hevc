@@ -29,58 +29,10 @@ else:
 
 dump_cu = False
 if dump_cu:
-    from swig.hevc import ArrayInt
-    fpTCoeff = open('./dumpTCoeff.txt', 'wt')
-def dumpTCoeff(pcCU):
-    if dump_cu:
-        uiWidth = 64
-        uiHeight = 64
-        cuAddr = pcCU.getAddr()
-        coeffY = ArrayInt.frompointer(pcCU.getCoeffY())
-        coeffCb = ArrayInt.frompointer(pcCU.getCoeffCb())
-        coeffCr = ArrayInt.frompointer(pcCU.getCoeffCr())
-        fpTCoeff.write('CU[%d]\n' % cuAddr)
-        for uiY in range(uiHeight):
-            for uiX in range(uiWidth):
-                fpTCoeff.write('%2x ' % coeffY[uiY * uiWidth + uiX])
-            fpTCoeff.write('\n')
-        for uiY in range(uiHeight/2):
-            for uiX in range(uiWidth/2):
-                fpTCoeff.write('%2x ' % coeffCb[uiY * uiWidth/2 + uiX])
-            fpTCoeff.write('   ')
-            for uiX in range(uiWidth/2):
-                fpTCoeff.write('%2x ' % coeffCr[uiY * uiWidth/2 + uiX])
-            fpTCoeff.write('\n')
-        fpTCoeff.write('\n')
-
-if dump_cu:
-    from swig.hevc import ArrayPel
-    fpTComPic = open('./dumpTComPic.txt', 'wt')
-def dumpTComPic(pcCU):
-    if dump_cu:
-        uiWidth = 64
-        uiHeight = 64
-        cuAddr = pcCU.getAddr()
-        uiZOrder = pcCU.getZorderIdxInCU()
-        picYuv = pcCU.getPic().getPicYuvRec()
-        reconY = ArrayPel.frompointer(picYuv.getLumaAddr(cuAddr, uiZOrder))
-        reconCb = ArrayPel.frompointer(picYuv.getCbAddr(cuAddr, uiZOrder))
-        reconCr = ArrayPel.frompointer(picYuv.getCrAddr(cuAddr, uiZOrder))
-        strideY = picYuv.getStride()
-        strideC = picYuv.getCStride()
-        fpTComPic.write('CU[%d]\n' % cuAddr)
-        for uiY in range(uiHeight):
-            for uiX in range(uiWidth):
-                fpTComPic.write('%2x ' % reconY[uiY * strideY + uiX])
-            fpTComPic.write('\n')
-        for uiY in range(uiHeight/2):
-            for uiX in range(uiWidth/2):
-                fpTComPic.write('%2x ' % reconCb[uiY * strideC + uiX])
-            fpTComPic.write('   ')
-            for uiX in range(uiWidth/2):
-                fpTComPic.write('%2x ' % reconCr[uiY * strideC + uiX])
-            fpTComPic.write('\n')
-        fpTComPic.write('\n')
+    from ..TLibCommon.TComDump import dumpTCoeff, dumpTComPic
+else:
+    def dumpTCoeff(pcCU): pass
+    def dumpTComPic(pcCU): pass
 
 
 class TDecSlice(object):
@@ -283,10 +235,13 @@ class TDecSlice(object):
                 pcSbacDecoder.parseSaoOneLcuInterleaving(rx, ry, saoParam, pcCU,
                     cuAddrInSlice, cuAddrUpInSlice, allowMergeLeft, allowMergeUp)
 
-            uiIsLast = self.m_pcCuDecoder.decodeCU(pcCU, uiIsLast)
-            dumpTCoeff(pcCU)
-            self.m_pcCuDecoder.decompressCU(pcCU)
-            dumpTComPic(pcCU)
+            try:
+                uiIsLast = self.m_pcCuDecoder.decodeCU(pcCU, uiIsLast)
+                dumpTCoeff(pcCU)
+                self.m_pcCuDecoder.decompressCU(pcCU)
+                dumpTComPic(pcCU)
+            except:
+                pass
 
             # If at the end of a LCU line but not at the end of a substream, perform CABAC flush
             if not uiIsLast and pcSlice.getPPS().getNumSubstreams() > 1:

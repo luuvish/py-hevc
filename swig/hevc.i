@@ -217,6 +217,7 @@ extern int encmain(int argc, char* argv[]);
 %array_value(TComYuv, ArrayTComYuv);
 %array_value(TComDataCU, ArrayTComDataCU);
 %array_value(TComMvField, ArrayTComMvField);
+%array_value(TComMv, ArrayTComMv);
 
 namespace std {
   %template(ListTComPic) list<TComPic *>;
@@ -249,6 +250,6 @@ namespace std {
   digest_get(unsigned char digest[3][16], int i, int j) { return digest[i][j]; }
 
   TCoeff *TCoeffAdd(TCoeff *base, Int offset) { return base + offset; }
-  Int CharToInt(Char c) { return (Int)c; }
-  UInt UCharToUInt(UChar c) { return (UInt)c; }
+  Int *IntAdd(Int *base, Int offset) { return base + offset; }
+  Pel *PelAdd(Pel *base, Int offset) { return base + offset; }
 %}

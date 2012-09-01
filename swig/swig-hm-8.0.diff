@@ -187,6 +187,47 @@ diff -urN original/Lib/TLibCommon/TComPicSym.h source/Lib/TLibCommon/TComPicSym.
    
    Void        setSlice(TComSlice* p, UInt i) { m_apcTComSlice[i] = p;           }
    UInt        getNumAllocatedSlice()    { return m_uiNumAllocatedSlice;         }
+diff -urN original/Lib/TLibCommon/TComPrediction.cpp source/Lib/TLibCommon/TComPrediction.cpp
+--- original/Lib/TLibCommon/TComPrediction.cpp	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/TComPrediction.cpp	2012-09-01 01:24:42.000000000 +0900
+@@ -658,8 +658,9 @@
+ }
+ 
+ // AMVP
+-Void TComPrediction::getMvPredAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, TComMv& rcMvPred )
++TComMv TComPrediction::getMvPredAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx)
+ {
++  TComMv rcMvPred;
+   AMVPInfo* pcAMVPInfo = pcCU->getCUMvField(eRefPicList)->getAMVPInfo();
+ 
+   if( pcCU->getAMVPMode(uiPartAddr) == AM_NONE || (pcAMVPInfo->iN <= 1 && pcCU->getAMVPMode(uiPartAddr) == AM_EXPL) )
+@@ -668,12 +669,12 @@
+ 
+     pcCU->setMVPIdxSubParts( 0, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));
+     pcCU->setMVPNumSubParts( pcAMVPInfo->iN, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));
+-    return;
++    return rcMvPred;
+   }
+ 
+   assert(pcCU->getMVPIdx(eRefPicList,uiPartAddr) >= 0);
+   rcMvPred = pcAMVPInfo->m_acMvCand[pcCU->getMVPIdx(eRefPicList,uiPartAddr)];
+-  return;
++  return rcMvPred;
+ }
+ 
+ /** Function for deriving planar intra prediction.
+diff -urN original/Lib/TLibCommon/TComPrediction.h source/Lib/TLibCommon/TComPrediction.h
+--- original/Lib/TLibCommon/TComPrediction.h	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/TComPrediction.h	2012-09-01 01:24:51.000000000 +0900
+@@ -98,7 +98,7 @@
+   Void motionCompensation         ( TComDataCU*  pcCU, TComYuv* pcYuvPred, RefPicList eRefPicList = REF_PIC_LIST_X, Int iPartIdx = -1 );
+   
+   // motion vector prediction
+-  Void getMvPredAMVP              ( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, TComMv& rcMvPred );
++  TComMv getMvPredAMVP              ( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx);
+   
+   // Angular Intra
+   Void predIntraLumaAng           ( TComPattern* pcTComPattern, UInt uiDirMode, Pel* piPred, UInt uiStride, Int iWidth, Int iHeight,  TComDataCU* pcCU, Bool bAbove, Bool bLeft );
 diff -urN original/Lib/TLibCommon/TComRom.cpp source/Lib/TLibCommon/TComRom.cpp
 --- original/Lib/TLibCommon/TComRom.cpp	2012-08-05 06:08:01.000000000 +0900
 +++ source/Lib/TLibCommon/TComRom.cpp	2012-08-25 11:18:03.000000000 +0900
@@ -250,7 +291,7 @@ diff -urN original/Lib/TLibCommon/TComRom.cpp source/Lib/TLibCommon/TComRom.cpp
  UInt g_scalingListNum[SCALING_LIST_SIZE_NUM]={6,6,6,2};
 diff -urN original/Lib/TLibCommon/TComRom.h source/Lib/TLibCommon/TComRom.h
 --- original/Lib/TLibCommon/TComRom.h	2012-08-05 06:08:01.000000000 +0900
-+++ source/Lib/TLibCommon/TComRom.h	2012-08-25 11:17:57.000000000 +0900
++++ source/Lib/TLibCommon/TComRom.h	2012-08-29 02:04:54.000000000 +0900
 @@ -53,7 +53,8 @@
  #define     MAX_CU_DEPTH            7                           // log2(LCUSize)
  #define     MAX_CU_SIZE             (1<<(MAX_CU_DEPTH))         // maximum allowable size of CU
@@ -270,9 +311,24 @@ diff -urN original/Lib/TLibCommon/TComRom.h source/Lib/TLibCommon/TComRom.h
  Void         initRasterToZscan ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth         );
  
  Void          initMotionReferIdx ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth );
+diff -urN original/Lib/TLibCommon/TComSlice.cpp source/Lib/TLibCommon/TComSlice.cpp
+--- original/Lib/TLibCommon/TComSlice.cpp	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibCommon/TComSlice.cpp	2012-08-31 12:07:17.000000000 +0900
+@@ -1161,9 +1161,9 @@
+  * \param *&wpScalingParam
+  * \returns Void
+  */
+-Void  TComSlice::getWpScaling( RefPicList e, Int iRefIdx, wpScalingParam *&wp )
++wpScalingParam* TComSlice::getWpScaling( RefPicList e, Int iRefIdx)
+ {
+-  wp = m_weightPredTable[e][iRefIdx];
++  return m_weightPredTable[e][iRefIdx];
+ }
+ 
+ /** reset Default WP tables settings : no weight. 
 diff -urN original/Lib/TLibCommon/TComSlice.h source/Lib/TLibCommon/TComSlice.h
 --- original/Lib/TLibCommon/TComSlice.h	2012-08-05 06:08:01.000000000 +0900
-+++ source/Lib/TLibCommon/TComSlice.h	2012-08-18 00:05:40.000000000 +0900
++++ source/Lib/TLibCommon/TComSlice.h	2012-08-31 12:07:41.000000000 +0900
 @@ -496,7 +496,7 @@
    Void setScalingListFlag       ( Bool b ) { m_scalingListEnabledFlag  = b;       }
    Bool getScalingListPresentFlag()         { return m_scalingListPresentFlag;     }
@@ -311,6 +367,32 @@ diff -urN original/Lib/TLibCommon/TComSlice.h source/Lib/TLibCommon/TComSlice.h
    Void applyReferencePictureSet( TComList<TComPic*>& rcListPic, TComReferencePictureSet *RPSList);
    Bool isTemporalLayerSwitchingPoint( TComList<TComPic*>& rcListPic, TComReferencePictureSet *RPSList);
    Int       checkThatAllRefPicsAreAvailable( TComList<TComPic*>& rcListPic, TComReferencePictureSet *pReferencePictureSet, Bool printErrors, Int pocRandomAccess = 0);
+@@ -1146,7 +1146,7 @@
+   Void setFinalized                     ( Bool uiVal )      { m_bFinalized = uiVal;                       }
+   Bool getFinalized                     ()                  { return m_bFinalized;                        }
+   Void  setWpScaling    ( wpScalingParam  wp[2][MAX_NUM_REF][3] ) { memcpy(m_weightPredTable, wp, sizeof(wpScalingParam)*2*MAX_NUM_REF*3); }
+-  Void  getWpScaling    ( RefPicList e, Int iRefIdx, wpScalingParam *&wp);
++  wpScalingParam* getWpScaling    ( RefPicList e, Int iRefIdx);
+ 
+   Void  resetWpScaling  (wpScalingParam  wp[2][MAX_NUM_REF][3]);
+   Void  initWpScaling    (wpScalingParam  wp[2][MAX_NUM_REF][3]);
+diff -urN original/Lib/TLibCommon/TComWeightPrediction.cpp source/Lib/TLibCommon/TComWeightPrediction.cpp
+--- original/Lib/TLibCommon/TComWeightPrediction.cpp	2012-07-24 02:27:48.000000000 +0900
++++ source/Lib/TLibCommon/TComWeightPrediction.cpp	2012-08-31 12:08:07.000000000 +0900
+@@ -262,11 +262,11 @@
+   { // explicit --------------------
+     if ( iRefIdx0 >= 0 )
+     {
+-      pcSlice->getWpScaling(REF_PIC_LIST_0, iRefIdx0, wp0);
++      wp0 = pcSlice->getWpScaling(REF_PIC_LIST_0, iRefIdx0);
+     }
+     if ( iRefIdx1 >= 0 )
+     {
+-      pcSlice->getWpScaling(REF_PIC_LIST_1, iRefIdx1, wp1);
++      wp1 = pcSlice->getWpScaling(REF_PIC_LIST_1, iRefIdx1);
+     }
+   }
+   else
 diff -urN original/Lib/TLibDecoder/TDecBinCoderCABAC.cpp source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp
 --- original/Lib/TLibDecoder/TDecBinCoderCABAC.cpp	2012-06-26 16:19:43.000000000 +0900
 +++ source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp	2012-08-17 16:42:23.000000000 +0900
@@ -334,7 +416,7 @@ diff -urN original/Lib/TLibDecoder/TDecBinCoderCABAC.cpp source/Lib/TLibDecoder/
      ruiBin      = 1 - rcCtxModel.getMps();
 diff -urN original/Lib/TLibDecoder/TDecCAVLC.cpp source/Lib/TLibDecoder/TDecCAVLC.cpp
 --- original/Lib/TLibDecoder/TDecCAVLC.cpp	2012-08-07 03:11:44.000000000 +0900
-+++ source/Lib/TLibDecoder/TDecCAVLC.cpp	2012-08-22 19:51:14.000000000 +0900
++++ source/Lib/TLibDecoder/TDecCAVLC.cpp	2012-08-31 12:09:08.000000000 +0900
 @@ -802,7 +802,7 @@
    return;
  }
@@ -344,6 +426,42 @@ diff -urN original/Lib/TLibDecoder/TDecCAVLC.cpp source/Lib/TLibDecoder/TDecCAVL
  {
    UInt  uiCode;
    Int   iCode;
+@@ -1830,7 +1830,7 @@
+       RefPicList  eRefPicList = ( iNumRef ? REF_PIC_LIST_1 : REF_PIC_LIST_0 );
+       for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+       {
+-        pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++        wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+ 
+         wp[0].uiLog2WeightDenom = uiLog2WeightDenomLuma;
+         wp[1].uiLog2WeightDenom = uiLog2WeightDenomChroma;
+@@ -1847,7 +1847,7 @@
+         UInt  uiCode;
+         for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+         {
+-          pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++          wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+           READ_FLAG( uiCode, "chroma_weight_lX_flag" );      // u(1): chroma_weight_l0_flag
+           wp[1].bPresentFlag = ( uiCode == 1 );
+           wp[2].bPresentFlag = ( uiCode == 1 );
+@@ -1856,7 +1856,7 @@
+       }
+       for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+       {
+-        pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++        wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+ #endif
+         if ( wp[0].bPresentFlag ) 
+         {
+@@ -1909,7 +1909,7 @@
+ 
+       for ( Int iRefIdx=pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx<MAX_NUM_REF ; iRefIdx++ ) 
+       {
+-        pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++        wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+ 
+         wp[0].bPresentFlag = false;
+         wp[1].bPresentFlag = false;
 diff -urN original/Lib/TLibDecoder/TDecCAVLC.h source/Lib/TLibDecoder/TDecCAVLC.h
 --- original/Lib/TLibDecoder/TDecCAVLC.h	2012-08-05 06:08:01.000000000 +0900
 +++ source/Lib/TLibDecoder/TDecCAVLC.h	2012-08-22 19:51:21.000000000 +0900
@@ -356,6 +474,18 @@ diff -urN original/Lib/TLibDecoder/TDecCAVLC.h source/Lib/TLibDecoder/TDecCAVLC.
    Void  parseTerminatingBit ( UInt& ruiBit );
    
    Void  parseMVPIdx         ( Int& riMVPIdx );
+diff -urN original/Lib/TLibDecoder/TDecEntropy.cpp source/Lib/TLibDecoder/TDecEntropy.cpp
+--- original/Lib/TLibDecoder/TDecEntropy.cpp	2012-08-05 06:08:01.000000000 +0900
++++ source/Lib/TLibDecoder/TDecEntropy.cpp	2012-08-31 21:48:07.000000000 +0900
+@@ -311,7 +311,7 @@
+   pcSubCU->setMVPIdxSubParts( iMVPIdx, eRefList, uiPartAddr, uiPartIdx, uiDepth );
+   if ( iRefIdx >= 0 )
+   {
+-    m_pcPrediction->getMvPredAMVP( pcSubCU, uiPartIdx, uiPartAddr, eRefList, iRefIdx, cMv);
++    cMv = m_pcPrediction->getMvPredAMVP( pcSubCU, uiPartIdx, uiPartAddr, eRefList, iRefIdx);
+     cMv += pcSubCUMvField->getMvd( uiPartAddr );
+   }
+ 
 diff -urN original/Lib/TLibDecoder/TDecEntropy.h source/Lib/TLibDecoder/TDecEntropy.h
 --- original/Lib/TLibDecoder/TDecEntropy.h	2012-08-05 06:08:01.000000000 +0900
 +++ source/Lib/TLibDecoder/TDecEntropy.h	2012-08-22 19:51:48.000000000 +0900
@@ -537,6 +667,36 @@ diff -urN original/Lib/TLibEncoder/TEncBinCoderCABAC.cpp source/Lib/TLibEncoder/
      m_uiLow     = ( m_uiLow + m_uiRange ) << numBits;
      m_uiRange   = uiLPS << numBits;
      rcCtxModel.updateLPS();
+diff -urN original/Lib/TLibEncoder/TEncCavlc.cpp source/Lib/TLibEncoder/TEncCavlc.cpp
+--- original/Lib/TLibEncoder/TEncCavlc.cpp	2012-08-07 03:11:44.000000000 +0900
++++ source/Lib/TLibEncoder/TEncCavlc.cpp	2012-08-31 12:09:49.000000000 +0900
+@@ -1428,7 +1428,7 @@
+ 
+       for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+       {
+-        pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++        wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+         if ( !bDenomCoded ) 
+         {
+           Int iDeltaDenom;
+@@ -1449,7 +1449,7 @@
+       {
+         for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+         {
+-          pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++          wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+           WRITE_FLAG( wp[1].bPresentFlag, "chroma_weight_lX_flag" );           // u(1): chroma_weight_lX_flag
+           uiTotalSignalledWeightFlags += 2*wp[1].bPresentFlag;
+         }
+@@ -1457,7 +1457,7 @@
+ 
+       for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+       {
+-        pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++        wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+ #endif
+         if ( wp[0].bPresentFlag ) 
+         {
 diff -urN original/Lib/TLibEncoder/TEncCavlc.h source/Lib/TLibEncoder/TEncCavlc.h
 --- original/Lib/TLibEncoder/TEncCavlc.h	2012-08-05 06:08:01.000000000 +0900
 +++ source/Lib/TLibEncoder/TEncCavlc.h	2012-08-17 16:27:23.000000000 +0900

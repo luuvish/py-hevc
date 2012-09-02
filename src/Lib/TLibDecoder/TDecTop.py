@@ -73,13 +73,13 @@ else:
     from .TDecGop import TDecGop
     from .TDecSlice import TDecSlice
     from .TDecCu import TDecCu
-#   from .TDecEntropy import TDecEntropy
-    from swig.hevc import TDecEntropy
+    from .TDecEntropy import TDecEntropy
+#   from swig.hevc import TDecEntropy
     from swig.hevc import TDecCavlc
     from swig.hevc import TDecSbac
     from swig.hevc import TDecBinCABAC
-#   from ..TLibCommon.TComPrediction import TComPrediction
-    from swig.hevc import TComPrediction
+    from ..TLibCommon.TComPrediction import TComPrediction
+#   from swig.hevc import TComPrediction
     from swig.hevc import TComTrQuant
     from ..TLibCommon.TComLoopFilter import TComLoopFilter
 #   from swig.hevc import TComLoopFilter

@@ -235,13 +235,10 @@ class TDecSlice(object):
                 pcSbacDecoder.parseSaoOneLcuInterleaving(rx, ry, saoParam, pcCU,
                     cuAddrInSlice, cuAddrUpInSlice, allowMergeLeft, allowMergeUp)
 
-            try:
-                uiIsLast = self.m_pcCuDecoder.decodeCU(pcCU, uiIsLast)
-                dumpTCoeff(pcCU)
-                self.m_pcCuDecoder.decompressCU(pcCU)
-                dumpTComPic(pcCU)
-            except:
-                pass
+            uiIsLast = self.m_pcCuDecoder.decodeCU(pcCU, uiIsLast)
+            dumpTCoeff(pcCU)
+            self.m_pcCuDecoder.decompressCU(pcCU)
+            dumpTComPic(pcCU)
 
             # If at the end of a LCU line but not at the end of a substream, perform CABAC flush
             if not uiIsLast and pcSlice.getPPS().getNumSubstreams() > 1:

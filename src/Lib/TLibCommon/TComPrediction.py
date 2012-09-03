@@ -10,12 +10,13 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import MAX_CU_SIZE
-    from swig.hevc import P_SLICE, B_SLICE
-    from swig.hevc import REF_PIC_LIST_0, REF_PIC_LIST_1, REF_PIC_LIST_X
-    from swig.hevc import VER_IDX, HOR_IDX, PLANAR_IDX, DC_IDX
-    from swig.hevc import NTAPS_LUMA, NTAPS_CHROMA
-    from swig.hevc import AM_NONE, AM_EXPL
+
+    from swig.hevc import TComYuv
+    from swig.hevc import TComInterpolationFilter
+    from swig.hevc import ArrayInt, ArrayPel, ArrayTComMv, PelAdd, IntAdd
+else:
+    sys.path.insert(0, '../../..')
+    from swig.hevc import cvar
 
     from swig.hevc import TComYuv
     from swig.hevc import TComInterpolationFilter
@@ -23,7 +24,27 @@ if use_swig:
 
 from .TComWeightPrediction import TComWeightPrediction
 
+# TypeDef.h
+PLANAR_IDX = 0
+VER_IDX = 26
+HOR_IDX = 10
+DC_IDX = 1
+# TypeDef.h
+B_SLICE = 0
+P_SLICE = 1
+REF_PIC_LIST_0 = 0
+REF_PIC_LIST_1 = 1
+REF_PIC_LIST_X = 100
+AM_NONE = 0
+AM_EXPL = 1
+# CommonDef.h
 Clip = lambda x: min(cvar.g_uiIBDI_MAX, max(0, x))
+# TComRom.h
+MAX_CU_DEPTH = 7
+MAX_CU_SIZE = 1 << MAX_CU_DEPTH
+# TComInterpolationFilter.h
+NTAPS_LUMA = 8
+NTAPS_CHROMA = 4
 
 
 class TComPrediction(TComWeightPrediction):
@@ -61,8 +82,8 @@ class TComPrediction(TComWeightPrediction):
     #   if self.m_pLumaRecBuffer:
     #       del self.m_pLumaRecBuffer
 
-        for i in range(4):
-            for j in range(4):
+        for i in xrange(4):
+            for j in xrange(4):
                 self.m_filteredBlock[i][j].destroy()
             self.m_filteredBlockTmp[i].destroy()
 
@@ -70,9 +91,9 @@ class TComPrediction(TComWeightPrediction):
         if self.m_piYuvExt == None:
             extWidth = cvar.g_uiMaxCUWidth + 16
             extHeight = cvar.g_uiMaxCUHeight + 1
-            for i in range(4):
+            for i in xrange(4):
                 self.m_filteredBlockTmp[i].create(extWidth, extHeight+7)
-                for j in range(4):
+                for j in xrange(4):
                     self.m_filteredBlock[i][j].create(extWidth, extHeight)
             self.m_iYuvExtHeight = (cvar.g_uiMaxCUHeight + 2) << 4
             self.m_iYuvExtStride = (cvar.g_uiMaxCUWidth + 8) << 4
@@ -90,7 +111,7 @@ class TComPrediction(TComWeightPrediction):
     #
     #   shift = cvar.g_uiBitDepth + cvar.g_uiBitIncrement + 4
     #
-    #   for i in range(32, 64):
+    #   for i in xrange(32, 64):
     #       self.m_uiaShift[i-32] = ((1 << shift) + i/2) / i
 
     def motionCompensation(self, pcCU, pcYuvPred, eRefPicList=REF_PIC_LIST_X, iPartIdx=-1):
@@ -114,7 +135,7 @@ class TComPrediction(TComWeightPrediction):
                     self._xPredInterBi(pcCU, uiPartAddr, iWidth, iHeight, pcYuvPred, iPartIdx)
             return
 
-        for iPartIdx in range(pcCU.getNumPartInter()):
+        for iPartIdx in xrange(pcCU.getNumPartInter()):
             uiPartAddr, iWidth, iHeight = pcCU.getPartIndexAndSize(iPartIdx, uiPartAddr, iWidth, iHeight)
             if eRefPicList != REF_PIC_LIST_X:
                 if pcCU.getSlice().getPPS().getUseWP():
@@ -194,10 +215,10 @@ class TComPrediction(TComWeightPrediction):
         pDcVal = 0
 
         if bAbove:
-            for iInd in range(iWidth):
+            for iInd in xrange(iWidth):
                 iSum += pSrc[(iSrcStride+1) + iInd - iSrcStride]
         if bLeft:
-            for iInd in range(iHeight):
+            for iInd in xrange(iHeight):
                 iSum += pSrc[(iSrcStride+1) + iInd * iSrcStride - 1]
 
         if bAbove and bLeft:
@@ -237,8 +258,8 @@ class TComPrediction(TComWeightPrediction):
         if modeDC:
             dcval = self._predIntraGetPredValDC(piSrc, srcStride, width, height, blkAboveAvailable, blkLeftAvailable)
 
-            for k in range(blkSize):
-                for l in range(blkSize):
+            for k in xrange(blkSize):
+                for l in xrange(blkSize):
                     pDst[k * dstStride + l] = dcval
         # Do angular predictions
         else:
@@ -249,33 +270,33 @@ class TComPrediction(TComWeightPrediction):
 
             # Initialise the Main and Left reference array.
             if intraPredAngle < 0:
-                for k in range(blkSize+1):
+                for k in xrange(blkSize+1):
                     refAbove[k + blkSize - 1] = pSrc[(srcStride+1) + k - srcStride - 1]
-                for k in range(blkSize+1):
+                for k in xrange(blkSize+1):
                     refLeft[k + blkSize - 1] = pSrc[(srcStride+1) + (k-1) * srcStride - 1]
                 refMain = refAbove if modeVer else refLeft
                 refSide = refLeft if modeVer else refAbove
 
                 # Extend the Main reference to the left.
                 invAngleSum = 128 # rounding for (shift by 8)
-                for k in range(-1, blkSize * intraPredAngle >> 5, -1):
+                for k in xrange(-1, blkSize * intraPredAngle >> 5, -1):
                     invAngleSum += invAngle
                     refMain[(blkSize-1) + k] = refSide[(blkSize-1) + (invAngleSum >> 8)]
             else:
-                for k in range(2*blkSize+1):
+                for k in xrange(2*blkSize+1):
                     refAbove[k] = pSrc[(srcStride+1) + k - srcStride - 1]
-                for k in range(2*blkSize+1):
+                for k in xrange(2*blkSize+1):
                     refLeft[k] = pSrc[(srcStride+1) + (k-1) * srcStride - 1]
                 refMain = ArrayPel.frompointer(PelAdd((refAbove if modeVer else refLeft).cast(), -(blkSize-1)))
                 refSide = ArrayPel.frompointer(PelAdd((refLeft if modeVer else refAbove).cast(), -(blkSize-1)))
 
             if intraPredAngle == 0:
-                for k in range(blkSize):
-                    for l in range(blkSize):
+                for k in xrange(blkSize):
+                    for l in xrange(blkSize):
                         pDst[k * dstStride + l] = refMain[(blkSize-1) + l + 1]
 
                 if bFilter:
-                    for k in range(blkSize):
+                    for k in xrange(blkSize):
                         pDst[k * dstStride] = Clip(pDst[k*dstStride] + ((refSide[(blkSize-1) + k+1] - refSide[(blkSize-1) + 0]) >> 1))
             else:
                 deltaPos = 0
@@ -283,27 +304,27 @@ class TComPrediction(TComWeightPrediction):
                 deltaFract = 0
                 refMainIndex = 0
 
-                for k in range(blkSize):
+                for k in xrange(blkSize):
                     deltaPos += intraPredAngle
                     deltaInt = deltaPos >> 5
                     deltaFract = deltaPos & (32 - 1)
 
                     if deltaFract:
                         # Do linear filtering
-                        for l in range(blkSize):
+                        for l in xrange(blkSize):
                             refMainIndex = l + deltaInt + 1
                             pDst[k * dstStride + l] = \
                                 ((32-deltaFract)*refMain[(blkSize-1) + refMainIndex] +
                                  deltaFract * refMain[(blkSize-1) + refMainIndex+1] + 16) >> 5
                     else:
                         # Just copy the integer samples
-                        for l in range(blkSize):
+                        for l in xrange(blkSize):
                             pDst[k * dstStride + l] = refMain[(blkSize-1) + l + deltaInt + 1]
 
             # Flip the block if this is the horizontal mode
             if modeHor:
-                for k in range(blkSize-1):
-                    for l in range(k+1, blkSize):
+                for k in xrange(blkSize-1):
+                    for l in xrange(k+1, blkSize):
                         pDst[k * dstStride + l], pDst[l * dstStride + k] = \
                             pDst[l * dstStride + k], pDst[k * dstStride + l]
 
@@ -322,23 +343,23 @@ class TComPrediction(TComWeightPrediction):
         shift2D = shift1D + 1
 
         # Get left and above reference column and row
-        for k in range(blkSize+1):
+        for k in xrange(blkSize+1):
             topRow[k] = pSrc[(srcStride+1) + k - srcStride]
             leftColumn[k] = pSrc[(srcStride+1) + k * srcStride - 1]
 
         # Prepare intermediate variables used in interpolation
         bottomLeft = leftColumn[blkSize]
         topRight = topRow[blkSize]
-        for k in range(blkSize):
+        for k in xrange(blkSize):
             bottomRow[k] = bottomLeft - topRow[k]
             rightColumn[k] = topRight - leftColumn[k]
             topRow[k] <<= shift1D
             leftColumn[k] <<= shift1D
 
         # Generate prediction signal
-        for k in range(blkSize):
+        for k in xrange(blkSize):
             horPred = leftColumn[k] + offset2D
-            for l in range(blkSize):
+            for l in xrange(blkSize):
                 horPred += rightColumn[k]
                 topRow[l] += bottomRow[l]
                 pDst[k * dstStride + l] = (horPred + topRow[l]) >> shift2D
@@ -355,7 +376,7 @@ class TComPrediction(TComWeightPrediction):
         pcMbYuv = None
         iRefIdx = [-1, -1]
 
-        for iRefList in range(2):
+        for iRefList in xrange(2):
             eRefPicList = REF_PIC_LIST_1 if iRefList else REF_PIC_LIST_0
             iRefIdx[iRefList] = pcCU.getCUMvField(eRefPicList).getRefIdx(uiPartAddr)
 
@@ -461,12 +482,12 @@ class TComPrediction(TComWeightPrediction):
         # boundary pixels processing
         pDst[0] = (pSrc[(iSrcStride+1) - iSrcStride] + pSrc[(iSrcStride+1) - 1] + 2 * pDst[0] + 2) >> 2
 
-        for x in range(1, iWidth):
+        for x in xrange(1, iWidth):
             pDst[x] = (pSrc[(iSrcStride+1) + x - iSrcStride] + 3 * pDst[x] + 2) >> 2
 
         iDstStride2 = iDstStride
         iSrcStride2 = iSrcStride-1
-        for y in range(1, iHeight):
+        for y in xrange(1, iHeight):
             pDst[iDstStride2] = (pSrc[(iSrcStride+1) + iSrcStride2] + 3 * pDst[iDstStride2] + 2) >> 2
             iDstStride2 += iDstStride
             iSrcStride2 += iSrcStride

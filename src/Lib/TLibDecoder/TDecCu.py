@@ -10,26 +10,35 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import MODE_INTRA, MODE_INTER
-    from swig.hevc import TEXT_LUMA, TEXT_CHROMA, TEXT_CHROMA_U, TEXT_CHROMA_V
-    from swig.hevc import MRG_MAX_NUM_CANDS, DM_CHROMA_IDX, REG_DCT
-    from swig.hevc import SIZE_2Nx2N
-    from swig.hevc import REF_PIC_LIST_0, REF_PIC_LIST_1
 
     from swig.hevc import TComYuv
     from swig.hevc import TComDataCU
     from swig.hevc import TComMv
 
-    from swig.hevc import initZscanToRaster, initRasterToZscan
-    from swig.hevc import initRasterToPelXY, initMotionReferIdx
+    from swig.hevc import initZscanToRaster, initRasterToZscan, \
+                          initRasterToPelXY, initMotionReferIdx
 
     from swig.hevc import ArrayChar, ArrayUChar, ArrayUInt, ArrayInt, ArrayPel
     from swig.hevc import ArrayTComYuv, ArrayTComDataCU, ArrayTComMvField
     from swig.hevc import TCoeffAdd
 
-
+# TypeDef.h
+DM_CHROMA_IDX = 36
+REG_DCT = 65535
+# TypeDef.h
+SIZE_2Nx2N = 0
+MODE_INTER = 0
+MODE_INTRA = 1
+TEXT_LUMA = 0
+TEXT_CHROMA = 1
+TEXT_CHROMA_U = 2
+TEXT_CHROMA_V = 3
+REF_PIC_LIST_0 = 0
+REF_PIC_LIST_1 = 1
+# CommonDef.h
 Clip = lambda x: min(cvar.g_uiIBDI_MAX, max(0, x))
-
+MRG_MAX_NUM_CANDS = 5
+# TComRom.h
 g_auiZscanToRaster = ArrayUInt.frompointer(cvar.g_auiZscanToRaster)
 g_auiRasterToPelX = ArrayUInt.frompointer(cvar.g_auiRasterToPelX)
 g_auiRasterToPelY = ArrayUInt.frompointer(cvar.g_auiRasterToPelY)
@@ -63,7 +72,7 @@ class TDecCu(object):
         self.m_ppcCU = ArrayTComDataCU(self.m_uiMaxDepth-1)
 
         uiNumPartitions = 0
-        for ui in range(self.m_uiMaxDepth-1):
+        for ui in xrange(self.m_uiMaxDepth-1):
             uiNumPartitions = 1 << ((self.m_uiMaxDepth - ui - 1) << 1)
             uiWidth = uiMaxWidth >> ui
             uiHeight = uiMaxHeight >> ui
@@ -85,7 +94,7 @@ class TDecCu(object):
         initMotionReferIdx(uiMaxWidth, uiMaxHeight, self.m_uiMaxDepth)
 
     def destroy(self):
-        for ui in range(self.m_uiMaxDepth-1):
+        for ui in xrange(self.m_uiMaxDepth-1):
             self.m_ppcYuvResi[ui].destroy()
             self.m_ppcYuvReco[ui].destroy()
             self.m_ppcCU[ui].destroy()
@@ -143,7 +152,7 @@ class TDecCu(object):
                 self._setdQPFlag(True)
                 pcCU.setQPSubParts(pcCU.getRefQP(uiAbsPartIdx), uiAbsPartIdx, uiDepth) # set QP to default QP
 
-            for uiPartUnitIdx in range(4):
+            for uiPartUnitIdx in xrange(4):
                 uiLPelX = pcCU.getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiIdx]]
                 uiTPelY = pcCU.getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiIdx]]
 
@@ -189,17 +198,17 @@ class TDecCu(object):
             cMvFieldNeighbours = ArrayTComMvField(MRG_MAX_NUM_CANDS<<1) # double length for mv of both lists
             uhInterDirNeighbours = ArrayUChar(MRG_MAX_NUM_CANDS)
             numValidMergeCand = 0
-            for ui in range(MRG_MAX_NUM_CANDS):
+            for ui in xrange(MRG_MAX_NUM_CANDS):
                 uhInterDirNeighbours[ui] = 0
             self.m_pcEntropyDecoder.decodeMergeIndex(pcCU, 0, uiAbsPartIdx, SIZE_2Nx2N,
                 uhInterDirNeighbours.cast(), cMvFieldNeighbours.cast(), uiDepth)
             uiMergeIndex = pcCU.getMergeIndex(uiAbsPartIdx)
-            self.m_ppcCU[uiDepth].getInterMergeCandidates(0, 0, uiDepth,
+            numValidMergeCand = self.m_ppcCU[uiDepth].getInterMergeCandidates(0, 0, uiDepth,
                 cMvFieldNeighbours.cast(), uhInterDirNeighbours.cast(), numValidMergeCand, uiMergeIndex)
             pcCU.setInterDirSubParts(uhInterDirNeighbours[uiMergeIndex], uiAbsPartIdx, 0, uiDepth)
 
             cTmpMv = TComMv(0, 0)
-            for uiRefListIdx in range(2):
+            for uiRefListIdx in xrange(2):
                 if pcCU.getSlice().getNumRefIdx(uiRefListIdx) > 0:
                     pcCU.setMVPIdxSubParts(0, uiRefListIdx, uiAbsPartIdx, 0, uiDepth)
                     pcCU.setMVPNumSubParts(0, uiRefListIdx, uiAbsPartIdx, 0, uiDepth)
@@ -303,7 +312,7 @@ class TDecCu(object):
             uiNextDepth = uiDepth + 1
             uiQNumParts = pcCU.getTotalNumPart() >> (uiNextDepth<<1)
             uiIdx = uiAbsPartIdx
-            for uiPartIdx in range(4):
+            for uiPartIdx in xrange(4):
                 uiLPelX = pcCU.getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiIdx]]
                 uiTPelY = pcCU.getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiIdx]]
 
@@ -361,11 +370,11 @@ class TDecCu(object):
             self._xReconPCM(pcCU, uiAbsPartIdx, uiDepth)
             return
 
-        for uiPU in range(uiNumPart):
+        for uiPU in xrange(uiNumPart):
             self._xIntraLumaRecQT(pcCU, uiInitTrDepth, uiPU * uiNumQPart,
                 self.m_ppcYuvReco[uiDepth], self.m_ppcYuvReco[uiDepth], self.m_ppcYuvResi[uiDepth])
 
-        for uiPU in range(uiNumPart):
+        for uiPU in xrange(uiNumPart):
             self._xIntraChromaRecQT(pcCU, uiInitTrDepth, uiPU * uiNumQPart,
                 self.m_ppcYuvReco[uiDepth], self.m_ppcYuvReco[uiDepth], self.m_ppcYuvResi[uiDepth])
 
@@ -420,8 +429,8 @@ class TDecCu(object):
         pResi = ArrayPel.frompointer(piResi); uiResi = 0
         pReco = ArrayPel.frompointer(piReco); uiReco = 0
         pRecIPred = ArrayPel.frompointer(piRecIPred); uiRecIPred = 0
-        for uiY in range(uiHeight):
-            for uiX in range(uiWidth):
+        for uiY in xrange(uiHeight):
+            for uiX in xrange(uiWidth):
                 pReco[uiReco+uiX] = Clip(pPred[uiPred+uiX] + pResi[uiResi+uiX])
                 pRecIPred[uiRecIPred+uiX] = pReco[uiReco+uiX]
             uiPred += uiStride
@@ -506,8 +515,8 @@ class TDecCu(object):
         pResi = ArrayPel.frompointer(piResi); uiResi = 0
         pReco = ArrayPel.frompointer(piReco); uiReco = 0
         pRecIPred = ArrayPel.frompointer(piRecIPred); uiRecIPred = 0
-        for uiY in range(uiHeight):
-            for uiX in range(uiWidth):
+        for uiY in xrange(uiHeight):
+            for uiX in xrange(uiWidth):
                 pReco[uiReco+uiX] = Clip(pPred[uiPred+uiX] + pResi[uiResi+uiX])
                 pRecIPred[uiRecIPred+uiX] = pReco[uiReco+uiX]
             uiPred += uiStride
@@ -524,7 +533,7 @@ class TDecCu(object):
             self._xIntraRecChromaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, 1)
         else:
             uiNumQPart = pcCU.getPic().getNumPartInCU() >> ((uiFullDepth+1) << 1)
-            for uiPart in range(4):
+            for uiPart in xrange(4):
                 self._xIntraRecQT(pcCU, uiTrDepth+1, uiAbsPartIdx+uiPart*uiNumQPart, pcRecoYuv, pcPredYuv, pcResiYuv)
 
     def _xReconPCM(self, pcCU, uiAbsPartIdx, uiDepth):
@@ -558,7 +567,8 @@ class TDecCu(object):
         uiHeight = pcCU.getHeight(uiAbsPartIdx)
         uiLumaTrMode = uiChromaTrMode = 0
 
-        pcCU.convertTransIdx(uiAbsPartIdx, pcCU.getTransformIdx(uiAbsPartIdx), uiLumaTrMode, uiChromaTrMode)
+        uiLumaTrMode, uiChromaTrMode = \
+            pcCU.convertTransIdx(uiAbsPartIdx, pcCU.getTransformIdx(uiAbsPartIdx), uiLumaTrMode, uiChromaTrMode)
 
         # Y
         piCoeff = pcCU.getCoeffY()
@@ -619,8 +629,8 @@ class TDecCu(object):
         pPCM = ArrayPel.frompointer(piPCM); uiPCM = 0
         pReco = ArrayPel.frompointer(piReco); uiReco = 0
         pPicReco = ArrayPel.frompointer(piPicReco); uiPicReco = 0
-        for uiY in range(uiHeight):
-            for uiX in range(uiWidth):
+        for uiY in xrange(uiHeight):
+            for uiX in xrange(uiWidth):
                 pReco[uiReco+uiX] = pPCM[uiPCM+uiX] << uiPcmLeftShiftBit
                 pPicReco[uiPicReco+uiX] = pReco[uiReco+uiX]
             uiPCM += uiWidth
@@ -638,7 +648,7 @@ class TDecCu(object):
             self._xIntraRecLumaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv)
         else:
             uiNumQPart = pcCU.getPic().getNumPartInCU() >> ((uiFullDepth+1) << 1)
-            for uiPart in range(4):
+            for uiPart in xrange(4):
                 self._xIntraLumaRecQT(pcCU, uiTrDepth+1, uiAbsPartIdx+uiPart*uiNumQPart, pcRecoYuv, pcPredYuv, pcResiYuv)
 
     def _xIntraChromaRecQT(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv):
@@ -649,7 +659,7 @@ class TDecCu(object):
             self._xIntraRecChromaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, 1)
         else:
             uiNumQPart = pcCU.getPic().getNumPartInCU() >> ((uiFullDepth+1) << 1)
-            for uiPart in range(4):
+            for uiPart in xrange(4):
                 self._xIntraChromaRecQT(pcCU, uiTrDepth+1, uiAbsPartIdx+uiPart*uiNumQPart, pcRecoYuv, pcPredYuv, pcResiYuv)
 
     def _getdQPFlag(self):
@@ -670,8 +680,8 @@ class TDecCu(object):
 
         pPcmY = ArrayPel.frompointer(piPcmY); uiPcmY = 0
         pRecoY = ArrayPel.frompointer(piRecoY); uiRecoY = 0
-        for uiY in range(uiHeight):
-            for uiX in range(uiWidth):
+        for uiY in xrange(uiHeight):
+            for uiX in xrange(uiWidth):
                 pPcmY[uiPcmY+uiX] = pRecoY[uiRecoY+uiX]
             uiPcmY += uiWidth
             uiRecoY += uiStride
@@ -691,8 +701,8 @@ class TDecCu(object):
         pPcmCr = ArrayPel.frompointer(piPcmCr); uiPcmCr = 0
         pRecoCb = ArrayPel.frompointer(piRecoCb); uiRecoCb = 0
         pRecoCr = ArrayPel.frompointer(piRecoCr); uiRecoCr = 0
-        for uiY in range(uiHeightC):
-            for uiX in range(uiWidthC):
+        for uiY in xrange(uiHeightC):
+            for uiX in xrange(uiWidthC):
                 pPcmCb[uiPcmCb+uiX] = pRecoCb[uiRecoCb+uiX]
                 pPcmCr[uiPcmCr+uiX] = pRecoCr[uiRecoCr+uiX]
             uiPcmCb += uiWidthC

@@ -34,7 +34,7 @@ else:
     from swig.hevc import ArrayBool
     from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
     from swig.hevc import SEIpictureDigest, digest_get
-    
+
 CLOCKS_PER_SEC = 1
 
 
@@ -64,8 +64,8 @@ def _calcAndPrintHashStatus(pic, seis):
 
     if seis and seis.picture_digest:
         ok = '(OK)'
-        for yuvIdx in range(3):
-            for i in range(numChar):
+        for yuvIdx in xrange(3):
+            for i in xrange(numChar):
                 if digest_get(recon_digest, yuvIdx, i) != digest_get(seis.picture_digest.digest, yuvIdx, i):
                     ok = '(***ERROR***)'
                     mismatch = True
@@ -138,13 +138,13 @@ class TDecGop(object):
         ppcSubstreams = ArrayTComInputBitstream(uiNumSubstreams)
         self.m_pcSbacDecoders = ArrayTDecSbac(uiNumSubstreams)
         self.m_pcBinCABACs = ArrayTDecBinCABAC(uiNumSubstreams)
-        for ui in range(uiNumSubstreams):
+        for ui in xrange(uiNumSubstreams):
             self.m_pcSbacDecoders[ui].init(self.m_pcBinCABACs[ui])
             ppcSubstreams[ui] = pcBitstream.extractSubstream(
                 puiSubstreamSizes[ui] if ui+1 < uiNumSubstreams else pcBitstream.getNumBitsLeft())
 
         if uiNumSubstreams > 1:
-            for ui in range(uiNumSubstreams-1):
+            for ui in xrange(uiNumSubstreams-1):
                 self.m_pcEntropyDecoder.setEntropyDecoder(self.m_pcSbacDecoders[uiNumSubstreams-1-ui])
                 self.m_pcEntropyDecoder.setBitstream(ppcSubstreams[uiNumSubstreams-1-ui])
                 self.m_pcEntropyDecoder.resetEntropy(pcSlice)
@@ -158,7 +158,7 @@ class TDecGop(object):
         if pcSlice.getPPS().getDependentSlicesEnabledFlag() and \
            not pcSlice.getPPS().getCabacIndependentFlag():
             pcSlice.initCTXMem_dec(2)
-            for st in range(2):
+            for st in xrange(2):
                 ctx = TDecSbac()
                 ctx.init(self.m_pcBinCABAC)
                 ctx.load(self.m_pcSbacDecoder)
@@ -170,7 +170,7 @@ class TDecGop(object):
             self.m_pcSbacDecoder, self.m_pcSbacDecoders.cast())
         self.m_pcEntropyDecoder.setBitstream(ppcSubstreams[uiNumSubstreams-1])
         # deallocate all created substreams, including internal buffers.
-        for ui in range(uiNumSubstreams):
+        for ui in xrange(uiNumSubstreams):
             ppcSubstreams[ui].deleteFifo()
             p = ppcSubstreams[ui]; del p
         del ppcSubstreams
@@ -237,9 +237,9 @@ class TDecGop(object):
         sys.stdout.write("[DT %6.3f] " % self.m_dDecTime)
         self.m_dDecTime = 0.0
 
-        for iRefList in range(2):
+        for iRefList in xrange(2):
             sys.stdout.write("[L%d " % iRefList)
-            for iRefIndex in range(pcSlice.getNumRefIdx(iRefList)):
+            for iRefIndex in xrange(pcSlice.getNumRefIdx(iRefList)):
                 sys.stdout.write("%d " % pcSlice.getRefPOC(iRefList, iRefIndex))
             sys.stdout.write("] ")
         if self.m_pictureDigestEnabled:

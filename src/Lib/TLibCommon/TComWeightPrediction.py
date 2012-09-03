@@ -10,9 +10,14 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import IF_INTERNAL_OFFS, IF_INTERNAL_PREC
-    from swig.hevc import REF_PIC_LIST_0, REF_PIC_LIST_1
     from swig.hevc import ArrayPel
+
+# TypeDef.h
+REF_PIC_LIST_0 = 0
+REF_PIC_LIST_1 = 1
+# TComInterpolationFilter.h
+IF_INTERNAL_PREC = 14
+IF_INTERNAL_OFFS = 1 << (IF_INTERNAL_PREC-1)
 
 
 class TComWeightPrediction(object):
@@ -77,7 +82,7 @@ class TComWeightPrediction(object):
             wp1 = None
 
         if bBiDir:
-            for yuv in range(3):
+            for yuv in xrange(3):
                 wp0[yuv].w = wp0[yuv].iWeight
                 wp0[yuv].o = wp0[yuv].iOffset * (1 << (self.m_ibdi-8))
                 wp1[yuv].w = wp1[yuv].iWeight
@@ -90,7 +95,7 @@ class TComWeightPrediction(object):
                 wp1[yuv].round = wp0[yuv].round
         else:
             pwp = wp0 if iRefIdx0 >= 0 else wp1
-            for yuv in range(3):
+            for yuv in xrange(3):
                 pwp[yuv].w = pwp[yuv].iWeight
                 pwp[yuv].offset = pwp[yuv].iOffset * (1 << (self.m_ibdi-8))
                 pwp[yuv].shift = pwp[yuv].uiLog2WeightDenom
@@ -125,8 +130,8 @@ class TComWeightPrediction(object):
         iSrc1Stride = pcYuvSrc1.getStride()
         iDstStride = rpcYuvDst.getStride()
 
-        for y in range(iHeight-1, -1, -1):
-            for x in range(iWidth-1, -1, -4):
+        for y in xrange(iHeight-1, -1, -1):
+            for x in xrange(iWidth-1, -1, -4):
                 # note: luma min width is 4
                 pDstY[iDstY+x  ] = self._weightBidir(w0, pSrcY0[iSrcY0+x  ], w1, pSrcY1[iSrcY1+x  ], round, shift, offset)
                 pDstY[iDstY+x-1] = self._weightBidir(w0, pSrcY0[iSrcY0+x-1], w1, pSrcY1[iSrcY1+x-1], round, shift, offset)
@@ -150,8 +155,8 @@ class TComWeightPrediction(object):
         iWidth >>= 1
         iHeight >>= 1
 
-        for y in range(iHeight-1, -1, -1):
-            for x in range(iWidth-1, -1, -2):
+        for y in xrange(iHeight-1, -1, -1):
+            for x in xrange(iWidth-1, -1, -2):
                 # note: chroma min width is 2
                 pDstU[iDstU+x  ] = self._weightBidir(w0, pSrcU0[iSrcU0+x  ], w1, pSrcU1[iSrcU1+x  ], round, shift, offset)
                 pDstU[iDstU+x-1] = self._weightBidir(w0, pSrcU0[iSrcU0+x-1], w1, pSrcU1[iSrcU1+x-1], round, shift, offset)
@@ -166,8 +171,8 @@ class TComWeightPrediction(object):
         round = (1 << (shift-1)) if shift else 0
         w1 = wp1[2].w
 
-        for y in range(iHeight-1, -1, -1):
-            for x in range(iWidth-1, -1, -2):
+        for y in xrange(iHeight-1, -1, -1):
+            for x in xrange(iWidth-1, -1, -2):
                 # note: chroma min width is 2
                 pDstV[iDstV+x  ] = self._weightBidir(w0, pSrcV0[iSrcV0+x  ], w1, pSrcV1[iSrcV1+x  ], round, shift, offset)
                 pDstV[iDstV+x-1] = self._weightBidir(w0, pSrcV0[iSrcV0+x-1], w1, pSrcV1[iSrcV1+x-1], round, shift, offset)
@@ -194,8 +199,8 @@ class TComWeightPrediction(object):
         iSrc0Stride = pcYuvSrc0.getStride()
         iDstStride = rpcYuvDst.getStride()
 
-        for y in range(iHeight-1, -1, -1):
-            for x in range(iWidth-1, -1, -4):
+        for y in xrange(iHeight-1, -1, -1):
+            for x in xrange(iWidth-1, -1, -4):
                 # note: luma min width is 4
                 pDstY[iDstY+x  ] = self._weightUnidir(w0, pSrcY0[iSrcY0+x  ], round, shift, offset)
                 pDstY[iDstY+x-1] = self._weightUnidir(w0, pSrcY0[iSrcY0+x-1], round, shift, offset)
@@ -216,8 +221,8 @@ class TComWeightPrediction(object):
         iWidth >>= 1
         iHeight >>= 1
 
-        for y in range(iHeight-1, -1, -1):
-            for x in range(iWidth-1, -1, -2):
+        for y in xrange(iHeight-1, -1, -1):
+            for x in xrange(iWidth-1, -1, -2):
                 # note: chroma min width is 2
                 pDstU[iDstU+x  ] = self._weightUnidir(w0, pSrcU0[iSrcU0+x  ], round, shift, offset)
                 pDstU[iDstU+x-1] = self._weightUnidir(w0, pSrcU0[iSrcU0+x-1], round, shift, offset)
@@ -230,8 +235,8 @@ class TComWeightPrediction(object):
         shift = wp0[2].shift + shiftnum
         round = (1 << (shift-1)) if shift else 0
 
-        for y in range(iHeight-1, -1, -1):
-            for x in range(iWidth-1, -1, -2):
+        for y in xrange(iHeight-1, -1, -1):
+            for x in xrange(iWidth-1, -1, -2):
                 # note: chroma min width is 2
                 pDstV[iDstV+x  ] = self._weightUnidir(w0, pSrcV0[iSrcV0+x  ], round, shift, offset)
                 pDstV[iDstV+x-1] = self._weightUnidir(w0, pSrcV0[iSrcV0+x-1], round, shift, offset)

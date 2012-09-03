@@ -10,24 +10,35 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import SIZE_NONE, SIZE_2Nx2N, SIZE_2NxN, SIZE_Nx2N, SIZE_NxN, \
-                          SIZE_2NxnU, SIZE_2NxnD, SIZE_nLx2N, SIZE_nRx2N
-    from swig.hevc import MAX_QP, MIN_QP
-    from swig.hevc import TEXT_LUMA
-    from swig.hevc import REF_PIC_LIST_0, REF_PIC_LIST_1
-
     from swig.hevc import LFCUParam
     from swig.hevc import ArrayUInt, ArrayUChar, ArrayBool, ArrayPel, PelAdd
 
+# TypeDef.h
+SIZE_2Nx2N = 0
+SIZE_2NxN = 1
+SIZE_Nx2N = 2
+SIZE_NxN = 3
+SIZE_2NxnU = 4
+SIZE_2NxnD = 5
+SIZE_nLx2N = 6
+SIZE_nRx2N = 7
+SIZE_NONE = 15
+TEXT_LUMA = 0
+REF_PIC_LIST_0 = 0
+REF_PIC_LIST_1 = 1
+# CommonDef.h
+MIN_QP = 0
+MAX_QP = 51
 Clip = lambda x: min(cvar.g_uiIBDI_MAX, max(0, x))
 Clip3 = lambda minVal, maxVal, a: min(max(minVal, a), maxVal)
-
-g_auiRasterToZscan = ArrayUInt.frompointer(cvar.g_auiRasterToZscan)
+# TComRom.h
 g_auiZscanToRaster = ArrayUInt.frompointer(cvar.g_auiZscanToRaster)
+g_auiRasterToZscan = ArrayUInt.frompointer(cvar.g_auiRasterToZscan)
 g_auiRasterToPelX = ArrayUInt.frompointer(cvar.g_auiRasterToPelX)
 g_auiRasterToPelY = ArrayUInt.frompointer(cvar.g_auiRasterToPelY)
 g_aucChromaScale = ArrayUChar.frompointer(cvar.g_aucChromaScale)
 
+# TComLoopFilter.h
 DEBLOCK_SMALLEST_BLOCK = 8
 
 EDGE_VER = 0
@@ -74,18 +85,18 @@ class TComLoopFilter(object):
     def create(self, uiMaxCUDepth):
         self.destroy()
         self.m_uiNumPartitions = 1 << (uiMaxCUDepth << 1)
-        for uiDir in range(2):
+        for uiDir in xrange(2):
             self.m_aapucBS[uiDir] = ArrayUChar(self.m_uiNumPartitions)
-            for uiPlane in range(3):
+            for uiPlane in xrange(3):
                 self.m_aapbEdgeFilter[uiDir][uiPlane] = ArrayBool(self.m_uiNumPartitions)
 
     def destroy(self):
-        for uiDir in range(2):
+        for uiDir in xrange(2):
             if self.m_aapucBS:
                 p = self.m_aapucBS[uiDir]
                 del p
                 self.m_aapucBS[uiDir] = None
-            for uiPlane in range(3):
+            for uiPlane in xrange(3):
                 if self.m_aapbEdgeFilter[uiDir][uiPlane]:
                     p = self.m_aapbEdgeFilter[uiDir][uiPlane]
                     del p
@@ -109,26 +120,26 @@ class TComLoopFilter(object):
             return
 
         # Horizontal filtering
-        for uiCUAddr in range(pcPic.getNumCUsInFrame()):
+        for uiCUAddr in xrange(pcPic.getNumCUsInFrame()):
             pcCU = pcPic.getCU(uiCUAddr)
 
-            for uiPart in range(self.m_uiNumPartitions):
+            for uiPart in xrange(self.m_uiNumPartitions):
                 self.m_aapucBS[EDGE_VER][uiPart] = 0
-            for iPlane in range(3):
-                for uiPart in range(self.m_uiNumPartitions):
+            for iPlane in xrange(3):
+                for uiPart in xrange(self.m_uiNumPartitions):
                     self.m_aapbEdgeFilter[EDGE_VER][iPlane][uiPart] = False
 
             # CU-based deblocking
             self._xDeblockCU(pcCU, 0, 0, EDGE_VER)
 
         # Vertical filtering
-        for uiCUAddr in range(pcPic.getNumCUsInFrame()):
+        for uiCUAddr in xrange(pcPic.getNumCUsInFrame()):
             pcCU = pcPic.getCU(uiCUAddr)
 
-            for uiPart in range(self.m_uiNumPartitions):
+            for uiPart in xrange(self.m_uiNumPartitions):
                 self.m_aapucBS[EDGE_HOR][uiPart] = 0
-            for iPlane in range(3):
-                for uiPart in range(self.m_uiNumPartitions):
+            for iPlane in xrange(3):
+                for uiPart in xrange(self.m_uiNumPartitions):
                     self.m_aapbEdgeFilter[EDGE_HOR][iPlane][uiPart] = False
 
             # CU-based deblocking
@@ -142,7 +153,7 @@ class TComLoopFilter(object):
         uiQNumParts = uiCurNumParts >> 2
 
         if pcCU.getDepth(uiAbsZorderIdx) > uiDepth:
-            for uiPartIdx in range(4):
+            for uiPartIdx in xrange(4):
                 uiLPelX = pcCU.getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsZorderIdx]]
                 uiTPelY = pcCU.getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiAbsZorderIdx]]
                 if uiLPelX < pcCU.getSlice().getSPS().getPicWidthInLumaSamples() and \
@@ -157,7 +168,7 @@ class TComLoopFilter(object):
         self._xSetEdgefilterPU(pcCU, uiAbsZorderIdx)
 
         iDir = Edge
-        for uiPartIdx in range(uiAbsZorderIdx, uiAbsZorderIdx+uiCurNumParts):
+        for uiPartIdx in xrange(uiAbsZorderIdx, uiAbsZorderIdx+uiCurNumParts):
             uiBSCheck = 0
             if (cvar.g_uiMaxCUWidth >> cvar.g_uiMaxCUDepth) == 4:
                 uiBSCheck = (iDir == EDGE_VER and (uiPartIdx % 2) == 0) or \
@@ -174,7 +185,7 @@ class TComLoopFilter(object):
 
         uiSizeInPU = pcPic.getNumPartInWidth() >> uiDepth
 
-        for iEdge in range(0, uiSizeInPU, PartIdxIncr):
+        for iEdge in xrange(0, uiSizeInPU, PartIdxIncr):
             self._xEdgeFilterLuma(pcCU, uiAbsZorderIdx, uiDepth, iDir, iEdge)
             if uiPelsInPart > DEBLOCK_SMALLEST_BLOCK or \
                (iEdge % ((DEBLOCK_SMALLEST_BLOCK<<1) / uiPelsInPart)) == 0:
@@ -221,7 +232,7 @@ class TComLoopFilter(object):
         if pcCU.getTransformIdx(uiAbsZorderIdx) + pcCU.getDepth(uiAbsZorderIdx) > uiDepth:
             uiCurNumParts = pcCU.getPic().getNumPartInCU() >> (uiDepth << 1)
             uiQNumParts = uiCurNumParts >> 2
-            for uiPartIdx in range(4):
+            for uiPartIdx in xrange(4):
                 nsAddr = uiAbsZorderIdx
                 self._xSetEdgefilterTU(pcCU, nsAddr, uiAbsZorderIdx, uiDepth+1)
                 uiAbsZorderIdx += uiQNumParts
@@ -397,7 +408,7 @@ class TComLoopFilter(object):
         assert(uiNumElem > 0)
         assert(uiWidthInBaseUnits > 0)
         assert(uiHeightInBaseUnits > 0)
-        for ui in range(uiNumElem):
+        for ui in xrange(uiNumElem):
             uiBsIdx = self._xCalcBsIdx(pcCU, uiScanIdx, iDir, iEdgeIdx, ui)
             self.m_aapbEdgeFilter[iDir][0][uiBsIdx] = bValue
             self.m_aapbEdgeFilter[iDir][1][uiBsIdx] = bValue
@@ -440,7 +451,7 @@ class TComLoopFilter(object):
             iSrcStep = 1
             piTmpSrc = PelAdd(piTmpSrc, iEdge * uiPelsInPart * iStride)
 
-        for iIdx in range(uiNumParts):
+        for iIdx in xrange(uiNumParts):
             uiBsAbsIdx = self._xCalcBsIdx(pcCU, uiAbsZorderIdx, iDir, iEdge, iIdx)
             uiBs = self.m_aapucBS[iDir][uiBsAbsIdx]
             if uiBs:
@@ -472,7 +483,7 @@ class TComLoopFilter(object):
                 iThrCut = iTc * 10
 
                 uiBlocksInPart = uiPelsInPart / 4 if uiPelsInPart / 4 else 1
-                for iBlkIdx in range(uiBlocksInPart):
+                for iBlkIdx in xrange(uiBlocksInPart):
                     dp0 = self._xCalcDP(PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 0)), iOffset)
                     dq0 = self._xCalcDQ(PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 0)), iOffset)
                     dp3 = self._xCalcDP(PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 3)), iOffset)
@@ -498,7 +509,7 @@ class TComLoopFilter(object):
                         sw = self._xUseStrongFiltering(iOffset, 2*d0, iBeta, iTc, PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 0))) and \
                              self._xUseStrongFiltering(iOffset, 2*d3, iBeta, iTc, PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 3)))
 
-                        for i in range(DEBLOCK_SMALLEST_BLOCK/2):
+                        for i in xrange(DEBLOCK_SMALLEST_BLOCK/2):
                             self._xPelFilterLuma(
                                 PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + i)),
                                 iOffset, d, iBeta, iTc, sw, bPartPNoFilter, bPartQNoFilter, iThrCut, bFilterP, bFilterQ)
@@ -556,7 +567,7 @@ class TComLoopFilter(object):
             piTmpSrcCb = PelAdd(piTmpSrcCb, iEdge * iStride * uiPelsInPartChroma)
             piTmpSrcCr = PelAdd(piTmpSrcCr, iEdge * iStride * uiPelsInPartChroma)
 
-        for iIdx in range(uiNumParts):
+        for iIdx in xrange(uiNumParts):
             ucBs = 0
 
             uiBsAbsIdx = self._xCalcBsIdx(pcCU, uiAbsZorderIdx, iDir, iEdge, iIdx)
@@ -593,7 +604,7 @@ class TComLoopFilter(object):
                 # check if each of PUs is lossless coded
                 bPartPNoFilter = bPartPNoFilter or pcCUP.isLosslessCoded(uiPartPIdx)
                 bPartQNoFilter = bPartQNoFilter or pcCUQ.isLosslessCoded(uiPartQIdx)
-                for uiStep in range(uiPelsInPartChroma):
+                for uiStep in xrange(uiPelsInPartChroma):
                     self._xPelFilterChroma(
                         PelAdd(piTmpSrcCb, iSrcStep * (uiStep + iIdx * uiPelsInPartChroma)),
                         iOffset, iTc, bPartPNoFilter, bPartQNoFilter)

@@ -10,17 +10,25 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import NOT_VALID, \
-                          MRG_MAX_NUM_CANDS, AM_EXPL, \
-                          TEXT_LUMA, TEXT_CHROMA_U, TEXT_CHROMA_V, \
-                          SIZE_2Nx2N, SIZE_NxN, \
-                          MODE_INTRA, MODE_INTER, \
-                          REF_PIC_LIST_0, REF_PIC_LIST_1
-
     from swig.hevc import TComMv
     from swig.hevc import ArrayTComMvField, ArrayUChar, ArrayUInt
     from swig.hevc import TCoeffAdd
 
+# TypeDef.h
+SIZE_2Nx2N = 0
+SIZE_NxN = 3
+MODE_INTER = 0
+MODE_INTRA = 1
+TEXT_LUMA = 0
+TEXT_CHROMA_U = 2
+TEXT_CHROMA_V = 3
+REF_PIC_LIST_0 = 0
+REF_PIC_LIST_1 = 1
+AM_EXPL = 1
+# CommonDef.h
+NOT_VALID = -1
+MRG_MAX_NUM_CANDS = 5
+# TComRom.h
 g_auiPUOffset = ArrayUInt.frompointer(cvar.g_auiPUOffset)
 
 
@@ -45,7 +53,7 @@ class TDecEntropy(object):
         cMvFieldNeighbours = ArrayTComMvField(MRG_MAX_NUM_CANDS << 1) # double length for mv of both lists
         uhInterDirNeighbours = ArrayUChar(MRG_MAX_NUM_CANDS)
 
-        for ui in range(MRG_MAX_NUM_CANDS):
+        for ui in xrange(MRG_MAX_NUM_CANDS):
             uhInterDirNeighbours[ui] = 0
         numValidMergeCand = 0
         isMerged = False
@@ -53,7 +61,7 @@ class TDecEntropy(object):
         pcSubCU.copyInterPredInfoFrom(pcCU, uiAbsPartIdx, REF_PIC_LIST_0)
         pcSubCU.copyInterPredInfoFrom(pcCU, uiAbsPartIdx, REF_PIC_LIST_1)
         uiSubPartIdx = uiAbsPartIdx
-        for uiPartIdx in range(uiNumPU):
+        for uiPartIdx in xrange(uiNumPU):
             self.decodeMergeFlag(pcCU, uiSubPartIdx, uiDepth, uiPartIdx)
             if pcCU.getMergeFlag(uiSubPartIdx):
                 self.decodeMergeIndex(pcCU, uiPartIdx, uiSubPartIdx, ePartSize,
@@ -63,18 +71,18 @@ class TDecEntropy(object):
                    ePartSize != SIZE_2Nx2N and pcSubCU.getWidth(0) <= 8:
                     pcSubCU.setPartSizeSubParts(SIZE_2Nx2N, 0, uiDepth)
                     if not isMerged:
-                        pcSubCU.getInterMergeCandidates(0, 0, uiDepth,
+                        numValidMergeCand = pcSubCU.getInterMergeCandidates(0, 0, uiDepth,
                             cMvFieldNeighbours.cast(), uhInterDirNeighbours.cast(), numValidMergeCand)
                         isMerged = True
                     pcSubCU.setPartSizeSubParts(ePartSize, 0, uiDepth)
                 else:
                     uiMergeIndex = pcCU.getMergeIndex(uiSubPartIdx)
-                    pcSubCU.getInterMergeCandidates(uiSubPartIdx-uiAbsPartIdx, uiPartIdx, uiDepth,
+                    numValidMergeCand = pcSubCU.getInterMergeCandidates(uiSubPartIdx-uiAbsPartIdx, uiPartIdx, uiDepth,
                         cMvFieldNeighbours.cast(), uhInterDirNeighbours.cast(), numValidMergeCand, uiMergeIndex)
                 pcCU.setInterDirSubParts(uhInterDirNeighbours[uiMergeIndex], uiSubPartIdx, uiPartIdx, uiDepth)
 
                 cTmpMv = TComMv(0, 0)
-                for uiRefListIdx in range(2):
+                for uiRefListIdx in xrange(2):
                     if pcCU.getSlice().getNumRefIdx(uiRefListIdx) > 0:
                         pcCU.setMVPIdxSubParts(0, uiRefListIdx, uiSubPartIdx, uiPartIdx, uiDepth)
                         pcCU.setMVPNumSubParts(0, uiRefListIdx, uiSubPartIdx, uiPartIdx, uiDepth)
@@ -83,13 +91,13 @@ class TDecEntropy(object):
                             cMvFieldNeighbours[2*uiMergeIndex+uiRefListIdx], ePartSize, uiSubPartIdx, uiDepth, uiPartIdx)
             else:
                 self.decodeInterDirPU(pcCU, uiSubPartIdx, uiDepth, uiPartIdx)
-                for uiRefListIdx in range(2):
+                for uiRefListIdx in xrange(2):
                     if pcCU.getSlice().getNumRefIdx(uiRefListIdx) > 0:
                         self.decodeRefFrmIdxPU(pcCU, uiSubPartIdx, uiDepth, uiPartIdx, uiRefListIdx)
                         self.decodeMvdPU(pcCU, uiSubPartIdx, uiDepth, uiPartIdx, uiRefListIdx)
                         self.decodeMVPIdxPU(pcSubCU, uiSubPartIdx-uiAbsPartIdx, uiDepth, uiPartIdx, uiRefListIdx)
             if pcCU.getInterDir(uiSubPartIdx) == 3 and pcSubCU.isBipredRestriction(uiPartIdx):
-                pcCU.getCUMvField(REF_PIC_LIST_1).setAllMvd(TComMv(0, 0), ePartSize, uiSubPartIdx, uiDepth, uiPartIdx)
+                pcCU.getCUMvField(REF_PIC_LIST_1).setAllMv(TComMv(0, 0), ePartSize, uiSubPartIdx, uiDepth, uiPartIdx)
                 pcCU.getCUMvField(REF_PIC_LIST_1).setAllRefIdx(-1, ePartSize, uiSubPartIdx, uiDepth, uiPartIdx)
                 pcCU.setInterDirSubParts(1, uiSubPartIdx, uiPartIdx, uiDepth)
             uiSubPartIdx += uiPUOffset
@@ -270,7 +278,7 @@ class TDecEntropy(object):
             uiUCbf = 0
             uiVCbf = 0
 
-            for i in range(4):
+            for i in xrange(4):
                 nsAddr = uiAbsPartIdx
                 bCodeDQP = self._xDecodeTransform(pcCU, offsetLuma, offsetChroma, uiAbsPartIdx, nsAddr,
                     uiDepth, uiWidth, uiHeight, uiTrIdx, i, bCodeDQP)
@@ -283,7 +291,7 @@ class TDecEntropy(object):
 
             uiLumaTrMode, uiChromaTrMode = \
                 pcCU.convertTransIdx(uiStartAbsPartIdx, uiTrDepth, uiLumaTrMode, uiChromaTrMode)
-            for ui in range(4 * uiQPartNum):
+            for ui in xrange(4 * uiQPartNum):
                 cbfY = ArrayUChar.frompointer(pcCU.getCbf(TEXT_LUMA))
                 cbfU = ArrayUChar.frompointer(pcCU.getCbf(TEXT_CHROMA_U))
                 cbfV = ArrayUChar.frompointer(pcCU.getCbf(TEXT_CHROMA_V))

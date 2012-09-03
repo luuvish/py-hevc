@@ -9,7 +9,9 @@ Lib/TLibDecoder/TDecSlice.py
 Lib/TLibDecoder/TDecCu.py
 Lib/TLibDecoder/TDecEntropy.py
 
+Lib/TLibCommon/TComPrediction.py, TComWeightPrediction.py
+Lib/TLibCommon/TComInterpolationFilter.py
+Lib/TLibCommon/TComTrQuant.py
 Lib/TLibCommon/TComLoopFilter.py
 Lib/TLibCommon/TComSampleAdaptiveOffset.py
 
-Lib/TLibCommon/TComPrediction.py, TComWeightPrediction.py

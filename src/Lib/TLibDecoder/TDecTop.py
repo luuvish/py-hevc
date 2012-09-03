@@ -11,22 +11,6 @@ if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
 
-    from swig.hevc import MAX_INT, \
-                          NAL_UNIT_VPS, \
-                          NAL_UNIT_SPS, \
-                          NAL_UNIT_PPS, \
-                          NAL_UNIT_SEI, \
-                          NAL_UNIT_CODED_SLICE, \
-                          NAL_UNIT_CODED_SLICE_TFD, \
-                          NAL_UNIT_CODED_SLICE_TLA, \
-                          NAL_UNIT_CODED_SLICE_CRA, \
-                          NAL_UNIT_CODED_SLICE_CRANT, \
-                          NAL_UNIT_CODED_SLICE_BLA, \
-                          NAL_UNIT_CODED_SLICE_BLANT, \
-                          NAL_UNIT_CODED_SLICE_IDR, \
-                          REF_PIC_LIST_0, REF_PIC_LIST_1, \
-                          B_SLICE
-
     from swig.hevc import ParameterSetManagerDecoder
     from swig.hevc import TComListTComPic
     from swig.hevc import TComSlice
@@ -50,22 +34,6 @@ else:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
 
-    from swig.hevc import MAX_INT, \
-                          NAL_UNIT_VPS, \
-                          NAL_UNIT_SPS, \
-                          NAL_UNIT_PPS, \
-                          NAL_UNIT_SEI, \
-                          NAL_UNIT_CODED_SLICE, \
-                          NAL_UNIT_CODED_SLICE_TFD, \
-                          NAL_UNIT_CODED_SLICE_TLA, \
-                          NAL_UNIT_CODED_SLICE_CRA, \
-                          NAL_UNIT_CODED_SLICE_CRANT, \
-                          NAL_UNIT_CODED_SLICE_BLA, \
-                          NAL_UNIT_CODED_SLICE_BLANT, \
-                          NAL_UNIT_CODED_SLICE_IDR, \
-                          REF_PIC_LIST_0, REF_PIC_LIST_1, \
-                          B_SLICE
-
     from swig.hevc import ParameterSetManagerDecoder
     from swig.hevc import TComListTComPic
     from swig.hevc import TComSlice
@@ -78,16 +46,34 @@ else:
     from swig.hevc import TDecCavlc
     from swig.hevc import TDecSbac
     from swig.hevc import TDecBinCABAC
-    from ..TLibCommon.TComPrediction import TComPrediction
-#   from swig.hevc import TComPrediction
+#   from ..TLibCommon.TComPrediction import TComPrediction
+    from swig.hevc import TComPrediction
     from swig.hevc import TComTrQuant
     from ..TLibCommon.TComLoopFilter import TComLoopFilter
-#   from swig.hevc import TComLoopFilter
     from swig.hevc import TComSampleAdaptiveOffset
     from swig.hevc import TComPic
 
     from swig.hevc import TComVPS, TComSPS, TComPPS
     from swig.hevc import initROM, destroyROM
+
+# TypeDef.h
+B_SLICE = 0
+REF_PIC_LIST_0 = 0
+REF_PIC_LIST_1 = 1
+# CommonDef.h
+MAX_INT = 2147483647
+NAL_UNIT_CODED_SLICE = 1
+NAL_UNIT_CODED_SLICE_TFD = 2
+NAL_UNIT_CODED_SLICE_TLA = 3
+NAL_UNIT_CODED_SLICE_CRA = 4
+NAL_UNIT_CODED_SLICE_CRANT = 5
+NAL_UNIT_CODED_SLICE_BLA = 6
+NAL_UNIT_CODED_SLICE_BLANT = 7
+NAL_UNIT_CODED_SLICE_IDR = 8
+NAL_UNIT_VPS = 25
+NAL_UNIT_SPS = 26
+NAL_UNIT_PPS = 27
+NAL_UNIT_SEI = 31
 
 
 warningMessage = False
@@ -334,7 +320,7 @@ class TDecTop(object):
                 rpcPic.getPicYuvRec().copyToPic(cFillPic.getPicYuvRec())
                 break
         cFillPic.setCurrSliceIdx(0)
-        for i in range(cFillPic.getNumCUsInFrame()):
+        for i in xrange(cFillPic.getNumCUsInFrame()):
             cFillPic.getCU(i).initCU(cFillPic, i)
         cFillPic.getSlice(0).setReferenced(True)
         cFillPic.getSlice(0).setPOC(iLostPoc)
@@ -362,9 +348,9 @@ class TDecTop(object):
             pps.setNumSubstreams(1)
         pps.setMinCuDQPSize(sps.getMaxCUWidth() >> pps.getMaxCuDQPDepth())
 
-        for i in range(sps.getMaxCUDepth() - cvar.g_uiAddCUDepth):
+        for i in xrange(sps.getMaxCUDepth() - cvar.g_uiAddCUDepth):
             sps.setAMPAcc(i, sps.getUseAMP())
-        for i in range(sps.getMaxCUDepth() - cvar.g_uiAddCUDepth, sps.getMaxCUDepth()):
+        for i in xrange(sps.getMaxCUDepth() - cvar.g_uiAddCUDepth, sps.getMaxCUDepth()):
             sps.setAMPAcc(i, 0)
 
         self.m_cSAO.destroy()
@@ -461,23 +447,23 @@ class TDecTop(object):
 
         if pcSlice.getPPS().getUniformSpacingIdr() == 1:
             # set the width for each tile
-            for j in range(pcPic.getPicSym().getNumRowsMinus1()+1):
-                for p in range(pcPic.getPicSym().getNumColumnsMinus1()+1):
+            for j in xrange(pcPic.getPicSym().getNumRowsMinus1()+1):
+                for p in xrange(pcPic.getPicSym().getNumColumnsMinus1()+1):
                     pcPic.getPicSym().getTComTile(j * (pcPic.getPicSym().getNumColumnsMinus1()+1) + p).setTileWidth(
                         (p+1)*pcPic.getPicSym().getFrameWidthInCU()/(pcPic.getPicSym().getNumColumnsMinus1()+1) -
                         p*pcPic.getPicSym().getFrameWidthInCU()/(pcPic.getPicSym().getNumColumnsMinus1()+1))
 
             # set the height for each tile
-            for j in range(pcPic.getPicSym().getNumColumnsMinus1()+1):
-                for p in range(pcPic.getPicSym().getNumRowsMinus1()+1):
+            for j in xrange(pcPic.getPicSym().getNumColumnsMinus1()+1):
+                for p in xrange(pcPic.getPicSym().getNumRowsMinus1()+1):
                     pcPic.getPicSym().getTComTile(p * (pcPic.getPicSym().getNumColumnsMinus1()+1) + j).setTileHeight(
                         (p+1)*pcPic.getPicSym().getFrameHeightInCU()/(pcPic.getPicSym().getNumRowsMinus1()+1) -
                         p*pcPic.getPicSym().getFrameHeightInCU()/(pcPic.getPicSym().getNumRowsMinus1()+1))
         else:
             # set the width for each tile
-            for j in range(pcSlice.getPPS().getNumRowsMinus1()+1):
+            for j in xrange(pcSlice.getPPS().getNumRowsMinus1()+1):
                 uiCummulativeTileWidth = 0
-                for p in range(pcSlice.getPPS().getNumColumnsMinus1()):
+                for p in xrange(pcSlice.getPPS().getNumColumnsMinus1()):
                     pcPic.getPicSym().getTComTile(j * (pcSlice.getPPS().getNumColumnsMinus1()+1) + p).setTileWidth(
                         pcSlice.getPPS().getColumnWidth(p))
                     uiCummulativeTileWidth += pcSlice.getPPS().getColumnWidth(p)
@@ -486,9 +472,9 @@ class TDecTop(object):
                     pcPic.getPicSym().getFrameWidthInCU() - uiCummulativeTileWidth)
 
             # set the height for each tile
-            for j in range(pcSlice.getPPS().getNumColumnsMinus1()+1):
+            for j in xrange(pcSlice.getPPS().getNumColumnsMinus1()+1):
                 uiCummulativeTileHeight = 0
-                for p in range(pcSlice.getPPS().getNumRowsMinus1()):
+                for p in xrange(pcSlice.getPPS().getNumRowsMinus1()):
                     pcPic.getPicSym().getTComTile(p * (pcSlice.getPPS().getNumColumnsMinus1()+1) + j).setTileHeight(
                         pcSlice.getPPS().getRowHeight(p))
                     uiCummulativeTileHeight += pcSlice.getPPS().getRowHeight(p)
@@ -500,7 +486,7 @@ class TDecTop(object):
 
         # generate the Coding Order Map and Inverse Coding Order Map
         uiEncCUAddr = 0
-        for i in range(pcPic.getPicSym().getNumberOfCUsInFrame()):
+        for i in xrange(pcPic.getPicSym().getNumberOfCUsInFrame()):
             pcPic.getPicSym().setCUOrderMap(i, uiEncCUAddr)
             pcPic.getPicSym().setInverseCUOrderMap(uiEncCUAddr, i)
             uiEncCUAddr = pcPic.getPicSym().xCalculateNxtCUAddr(uiEncCUAddr)
@@ -542,7 +528,7 @@ class TDecTop(object):
                 iNumRefIdx = pcSlice.getNumRefIdx(REF_PIC_LIST_0)
                 pcSlice.setNumRefIdx(REF_PIC_LIST_1, iNumRefIdx)
 
-                for iRefIdx in range(iNumRefIdx):
+                for iRefIdx in xrange(iNumRefIdx):
                     pcSlice.setRefIdx(
                         pcSlice.getRefPic(REF_PIC_LIST_0, iRefIdx),
                         REF_PIC_LIST_1, iRefIdx)
@@ -550,11 +536,11 @@ class TDecTop(object):
                 bLowDelay = True
                 iCurrPOC = pcSlice.getPOC()
 
-                for iRefIdx in range(pcSlice.getNumRefIdx(REF_PIC_LIST_0)):
+                for iRefIdx in xrange(pcSlice.getNumRefIdx(REF_PIC_LIST_0)):
                     if pcSlice.getRefPic(REF_PIC_LIST_0, iRefIdx).getPOC() > iCurrPOC:
                         bLowDelay = False
                         break
-                for iRefIdx in range(pcSlice.getNumRefIdx(REF_PIC_LIST_1)):
+                for iRefIdx in xrange(pcSlice.getNumRefIdx(REF_PIC_LIST_1)):
                     if pcSlice.getRefPic(REF_PIC_LIST_1, iRefIdx).getPOC() > iCurrPOC:
                         bLowDelay = False
                         break
@@ -566,7 +552,7 @@ class TDecTop(object):
             if pcSlice.getSliceType() == B_SLICE:
                 if pcSlice.getNumRefIdx(0) == pcSlice.getNumRefIdx(1):
                     pcSlice.setNoBackPredFlag(True)
-                    for i in range(pcSlice.getNumRefIdx(1)):
+                    for i in xrange(pcSlice.getNumRefIdx(1)):
                         if pcSlice.getRefPOC(1, i) != pcSlice.getRefPOC(0, i):
                             pcSlice.setNoBackPredFlag(False)
                             break

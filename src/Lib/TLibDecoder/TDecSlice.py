@@ -10,8 +10,6 @@ from time import clock
 use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
-    from swig.hevc import MAX_NUM_VPS, MAX_NUM_SPS, MAX_NUM_PPS
-    from swig.hevc import P_SLICE, B_SLICE
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
 
@@ -19,8 +17,6 @@ if use_swig:
     from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
 else:
     sys.path.insert(0, '../../..')
-    from swig.hevc import MAX_NUM_VPS, MAX_NUM_SPS, MAX_NUM_PPS
-    from swig.hevc import P_SLICE, B_SLICE
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
 
@@ -33,6 +29,14 @@ if dump_cu:
 else:
     def dumpTCoeff(pcCU): pass
     def dumpTComPic(pcCU): pass
+
+# TypeDef.h
+MAX_NUM_SPS = 32
+MAX_NUM_PPS = 256
+MAX_NUM_VPS = 16
+# TypeDef.h
+B_SLICE = 0
+P_SLICE = 1
 
 
 class TDecSlice(object):
@@ -94,10 +98,10 @@ class TDecSlice(object):
         # allocate new decoders based on tile numbaer
         self.m_pcBufferSbacDecoders = ArrayTDecSbac(uiTilesAcross)
         self.m_pcBufferBinCABACs = ArrayTDecBinCABAC(uiTilesAcross)
-        for ui in range(uiTilesAcross):
+        for ui in xrange(uiTilesAcross):
             self.m_pcBufferSbacDecoders[ui].init(self.m_pcBufferBinCABACs[ui])
         #save init. state
-        for ui in range(uiTilesAcross):
+        for ui in xrange(uiTilesAcross):
             self.m_pcBufferSbacDecoders[ui].load(pcSbacDecoder)
 
         # free memory if already allocated in previous call
@@ -107,10 +111,10 @@ class TDecSlice(object):
             del self.m_pcBufferLowLatBinCABACs
         self.m_pcBufferLowLatSbacDecoders = ArrayTDecSbac(uiTilesAcross)
         self.m_pcBufferLowLatBinCABACs = ArrayTDecBinCABAC(uiTilesAcross)
-        for ui in range(uiTilesAcross):
+        for ui in xrange(uiTilesAcross):
             self.m_pcBufferLowLatSbacDecoders[ui].init(self.m_pcBufferLowLatBinCABACs[ui])
         #save init. state
-        for ui in range(uiTilesAcross):
+        for ui in xrange(uiTilesAcross):
             self.m_pcBufferLowLatSbacDecoders[ui].load(pcSbacDecoder)
 
         uiWidthInLCUs = rpcPic.getPicSym().getFrameWidthInCU()

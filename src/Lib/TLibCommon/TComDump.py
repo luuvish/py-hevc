@@ -23,15 +23,15 @@ def dumpTCoeff(pcCU):
     coeffCb = ArrayInt.frompointer(pcCU.getCoeffCb())
     coeffCr = ArrayInt.frompointer(pcCU.getCoeffCr())
     fpTCoeff.write('POC[%d] CU[%d]\n' % (poc, cuAddr))
-    for uiY in range(uiHeight):
-        for uiX in range(uiWidth):
+    for uiY in xrange(uiHeight):
+        for uiX in xrange(uiWidth):
             fpTCoeff.write('%02x ' % coeffY[uiY * uiWidth + uiX])
         fpTCoeff.write('\n')
-    for uiY in range(uiHeight/2):
-        for uiX in range(uiWidth/2):
+    for uiY in xrange(uiHeight/2):
+        for uiX in xrange(uiWidth/2):
             fpTCoeff.write('%02x ' % coeffCb[uiY * uiWidth/2 + uiX])
         fpTCoeff.write('   ')
-        for uiX in range(uiWidth/2):
+        for uiX in xrange(uiWidth/2):
             fpTCoeff.write('%02x ' % coeffCr[uiY * uiWidth/2 + uiX])
         fpTCoeff.write('\n')
     fpTCoeff.write('\n')
@@ -51,15 +51,15 @@ def dumpTComPic(pcCU):
     strideY = picYuv.getStride()
     strideC = picYuv.getCStride()
     fpTComPic.write('POC[%d] CU[%d]\n' % (poc, cuAddr))
-    for uiY in range(uiHeight):
-        for uiX in range(uiWidth):
+    for uiY in xrange(uiHeight):
+        for uiX in xrange(uiWidth):
             fpTComPic.write('%02x ' % reconY[uiY * strideY + uiX])
         fpTComPic.write('\n')
-    for uiY in range(uiHeight/2):
-        for uiX in range(uiWidth/2):
+    for uiY in xrange(uiHeight/2):
+        for uiX in xrange(uiWidth/2):
             fpTComPic.write('%02x ' % reconCb[uiY * strideC + uiX])
         fpTComPic.write('   ')
-        for uiX in range(uiWidth/2):
+        for uiX in xrange(uiWidth/2):
             fpTComPic.write('%02x ' % reconCr[uiY * strideC + uiX])
         fpTComPic.write('\n')
     fpTComPic.write('\n')

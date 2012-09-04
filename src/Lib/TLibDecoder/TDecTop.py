@@ -42,12 +42,11 @@ else:
     from .TDecSlice import TDecSlice
     from .TDecCu import TDecCu
     from .TDecEntropy import TDecEntropy
-#   from swig.hevc import TDecEntropy
     from swig.hevc import TDecCavlc
     from swig.hevc import TDecSbac
     from swig.hevc import TDecBinCABAC
-#   from ..TLibCommon.TComPrediction import TComPrediction
-    from swig.hevc import TComPrediction
+    from ..TLibCommon.TComPrediction import TComPrediction
+#   from swig.hevc import TComPrediction
     from swig.hevc import TComTrQuant
     from ..TLibCommon.TComLoopFilter import TComLoopFilter
     from swig.hevc import TComSampleAdaptiveOffset
@@ -230,6 +229,7 @@ class TDecTop(object):
                 # no need to skip the reordered pictures in IDR, they are decodable.
                 self.m_pocRandomAccess = 0;
             else:
+                global warningMessage
                 if not warningMessage:
                     sys.stdout.write("\nWarning: this is not a valid random access point and the data is discarded until the first CRA picture")
                     warningMessage = True

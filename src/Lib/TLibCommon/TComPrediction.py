@@ -10,19 +10,11 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-
     from swig.hevc import TComYuv
-    from swig.hevc import TComInterpolationFilter
-    from swig.hevc import ArrayInt, ArrayPel, ArrayTComMv, PelAdd, IntAdd
-else:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-
-    from swig.hevc import TComYuv
-    from swig.hevc import TComInterpolationFilter
     from swig.hevc import ArrayInt, ArrayPel, ArrayTComMv, PelAdd, IntAdd
 
 from .TComWeightPrediction import TComWeightPrediction
+from .TComInterpolationFilter import TComInterpolationFilter
 
 # TypeDef.h
 PLANAR_IDX = 0
@@ -467,13 +459,13 @@ class TComPrediction(TComWeightPrediction):
             self.m_if.filterHorChroma(PelAdd(refCr, - (halfFilterSize-1) * refStride), refStride, extY, extStride, cxWidth, cxHeight+filterSize-1, xFrac, False)
             self.m_if.filterVerChroma(PelAdd(extY, + (halfFilterSize-1) * extStride), extStride, dstCr, dstStride, cxWidth, cxHeight, yFrac, False, not bi)
 
-    def _xWeightedAverage(self, pcCU, pcYuvSrc0, pcYuvSrc1, iRefIdx0, iRefIdx1, uiPartAddr, iWidth, iHeight, rpcYuvDst):
+    def _xWeightedAverage(self, pcCU, pcYuvSrc0, pcYuvSrc1, iRefIdx0, iRefIdx1, uiPartIdx, iWidth, iHeight, rpcYuvDst):
         if iRefIdx0 >= 0 and iRefIdx1 >= 0:
-            rpcYuvDst.addAvg(pcYuvSrc0, pcYuvSrc1, uiPartAddr, iWidth, iHeight)
+            rpcYuvDst.addAvg(pcYuvSrc0, pcYuvSrc1, uiPartIdx, iWidth, iHeight)
         elif iRefIdx0 >= 0 and iRefIdx1 < 0:
-            pcYuvSrc0.copyPartToPartYuv(rpcYuvDst, uiPartAddr, iWidth, iHeight)
+            pcYuvSrc0.copyPartToPartYuv(rpcYuvDst, uiPartIdx, iWidth, iHeight)
         elif iRefIdx0 < 0 and iRefIdx1 >= 0:
-            pcYuvSrc1.copyPartToPartYuv(rpcYuvDst, uiPartAddr, iWidth, iHeight)
+            pcYuvSrc1.copyPartToPartYuv(rpcYuvDst, uiPartIdx, iWidth, iHeight)
 
     def _xDCPredFiltering(self, piSrc, iSrcStride, rpDst, iDstStride, iWidth, iHeight):
         pSrc = ArrayInt.frompointer(IntAdd(piSrc, -(iSrcStride+1)))

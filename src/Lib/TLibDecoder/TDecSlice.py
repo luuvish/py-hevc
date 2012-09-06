@@ -25,10 +25,9 @@ else:
 
 dump_cu = False
 if dump_cu:
-    from ..TLibCommon.TComDump import dumpTCoeff, dumpTComPic
+    from ..TLibCommon.TComDump import dumpCU
 else:
-    def dumpTCoeff(pcCU): pass
-    def dumpTComPic(pcCU): pass
+    def dumpCU(pcCU): pass
 
 # TypeDef.h
 MAX_NUM_SPS = 32
@@ -240,9 +239,8 @@ class TDecSlice(object):
                     cuAddrInSlice, cuAddrUpInSlice, allowMergeLeft, allowMergeUp)
 
             uiIsLast = self.m_pcCuDecoder.decodeCU(pcCU, uiIsLast)
-            dumpTCoeff(pcCU)
             self.m_pcCuDecoder.decompressCU(pcCU)
-            dumpTComPic(pcCU)
+            dumpCU(pcCU)
 
             # If at the end of a LCU line but not at the end of a substream, perform CABAC flush
             if not uiIsLast and pcSlice.getPPS().getNumSubstreams() > 1:

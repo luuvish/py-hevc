@@ -47,7 +47,8 @@ else:
     from swig.hevc import TDecBinCABAC
     from ..TLibCommon.TComPrediction import TComPrediction
 #   from swig.hevc import TComPrediction
-    from swig.hevc import TComTrQuant
+    from ..TLibCommon.TComTrQuant import TComTrQuant
+#   from swig.hevc import TComTrQuant
     from ..TLibCommon.TComLoopFilter import TComLoopFilter
     from swig.hevc import TComSampleAdaptiveOffset
     from swig.hevc import TComPic

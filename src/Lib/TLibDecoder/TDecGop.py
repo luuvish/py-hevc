@@ -16,11 +16,10 @@ if use_swig:
     from swig.hevc import TDecSbac
     from swig.hevc import TDecBinCABAC
     from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
+    from swig.hevc import SEIpictureDigest, digest_get
 
     from swig.hevc import VectorBool, VectorInt
-    from swig.hevc import ArrayBool
     from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
-    from swig.hevc import SEIpictureDigest, digest_get
 else:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
@@ -29,11 +28,12 @@ else:
     from swig.hevc import TDecSbac
     from swig.hevc import TDecBinCABAC
     from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
+    from swig.hevc import SEIpictureDigest, digest_get
 
     from swig.hevc import VectorBool, VectorInt
-    from swig.hevc import ArrayBool
     from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
-    from swig.hevc import SEIpictureDigest, digest_get
+
+from ..TLibCommon.array import array
 
 CLOCKS_PER_SEC = 1
 
@@ -213,7 +213,7 @@ class TDecGop(object):
         if pcSlice.getSPS().getUseSAO():
             if pcSlice.getSaoEnabledFlag() or pcSlice.getSaoEnabledFlagChroma():
                 saoParam = rpcPic.getPicSym().getSaoParam()
-                abSaoFlag = ArrayBool.frompointer(saoParam.bSaoFlag)
+                abSaoFlag = array(saoParam.bSaoFlag, type='bool *')
                 abSaoFlag[0] = pcSlice.getSaoEnabledFlag()
                 abSaoFlag[1] = pcSlice.getSaoEnabledFlagChroma()
                 self.m_pcSAO.setSaoLcuBasedOptimization(1)

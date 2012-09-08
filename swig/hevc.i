@@ -204,26 +204,32 @@ extern int encmain(int argc, char* argv[]);
   typedef TComInputBitstream *PtrTComInputBitstream;
 %}
 
-%array_class(Bool, ArrayBool);
-%array_class(Char, ArrayChar);
-%array_class(UChar, ArrayUChar);
-%array_class(Int, ArrayInt);
-%array_class(UInt, ArrayUInt);
-%array_class(Pel, ArrayPel);
+%array_class(Bool,   ArrayBool  );
+%array_class(Char,   ArrayChar  );
+%array_class(UChar,  ArrayUChar );
+%array_class(Short,  ArrayShort );
+%array_class(UShort, ArrayUShort);
+%array_class(Int,    ArrayInt   );
+%array_class(UInt,   ArrayUInt  );
+%array_class(Double, ArrayDouble);
+
+%array_class(Pxl,    ArrayPxl   );
+%array_class(Pel,    ArrayPel   );
+%array_class(TCoeff, ArrayTCoeff);
 
 %array_class(PtrTComInputBitstream, ArrayTComInputBitstream);
-%array_value(TDecSbac, ArrayTDecSbac);
-%array_value(TDecBinCABAC, ArrayTDecBinCABAC);
-%array_value(TComYuv, ArrayTComYuv);
-%array_value(TComDataCU, ArrayTComDataCU);
-%array_value(TComMvField, ArrayTComMvField);
-%array_value(TComMv, ArrayTComMv);
+%array_value(TDecSbac,              ArrayTDecSbac          );
+%array_value(TDecBinCABAC,          ArrayTDecBinCABAC      );
+%array_value(TComYuv,               ArrayTComYuv           );
+%array_value(TComDataCU,            ArrayTComDataCU        );
+%array_value(TComMvField,           ArrayTComMvField       );
+%array_value(TComMv,                ArrayTComMv            );
 
 namespace std {
-  %template(ListTComPic) list<TComPic *>;
+  %template(ListTComPic   ) list<TComPic *>;
   %template(ListTComPicYuv) list<TComPicYuv *>;
 }
-%template(TComListTComPic) TComList<TComPic *>;
+%template(TComListTComPic   ) TComList<TComPic *>;
 %template(TComListTComPicYuv) TComList<TComPicYuv *>;
 
 %template(ParameterSetMapTComVPS) ParameterSetMap<TComVPS>;
@@ -249,7 +255,16 @@ namespace std {
   unsigned char
   digest_get(unsigned char digest[3][16], int i, int j) { return digest[i][j]; }
 
+  Bool   *BoolAdd  (Bool   *base, Int offset) { return base + offset; }
+  Char   *CharAdd   (Char   *base, Int offset) { return base + offset; }
+  UChar  *UCharAdd (UChar  *base, Int offset) { return base + offset; }
+  Short  *ShortAdd (Short  *base, Int offset) { return base + offset; }
+  UShort *UShortAdd(UShort *base, Int offset) { return base + offset; }
+  Int    *IntAdd   (Int    *base, Int offset) { return base + offset; }
+  UInt   *UIntAdd  (UInt   *base, Int offset) { return base + offset; }
+  Double *DoubleAdd(Double *base, Int offset) { return base + offset; }
+
+  Pxl    *PxlAdd   (Pxl    *base, Int offset) { return base + offset; }
+  Pel    *PelAdd   (Pel    *base, Int offset) { return base + offset; }
   TCoeff *TCoeffAdd(TCoeff *base, Int offset) { return base + offset; }
-  Int *IntAdd(Int *base, Int offset) { return base + offset; }
-  Pel *PelAdd(Pel *base, Int offset) { return base + offset; }
 %}

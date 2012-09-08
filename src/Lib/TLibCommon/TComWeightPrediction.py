@@ -10,7 +10,8 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import ArrayPel
+
+from .array import array
 
 # TypeDef.h
 REF_PIC_LIST_0 = 0
@@ -106,17 +107,17 @@ class TComWeightPrediction(object):
     def _addWeightBi(self, pcYuvSrc0, pcYuvSrc1, iPartUnitIdx, iWidth, iHeight, wp0, wp1, rpcYuvDst, bRound=True):
         bRound = 1 if bRound else 0
 
-        pSrcY0 = ArrayPel.frompointer(pcYuvSrc0.getLumaAddr(iPartUnitIdx)); iSrcY0 = 0
-        pSrcU0 = ArrayPel.frompointer(pcYuvSrc0.getCbAddr(iPartUnitIdx)); iSrcU0 = 0
-        pSrcV0 = ArrayPel.frompointer(pcYuvSrc0.getCrAddr(iPartUnitIdx)); iSrcV0 = 0
+        pSrcY0 = array(pcYuvSrc0.getLumaAddr(iPartUnitIdx), type='short *')
+        pSrcU0 = array(pcYuvSrc0.getCbAddr(iPartUnitIdx), type='short *')
+        pSrcV0 = array(pcYuvSrc0.getCrAddr(iPartUnitIdx), type='short *')
 
-        pSrcY1 = ArrayPel.frompointer(pcYuvSrc1.getLumaAddr(iPartUnitIdx)); iSrcY1 = 0
-        pSrcU1 = ArrayPel.frompointer(pcYuvSrc1.getCbAddr(iPartUnitIdx)); iSrcU1 = 0
-        pSrcV1 = ArrayPel.frompointer(pcYuvSrc1.getCrAddr(iPartUnitIdx)); iSrcV1 = 0
+        pSrcY1 = array(pcYuvSrc1.getLumaAddr(iPartUnitIdx), type='short *')
+        pSrcU1 = array(pcYuvSrc1.getCbAddr(iPartUnitIdx), type='short *')
+        pSrcV1 = array(pcYuvSrc1.getCrAddr(iPartUnitIdx), type='short *')
 
-        pDstY = ArrayPel.frompointer(rpcYuvDst.getLumaAddr(iPartUnitIdx)); iDstY = 0
-        pDstU = ArrayPel.frompointer(rpcYuvDst.getCbAddr(iPartUnitIdx)); iDstU = 0
-        pDstV = ArrayPel.frompointer(rpcYuvDst.getCrAddr(iPartUnitIdx)); iDstV = 0
+        pDstY = array(rpcYuvDst.getLumaAddr(iPartUnitIdx), type='short *')
+        pDstU = array(rpcYuvDst.getCbAddr(iPartUnitIdx), type='short *')
+        pDstV = array(rpcYuvDst.getCrAddr(iPartUnitIdx), type='short *')
 
         # Luma : --------------------------------------------
         w0 = wp0[0].w
@@ -133,13 +134,13 @@ class TComWeightPrediction(object):
         for y in xrange(iHeight-1, -1, -1):
             for x in xrange(iWidth-1, -1, -4):
                 # note: luma min width is 4
-                pDstY[iDstY+x  ] = self._weightBidir(w0, pSrcY0[iSrcY0+x  ], w1, pSrcY1[iSrcY1+x  ], round, shift, offset)
-                pDstY[iDstY+x-1] = self._weightBidir(w0, pSrcY0[iSrcY0+x-1], w1, pSrcY1[iSrcY1+x-1], round, shift, offset)
-                pDstY[iDstY+x-2] = self._weightBidir(w0, pSrcY0[iSrcY0+x-2], w1, pSrcY1[iSrcY1+x-2], round, shift, offset)
-                pDstY[iDstY+x-3] = self._weightBidir(w0, pSrcY0[iSrcY0+x-3], w1, pSrcY1[iSrcY1+x-3], round, shift, offset)
-            iSrcY0 += iSrc0Stride
-            iSrcY1 += iSrc1Stride
-            iDstY += iDstStride
+                pDstY[x-0] = self._weightBidir(w0, pSrcY0[x-0], w1, pSrcY1[x-0], round, shift, offset)
+                pDstY[x-1] = self._weightBidir(w0, pSrcY0[x-1], w1, pSrcY1[x-1], round, shift, offset)
+                pDstY[x-2] = self._weightBidir(w0, pSrcY0[x-2], w1, pSrcY1[x-2], round, shift, offset)
+                pDstY[x-3] = self._weightBidir(w0, pSrcY0[x-3], w1, pSrcY1[x-3], round, shift, offset)
+            pSrcY0 += iSrc0Stride
+            pSrcY1 += iSrc1Stride
+            pDstY += iDstStride
 
         # Chroma U : --------------------------------------------
         w0 = wp0[1].w
@@ -158,11 +159,11 @@ class TComWeightPrediction(object):
         for y in xrange(iHeight-1, -1, -1):
             for x in xrange(iWidth-1, -1, -2):
                 # note: chroma min width is 2
-                pDstU[iDstU+x  ] = self._weightBidir(w0, pSrcU0[iSrcU0+x  ], w1, pSrcU1[iSrcU1+x  ], round, shift, offset)
-                pDstU[iDstU+x-1] = self._weightBidir(w0, pSrcU0[iSrcU0+x-1], w1, pSrcU1[iSrcU1+x-1], round, shift, offset)
-            iSrcU0 += iSrc0Stride
-            iSrcU1 += iSrc1Stride
-            iDstU += iDstStride
+                pDstU[x-0] = self._weightBidir(w0, pSrcU0[x-0], w1, pSrcU1[x-0], round, shift, offset)
+                pDstU[x-1] = self._weightBidir(w0, pSrcU0[x-1], w1, pSrcU1[x-1], round, shift, offset)
+            pSrcU0 += iSrc0Stride
+            pSrcU1 += iSrc1Stride
+            pDstU += iDstStride
 
         # Chroma V : --------------------------------------------
         w0 = wp0[2].w
@@ -174,20 +175,20 @@ class TComWeightPrediction(object):
         for y in xrange(iHeight-1, -1, -1):
             for x in xrange(iWidth-1, -1, -2):
                 # note: chroma min width is 2
-                pDstV[iDstV+x  ] = self._weightBidir(w0, pSrcV0[iSrcV0+x  ], w1, pSrcV1[iSrcV1+x  ], round, shift, offset)
-                pDstV[iDstV+x-1] = self._weightBidir(w0, pSrcV0[iSrcV0+x-1], w1, pSrcV1[iSrcV1+x-1], round, shift, offset)
-            iSrcV0 += iSrc0Stride
-            iSrcV1 += iSrc1Stride
-            iDstV += iDstStride
+                pDstV[x-0] = self._weightBidir(w0, pSrcV0[x-0], w1, pSrcV1[x-0], round, shift, offset)
+                pDstV[x-1] = self._weightBidir(w0, pSrcV0[x-1], w1, pSrcV1[x-1], round, shift, offset)
+            pSrcV0 += iSrc0Stride
+            pSrcV1 += iSrc1Stride
+            pDstV += iDstStride
 
     def _addWeightUni(self, pcYuvSrc0, iPartUnitIdx, iWidth, iHeight, wp0, rpcYuvDst):
-        pSrcY0 = ArrayPel.frompointer(pcYuvSrc0.getLumaAddr(iPartUnitIdx)); iSrcY0 = 0
-        pSrcU0 = ArrayPel.frompointer(pcYuvSrc0.getCbAddr(iPartUnitIdx)); iSrcU0 = 0
-        pSrcV0 = ArrayPel.frompointer(pcYuvSrc0.getCrAddr(iPartUnitIdx)); iSrcV0 = 0
+        pSrcY0 = array(pcYuvSrc0.getLumaAddr(iPartUnitIdx), type='short *')
+        pSrcU0 = array(pcYuvSrc0.getCbAddr(iPartUnitIdx), type='short *')
+        pSrcV0 = array(pcYuvSrc0.getCrAddr(iPartUnitIdx), type='short *')
 
-        pDstY = ArrayPel.frompointer(rpcYuvDst.getLumaAddr(iPartUnitIdx)); iDstY = 0
-        pDstU = ArrayPel.frompointer(rpcYuvDst.getCbAddr(iPartUnitIdx)); iDstU = 0
-        pDstV = ArrayPel.frompointer(rpcYuvDst.getCrAddr(iPartUnitIdx)); iDstV = 0
+        pDstY = array(rpcYuvDst.getLumaAddr(iPartUnitIdx), type='short *')
+        pDstU = array(rpcYuvDst.getCbAddr(iPartUnitIdx), type='short *')
+        pDstV = array(rpcYuvDst.getCrAddr(iPartUnitIdx), type='short *')
 
         # Luma : --------------------------------------------
         w0 = wp0[0].w
@@ -202,12 +203,12 @@ class TComWeightPrediction(object):
         for y in xrange(iHeight-1, -1, -1):
             for x in xrange(iWidth-1, -1, -4):
                 # note: luma min width is 4
-                pDstY[iDstY+x  ] = self._weightUnidir(w0, pSrcY0[iSrcY0+x  ], round, shift, offset)
-                pDstY[iDstY+x-1] = self._weightUnidir(w0, pSrcY0[iSrcY0+x-1], round, shift, offset)
-                pDstY[iDstY+x-2] = self._weightUnidir(w0, pSrcY0[iSrcY0+x-2], round, shift, offset)
-                pDstY[iDstY+x-3] = self._weightUnidir(w0, pSrcY0[iSrcY0+x-3], round, shift, offset)
-            iSrcY0 += iSrc0Stride
-            iDstY += iDstStride
+                pDstY[x-0] = self._weightUnidir(w0, pSrcY0[x-0], round, shift, offset)
+                pDstY[x-1] = self._weightUnidir(w0, pSrcY0[x-1], round, shift, offset)
+                pDstY[x-2] = self._weightUnidir(w0, pSrcY0[x-2], round, shift, offset)
+                pDstY[x-3] = self._weightUnidir(w0, pSrcY0[x-3], round, shift, offset)
+            pSrcY0 += iSrc0Stride
+            pDstY += iDstStride
 
         # Chroma U : --------------------------------------------
         w0 = wp0[1].w
@@ -224,10 +225,10 @@ class TComWeightPrediction(object):
         for y in xrange(iHeight-1, -1, -1):
             for x in xrange(iWidth-1, -1, -2):
                 # note: chroma min width is 2
-                pDstU[iDstU+x  ] = self._weightUnidir(w0, pSrcU0[iSrcU0+x  ], round, shift, offset)
-                pDstU[iDstU+x-1] = self._weightUnidir(w0, pSrcU0[iSrcU0+x-1], round, shift, offset)
-            iSrcU0 += iSrc0Stride
-            iDstU += iDstStride
+                pDstU[x-0] = self._weightUnidir(w0, pSrcU0[x-0], round, shift, offset)
+                pDstU[x-1] = self._weightUnidir(w0, pSrcU0[x-1], round, shift, offset)
+            pSrcU0 += iSrc0Stride
+            pDstU += iDstStride
 
         # Chroma V : --------------------------------------------
         w0 = wp0[2].w
@@ -238,10 +239,10 @@ class TComWeightPrediction(object):
         for y in xrange(iHeight-1, -1, -1):
             for x in xrange(iWidth-1, -1, -2):
                 # note: chroma min width is 2
-                pDstV[iDstV+x  ] = self._weightUnidir(w0, pSrcV0[iSrcV0+x  ], round, shift, offset)
-                pDstV[iDstV+x-1] = self._weightUnidir(w0, pSrcV0[iSrcV0+x-1], round, shift, offset)
-            iSrcV0 += iSrc0Stride
-            iDstV += iDstStride
+                pDstV[x-0] = self._weightUnidir(w0, pSrcV0[x-0], round, shift, offset)
+                pDstV[x-1] = self._weightUnidir(w0, pSrcV0[x-1], round, shift, offset)
+            pSrcV0 += iSrc0Stride
+            pDstV += iDstStride
 
     def _xClip(self, x):
         max = cvar.g_uiIBDI_MAX

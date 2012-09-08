@@ -48,8 +48,8 @@ else:
     from ..TLibCommon.TComPrediction import TComPrediction
 #   from swig.hevc import TComPrediction
     from ..TLibCommon.TComTrQuant import TComTrQuant
-#   from swig.hevc import TComTrQuant
     from ..TLibCommon.TComLoopFilter import TComLoopFilter
+#   from ..TLibCommon.TComSampleAdaptiveOffset import TComSampleAdaptiveOffset
     from swig.hevc import TComSampleAdaptiveOffset
     from swig.hevc import TComPic
 

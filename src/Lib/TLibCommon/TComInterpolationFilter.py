@@ -10,7 +10,8 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import ArrayPel, PelAdd
+
+from .array import array
 
 # TComInterpolationFilter.h
 NTAPS_LUMA = 8
@@ -45,26 +46,26 @@ class TComInterpolationFilter(object):
 
     @staticmethod
     def filterCopy(src, srcStride, dst, dstStride, width, height, isFirst, isLast):
-        pSrc = ArrayPel.frompointer(src); iSrc = 0
-        pDst = ArrayPel.frompointer(dst); iDst = 0
+        src = array(src.cast(), type='short *')
+        dst = array(dst, type='short *')
 
         if isFirst == isLast:
             for row in xrange(height):
                 for col in xrange(width):
-                    pDst[iDst+col] = pSrc[iSrc+col]
+                    dst[col] = src[col]
 
-                iSrc += srcStride
-                iDst += dstStride
+                src += srcStride
+                dst += dstStride
         elif isFirst:
             shift = IF_INTERNAL_PREC - (cvar.g_uiBitDepth + cvar.g_uiBitIncrement)
 
             for row in xrange(height):
                 for col in xrange(width):
-                    val = pSrc[iSrc+col] << shift
-                    pDst[iDst+col] = val - IF_INTERNAL_OFFS
+                    val = src[col] << shift
+                    dst[col] = val - IF_INTERNAL_OFFS
 
-                iSrc += srcStride
-                iDst += dstStride
+                src += srcStride
+                dst += dstStride
         else:
             shift = IF_INTERNAL_PREC - (cvar.g_uiBitDepth + cvar.g_uiBitIncrement)
             offset = IF_INTERNAL_OFFS
@@ -73,21 +74,21 @@ class TComInterpolationFilter(object):
             minVal = 0
             for row in xrange(height):
                 for col in xrange(width):
-                    val = pSrc[iSrc+col]
+                    val = src[col]
                     val = (val + offset) >> shift
                     if val < minVal:
                         val = minVal
                     if val > maxVal:
                         val = maxVal
-                    pDst[iDst+col] = val
+                    dst[col] = val
 
-                iSrc += srcStride
-                iDst += dstStride
+                src += srcStride
+                dst += dstStride
 
     @staticmethod
     def filter(N, isVertical, isFirst, isLast):
         def _filter(src, srcStride, dst, dstStride, width, height, coeff):
-            c = [0,0,0,0,0,0,0,0]
+            c = 8 * [0]
             c[0] = coeff[0]
             c[1] = coeff[1]
             if N >= 4:
@@ -101,10 +102,9 @@ class TComInterpolationFilter(object):
                 c[7] = coeff[7]
 
             cStride = srcStride if isVertical else 1
-            src = PelAdd(src, -(N/2-1)*cStride)
-
-            pSrc = ArrayPel.frompointer(src); iSrc = 0
-            pDst = ArrayPel.frompointer(dst); iDst = 0
+            src -= (N/2 - 1) * cStride
+            src = array(src.cast(), type='short *')
+            dst = array(dst, type='short *')
 
             offset = 0
             maxVal = 0
@@ -122,26 +122,26 @@ class TComInterpolationFilter(object):
 
             for row in xrange(height):
                 for col in xrange(width):
-                    sum = pSrc[iSrc + col + 0 * cStride] * c[0]
-                    sum += pSrc[iSrc + col + 1 * cStride] * c[1]
+                    sum  = src[col + 0 * cStride] * c[0]
+                    sum += src[col + 1 * cStride] * c[1]
                     if N >= 4:
-                        sum += pSrc[iSrc + col + 2 * cStride] * c[2]
-                        sum += pSrc[iSrc + col + 3 * cStride] * c[3]
+                        sum += src[col + 2 * cStride] * c[2]
+                        sum += src[col + 3 * cStride] * c[3]
                     if N >= 6:
-                        sum += pSrc[iSrc + col + 4 * cStride] * c[4]
-                        sum += pSrc[iSrc + col + 5 * cStride] * c[5]
+                        sum += src[col + 4 * cStride] * c[4]
+                        sum += src[col + 5 * cStride] * c[5]
                     if N == 8:
-                        sum += pSrc[iSrc + col + 6 * cStride] * c[6]
-                        sum += pSrc[iSrc + col + 7 * cStride] * c[7]
+                        sum += src[col + 6 * cStride] * c[6]
+                        sum += src[col + 7 * cStride] * c[7]
 
                     val = (sum + offset) >> shift
                     if isLast:
                         val = (0 if val < 0 else val)
                         val = (maxVal if val > maxVal else val)
-                    pDst[iDst+col] = val
+                    dst[col] = val
 
-                iSrc += srcStride
-                iDst += dstStride
+                src += srcStride
+                dst += dstStride
         return _filter
 
     @staticmethod

@@ -12,22 +12,14 @@ if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
-
-    from swig.hevc import ArrayBool
     from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
 else:
     sys.path.insert(0, '../../..')
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
-
-    from swig.hevc import ArrayBool
     from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
 
-dump_cu = False
-if dump_cu:
-    from ..TLibCommon.TComDump import dumpCU
-else:
-    def dumpCU(pcCU): pass
+from ..TLibCommon.array import array
 
 # TypeDef.h
 MAX_NUM_SPS = 32
@@ -36,6 +28,15 @@ MAX_NUM_VPS = 16
 # TypeDef.h
 B_SLICE = 0
 P_SLICE = 1
+
+dump_cu = True
+if dump_cu:
+    from ..TLibCommon.TComDump import dumpCU as _dumpCU
+    def dumpCU(pcCU):
+        if pcCU.getPic().getPOC() == 22:
+            _dumpCU(pcCU)
+else:
+    def dumpCU(pcCU): pass
 
 
 class TDecSlice(object):
@@ -218,7 +219,7 @@ class TDecSlice(object):
             if pcSlice.getSPS().getUseSAO() and \
                (pcSlice.getSaoEnabledFlag() or pcSlice.getSaoEnabledFlagChroma()):
                 saoParam = rpcPic.getPicSym().getSaoParam()
-                abSaoFlag = ArrayBool.frompointer(saoParam.bSaoFlag)
+                abSaoFlag = array(saoParam.bSaoFlag, type='bool *')
                 abSaoFlag[0] = pcSlice.getSaoEnabledFlag()
                 if iCUAddr == iStartCUAddr:
                     abSaoFlag[1] = pcSlice.getSaoEnabledFlagChroma()

@@ -11,8 +11,9 @@ if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
     from swig.hevc import TComMv
-    from swig.hevc import ArrayTComMvField, ArrayUChar, ArrayUInt
-    from swig.hevc import TCoeffAdd
+    from swig.hevc import ArrayTComMvField, ArrayUChar
+
+from ..TLibCommon.array import array
 
 # TypeDef.h
 SIZE_2Nx2N = 0
@@ -29,7 +30,7 @@ AM_EXPL = 1
 NOT_VALID = -1
 MRG_MAX_NUM_CANDS = 5
 # TComRom.h
-g_auiPUOffset = ArrayUInt.frompointer(cvar.g_auiPUOffset)
+g_auiPUOffset = (0, 8, 4, 4, 2, 10, 1, 5)
 
 
 class TDecEntropy(object):
@@ -292,9 +293,9 @@ class TDecEntropy(object):
             uiLumaTrMode, uiChromaTrMode = \
                 pcCU.convertTransIdx(uiStartAbsPartIdx, uiTrDepth, uiLumaTrMode, uiChromaTrMode)
             for ui in xrange(4 * uiQPartNum):
-                cbfY = ArrayUChar.frompointer(pcCU.getCbf(TEXT_LUMA))
-                cbfU = ArrayUChar.frompointer(pcCU.getCbf(TEXT_CHROMA_U))
-                cbfV = ArrayUChar.frompointer(pcCU.getCbf(TEXT_CHROMA_V))
+                cbfY = array(pcCU.getCbf(TEXT_LUMA), type='uchar *')
+                cbfU = array(pcCU.getCbf(TEXT_CHROMA_U), type='uchar *')
+                cbfV = array(pcCU.getCbf(TEXT_CHROMA_V), type='uchar *')
                 cbfY[uiStartAbsPartIdx + ui] |= uiYCbf << uiLumaTrMode
                 cbfU[uiStartAbsPartIdx + ui] |= uiUCbf << uiChromaTrMode
                 cbfV[uiStartAbsPartIdx + ui] |= uiVCbf << uiChromaTrMode
@@ -333,16 +334,19 @@ class TDecEntropy(object):
             if cbfY:
                 trWidth = uiWidth
                 trHeight = uiHeight
-                self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU, TCoeffAdd(pcCU.getCoeffY(), offsetLuma),
+                self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU,
+                    array(pcCU.getCoeffY(), base=offsetLuma, type='int *').cast(),
                     uiAbsPartIdx, trWidth, trHeight, uiDepth, TEXT_LUMA)
             if uiLog2TrafoSize > 2:
                 trWidth = uiWidth >> 1
                 trHeight = uiHeight >> 1
                 if cbfU:
-                    self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU, TCoeffAdd(pcCU.getCoeffCb(), offsetChroma),
+                    self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU,
+                        array(pcCU.getCoeffCb(), base=offsetChroma, type='int *').cast(),
                         uiAbsPartIdx, trWidth, trHeight, uiDepth, TEXT_CHROMA_U)
                 if cbfV:
-                    self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU, TCoeffAdd(pcCU.getCoeffCr(), offsetChroma),
+                    self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU,
+                        array(pcCU.getCoeffCr(), base=offsetChroma, type='int *').cast(),
                         uiAbsPartIdx, trWidth, trHeight, uiDepth, TEXT_CHROMA_V)
             else:
                 partNum = pcCU.getPic().getNumPartInCU() >> ((uiDepth-1) << 1)
@@ -350,10 +354,12 @@ class TDecEntropy(object):
                     trWidth = uiWidth
                     trHeight = uiHeight
                     if cbfU:
-                        self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU, TCoeffAdd(pcCU.getCoeffCb(), self.m_uiBakChromaOffset),
+                        self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU,
+                            array(pcCU.getCoeffCb(), base=self.m_uiBakChromaOffset, type='int *').cast(),
                             self.m_uiBakAbsPartIdx, trWidth, trHeight, uiDepth, TEXT_CHROMA_U)
                     if cbfV:
-                        self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU, TCoeffAdd(pcCU.getCoeffCr(), self.m_uiBakChromaOffset),
+                        self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU,
+                            array(pcCU.getCoeffCr(), base=self.m_uiBakChromaOffset, type='int *').cast(),
                             self.m_uiBakAbsPartIdx, trWidth, trHeight, uiDepth, TEXT_CHROMA_V)
             # transform_unit end
 

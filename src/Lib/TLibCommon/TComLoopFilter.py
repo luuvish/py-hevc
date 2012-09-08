@@ -11,7 +11,9 @@ if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
     from swig.hevc import LFCUParam
-    from swig.hevc import ArrayUInt, ArrayUChar, ArrayBool, ArrayPel, PelAdd
+    from swig.hevc import ArrayUInt
+
+from .array import array
 
 # TypeDef.h
 SIZE_2Nx2N = 0
@@ -36,7 +38,12 @@ g_auiZscanToRaster = ArrayUInt.frompointer(cvar.g_auiZscanToRaster)
 g_auiRasterToZscan = ArrayUInt.frompointer(cvar.g_auiRasterToZscan)
 g_auiRasterToPelX = ArrayUInt.frompointer(cvar.g_auiRasterToPelX)
 g_auiRasterToPelY = ArrayUInt.frompointer(cvar.g_auiRasterToPelY)
-g_aucChromaScale = ArrayUChar.frompointer(cvar.g_aucChromaScale)
+g_aucChromaScale= (
+     0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,
+    17,18,19,20,21,22,23,24,25,26,27,28,29,29,30,31,32,
+    33,33,34,34,35,35,36,36,37,37,38,39,40,41,42,43,44,
+    45,46,47,48,49,50,51
+)
 
 # TComLoopFilter.h
 DEBLOCK_SMALLEST_BLOCK = 8
@@ -76,8 +83,8 @@ class TComLoopFilter(object):
         self.m_tcOffsetDiv2 = 0
 
         self.m_uiNumPartitions = 0
-        self.m_aapucBS = [None, None]
-        self.m_aapbEdgeFilter = [[None, None, None], [None, None, None]]
+        self.m_aapucBS = 2 * [None]
+        self.m_aapbEdgeFilter = [[None, None, None] for x in xrange(2)]
         self.m_stLFCUParam = LFCUParam()
 
         self.m_bLFCrossTileBoundary = True
@@ -86,9 +93,9 @@ class TComLoopFilter(object):
         self.destroy()
         self.m_uiNumPartitions = 1 << (uiMaxCUDepth << 1)
         for uiDir in xrange(2):
-            self.m_aapucBS[uiDir] = ArrayUChar(self.m_uiNumPartitions)
+            self.m_aapucBS[uiDir] = self.m_uiNumPartitions * [0]
             for uiPlane in xrange(3):
-                self.m_aapbEdgeFilter[uiDir][uiPlane] = ArrayBool(self.m_uiNumPartitions)
+                self.m_aapbEdgeFilter[uiDir][uiPlane] = self.m_uiNumPartitions * [False]
 
     def destroy(self):
         for uiDir in xrange(2):
@@ -419,7 +426,7 @@ class TComLoopFilter(object):
     def _xEdgeFilterLuma(self, pcCU, uiAbsZorderIdx, uiDepth, iDir, iEdge):
         pcPicYuvRec = pcCU.getPic().getPicYuvRec()
         piSrc = pcPicYuvRec.getLumaAddr(pcCU.getAddr(), uiAbsZorderIdx)
-        piTmpSrc = piSrc
+        piTmpSrc = array(piSrc, type='short *')
 
         iStride = pcPicYuvRec.getStride()
         iQP = 0
@@ -445,11 +452,11 @@ class TComLoopFilter(object):
         if iDir == EDGE_VER:
             iOffset = 1
             iSrcStep = iStride
-            piTmpSrc = PelAdd(piTmpSrc, iEdge * uiPelsInPart)
+            piTmpSrc += iEdge * uiPelsInPart
         else: # (iDir == EDGE_HOR)
             iOffset = iStride
             iSrcStep = 1
-            piTmpSrc = PelAdd(piTmpSrc, iEdge * uiPelsInPart * iStride)
+            piTmpSrc += iEdge * uiPelsInPart * iStride
 
         for iIdx in xrange(uiNumParts):
             uiBsAbsIdx = self._xCalcBsIdx(pcCU, uiAbsZorderIdx, iDir, iEdge, iIdx)
@@ -484,10 +491,10 @@ class TComLoopFilter(object):
 
                 uiBlocksInPart = uiPelsInPart / 4 if uiPelsInPart / 4 else 1
                 for iBlkIdx in xrange(uiBlocksInPart):
-                    dp0 = self._xCalcDP(PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 0)), iOffset)
-                    dq0 = self._xCalcDQ(PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 0)), iOffset)
-                    dp3 = self._xCalcDP(PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 3)), iOffset)
-                    dq3 = self._xCalcDQ(PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 3)), iOffset)
+                    dp0 = self._xCalcDP(piTmpSrc + iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 0), iOffset)
+                    dq0 = self._xCalcDQ(piTmpSrc + iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 0), iOffset)
+                    dp3 = self._xCalcDP(piTmpSrc + iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 3), iOffset)
+                    dq3 = self._xCalcDQ(piTmpSrc + iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 3), iOffset)
                     d0 = dp0 + dq0
                     d3 = dp3 + dq3
 
@@ -506,12 +513,12 @@ class TComLoopFilter(object):
                         bFilterP = dp < iSideThreshold
                         bFilterQ = dq < iSideThreshold
 
-                        sw = self._xUseStrongFiltering(iOffset, 2*d0, iBeta, iTc, PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 0))) and \
-                             self._xUseStrongFiltering(iOffset, 2*d3, iBeta, iTc, PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 3)))
+                        sw = self._xUseStrongFiltering(iOffset, 2*d0, iBeta, iTc, piTmpSrc + iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 0)) and \
+                             self._xUseStrongFiltering(iOffset, 2*d3, iBeta, iTc, piTmpSrc + iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + 3))
 
                         for i in xrange(DEBLOCK_SMALLEST_BLOCK/2):
                             self._xPelFilterLuma(
-                                PelAdd(piTmpSrc, iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + i)),
+                                piTmpSrc + iSrcStep * (iIdx * uiPelsInPart + iBlkIdx * 4 + i),
                                 iOffset, d, iBeta, iTc, sw, bPartPNoFilter, bPartQNoFilter, iThrCut, bFilterP, bFilterQ)
                
     def _xEdgeFilterChroma(self, pcCU, uiAbsZorderIdx, uiDepth, iDir, iEdge):
@@ -553,19 +560,19 @@ class TComLoopFilter(object):
         uiBsAbsIdx = 0
         ucBs = 0
 
-        piTmpSrcCb = piSrcCb
-        piTmpSrcCr = piSrcCr
+        piTmpSrcCb = array(piSrcCb, type='short *')
+        piTmpSrcCr = array(piSrcCr, type='short *')
 
         if iDir == EDGE_VER:
             iOffset = 1
             iSrcStep = iStride
-            piTmpSrcCb = PelAdd(piTmpSrcCb, iEdge * uiPelsInPartChroma)
-            piTmpSrcCr = PelAdd(piTmpSrcCr, iEdge * uiPelsInPartChroma)
+            piTmpSrcCb += iEdge * uiPelsInPartChroma
+            piTmpSrcCr += iEdge * uiPelsInPartChroma
         else: # (iDir == EDGE_HOR)
             iOffset = iStride
             iSrcStep = 1
-            piTmpSrcCb = PelAdd(piTmpSrcCb, iEdge * iStride * uiPelsInPartChroma)
-            piTmpSrcCr = PelAdd(piTmpSrcCr, iEdge * iStride * uiPelsInPartChroma)
+            piTmpSrcCb += iEdge * iStride * uiPelsInPartChroma
+            piTmpSrcCr += iEdge * iStride * uiPelsInPartChroma
 
         for iIdx in xrange(uiNumParts):
             ucBs = 0
@@ -606,93 +613,93 @@ class TComLoopFilter(object):
                 bPartQNoFilter = bPartQNoFilter or pcCUQ.isLosslessCoded(uiPartQIdx)
                 for uiStep in xrange(uiPelsInPartChroma):
                     self._xPelFilterChroma(
-                        PelAdd(piTmpSrcCb, iSrcStep * (uiStep + iIdx * uiPelsInPartChroma)),
+                        piTmpSrcCb + iSrcStep * (uiStep + iIdx * uiPelsInPartChroma),
                         iOffset, iTc, bPartPNoFilter, bPartQNoFilter)
                     self._xPelFilterChroma(
-                        PelAdd(piTmpSrcCr, iSrcStep * (uiStep + iIdx * uiPelsInPartChroma)),
+                        piTmpSrcCr + iSrcStep * (uiStep + iIdx * uiPelsInPartChroma),
                         iOffset, iTc, bPartPNoFilter, bPartQNoFilter)
 
     def _xPelFilterLuma(self, piSrc, iOffset, d, beta, tc, sw,
                         bPartPNoFilter, bPartQNoFilter, iThrCut, bFilterSecondP, bFilterSecondQ):
-        pSrc = ArrayPel.frompointer(PelAdd(piSrc, -iOffset*4))
+        piSrc = array(piSrc, bias=-iOffset*4, type='short *')
 
-        m4 = pSrc[iOffset*4+0]
-        m3 = pSrc[iOffset*4-iOffset]
-        m5 = pSrc[iOffset*4+iOffset]
-        m2 = pSrc[iOffset*4-iOffset*2]
-        m6 = pSrc[iOffset*4+iOffset*2]
-        m1 = pSrc[iOffset*4-iOffset*3]
-        m7 = pSrc[iOffset*4+iOffset*3]
-        m0 = pSrc[iOffset*4-iOffset*4]
+        m4 = piSrc[+iOffset*0]
+        m3 = piSrc[-iOffset*1]
+        m5 = piSrc[+iOffset*1]
+        m2 = piSrc[-iOffset*2]
+        m6 = piSrc[+iOffset*2]
+        m1 = piSrc[-iOffset*3]
+        m7 = piSrc[+iOffset*3]
+        m0 = piSrc[-iOffset*4]
 
         if sw:
-            pSrc[iOffset*4-iOffset]   = Clip3(m3-2*tc, m3+2*tc, (m1+2*m2+2*m3+2*m4+m5+4) >> 3)
-            pSrc[iOffset*4+0]         = Clip3(m4-2*tc, m4+2*tc, (m2+2*m3+2*m4+2*m5+m6+4) >> 3)
-            pSrc[iOffset*4-iOffset*2] = Clip3(m2-2*tc, m2+2*tc, (m1+m2+m3+m4+2) >> 2)
-            pSrc[iOffset*4+iOffset]   = Clip3(m5-2*tc, m5+2*tc, (m3+m4+m5+m6+2) >> 2)
-            pSrc[iOffset*4-iOffset*3] = Clip3(m1-2*tc, m1+2*tc, (2*m0+3*m1+m2+m3+m4+4) >> 3)
-            pSrc[iOffset*4+iOffset*2] = Clip3(m6-2*tc, m6+2*tc, (m3+m4+m5+3*m6+2*m7+4) >> 3)
+            piSrc[-iOffset*1] = Clip3(m3-2*tc, m3+2*tc, (m1+2*m2+2*m3+2*m4+m5+4) >> 3)
+            piSrc[+iOffset*0] = Clip3(m4-2*tc, m4+2*tc, (m2+2*m3+2*m4+2*m5+m6+4) >> 3)
+            piSrc[-iOffset*2] = Clip3(m2-2*tc, m2+2*tc, (m1+m2+m3+m4+2) >> 2)
+            piSrc[+iOffset*1] = Clip3(m5-2*tc, m5+2*tc, (m3+m4+m5+m6+2) >> 2)
+            piSrc[-iOffset*3] = Clip3(m1-2*tc, m1+2*tc, (2*m0+3*m1+m2+m3+m4+4) >> 3)
+            piSrc[+iOffset*2] = Clip3(m6-2*tc, m6+2*tc, (m3+m4+m5+3*m6+2*m7+4) >> 3)
         else:
             # Weak filter
             delta = (9*(m4-m3) - 3*(m5-m2) + 8) >> 4
 
             if abs(delta) < iThrCut:
                 delta = Clip3(-tc, tc, delta)
-                pSrc[iOffset*4-iOffset] = Clip(m3+delta)
-                pSrc[iOffset*4+0] = Clip(m4-delta)
+                piSrc[-iOffset*1] = Clip(m3+delta)
+                piSrc[+iOffset*0] = Clip(m4-delta)
 
                 tc2 = tc >> 1
                 if bFilterSecondP:
                     delta1 = Clip3(-tc2, tc2, (((m1+m3+1)>>1) - m2 + delta) >> 1)
-                    pSrc[iOffset*4-iOffset*2] = Clip(m2+delta1)
+                    piSrc[-iOffset*2] = Clip(m2+delta1)
                 if bFilterSecondQ:
                     delta2 = Clip3(-tc2, tc2, (((m6+m4+1)>>1) - m5 - delta) >> 1)
-                    pSrc[iOffset*4+iOffset] = Clip(m5+delta2)
+                    piSrc[+iOffset*1] = Clip(m5+delta2)
 
         if bPartPNoFilter:
-            pSrc[iOffset*4-iOffset] = m3
-            pSrc[iOffset*4-iOffset*2] = m2
-            pSrc[iOffset*4-iOffset*3] = m1
+            piSrc[-iOffset*1] = m3
+            piSrc[-iOffset*2] = m2
+            piSrc[-iOffset*3] = m1
         if bPartQNoFilter:
-            pSrc[iOffset*4+0] = m4
-            pSrc[iOffset*4+iOffset] = m5
-            pSrc[iOffset*4+iOffset*2] = m6
+            piSrc[+iOffset*0] = m4
+            piSrc[+iOffset*1] = m5
+            piSrc[+iOffset*2] = m6
 
     def _xPelFilterChroma(self, piSrc, iOffset, tc, bPartPNoFilter, bPartQNoFilter):
-        pSrc = ArrayPel.frompointer(PelAdd(piSrc, -iOffset*2))
+        piSrc = array(piSrc, bias=-iOffset*2, type='short *')
 
-        m4 = pSrc[iOffset*2+0]
-        m3 = pSrc[iOffset*2-iOffset]
-        m5 = pSrc[iOffset*2+iOffset]
-        m2 = pSrc[iOffset*2-iOffset*2]
+        m4 = piSrc[+iOffset*0]
+        m3 = piSrc[-iOffset*1]
+        m5 = piSrc[+iOffset*1]
+        m2 = piSrc[-iOffset*2]
 
         delta = Clip3(-tc, tc, (((m4-m3)<<2) + m2 - m5 + 4) >> 3)
-        pSrc[iOffset*2-iOffset] = Clip(m3+delta)
-        pSrc[iOffset*2+0] = Clip(m4-delta)
+        piSrc[-iOffset*1] = Clip(m3+delta)
+        piSrc[+iOffset*0] = Clip(m4-delta)
 
         if bPartPNoFilter:
-            pSrc[iOffset*2-iOffset] = m3
+            piSrc[-iOffset*1] = m3
         if bPartQNoFilter:
-            pSrc[iOffset*2+0] = m4
+            piSrc[+iOffset*0] = m4
 
     def _xUseStrongFiltering(self, offset, d, beta, tc, piSrc):
-        pSrc = ArrayPel.frompointer(PelAdd(piSrc, -offset*4))
+        piSrc = array(piSrc, bias=-offset*4, type='short *')
 
-        m4 = pSrc[offset*4+0]
-        m3 = pSrc[offset*4-offset]
-        m7 = pSrc[offset*4+offset*3]
-        m0 = pSrc[offset*4-offset*4]
+        m4 = piSrc[+offset*0]
+        m3 = piSrc[-offset*1]
+        m7 = piSrc[+offset*3]
+        m0 = piSrc[-offset*4]
 
         d_strong = abs(m0-m3) + abs(m7-m4)
 
         return d_strong < (beta>>3) and d < (beta>>2) and abs(m3-m4) < ((tc*5+1)>>1)
 
     def _xCalcDP(self, piSrc, iOffset):
-        pSrc = ArrayPel.frompointer(PelAdd(piSrc, -iOffset*3))
+        piSrc = array(piSrc, bias=-iOffset*3, type='short *')
 
-        return abs(pSrc[iOffset*3-iOffset*3] - 2*pSrc[iOffset*3-iOffset*2] + pSrc[iOffset*3-iOffset])
+        return abs(piSrc[-iOffset*3] - 2*piSrc[-iOffset*2] + piSrc[-iOffset*1])
 
     def _xCalcDQ(self, piSrc, iOffset):
-        pSrc = ArrayPel.frompointer(piSrc)
+        piSrc = array(piSrc, type='short *')
 
-        return abs(pSrc[0] - 2*pSrc[iOffset] + pSrc[iOffset*2])
+        return abs(piSrc[+iOffset*0] - 2*piSrc[+iOffset*1] + piSrc[+iOffset*2])

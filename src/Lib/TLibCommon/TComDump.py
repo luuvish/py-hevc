@@ -10,7 +10,9 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import ArrayUInt, ArrayInt, ArrayPel
+    from swig.hevc import ArrayUInt
+
+from .array import array
 
 g_auiRasterToZscan = ArrayUInt.frompointer(cvar.g_auiRasterToZscan)
 
@@ -114,9 +116,9 @@ def dumpCU(pcCU):
 
     if True:
         fpCU.write('tcoeff\n')
-        tc = (ArrayInt.frompointer(pcCU.getCoeffY()),
-              ArrayInt.frompointer(pcCU.getCoeffCb()),
-              ArrayInt.frompointer(pcCU.getCoeffCr()))
+        tc = (array(pcCU.getCoeffY(), type='int *'),
+              array(pcCU.getCoeffCb(), type='int *'),
+              array(pcCU.getCoeffCr(), type='int *'))
         for y in xrange(height):
             for x in xrange(width):
                 fpCU.write('%-03x ' % tc[0][y * width + x])
@@ -134,9 +136,9 @@ def dumpCU(pcCU):
         fpCU.write('reconst\n')
         zorder = pcCU.getZorderIdxInCU()
         pic = pcCU.getPic().getPicYuvRec()
-        yuv = (ArrayPel.frompointer(pic.getLumaAddr(cua, zorder)),
-               ArrayPel.frompointer(pic.getCbAddr(cua, zorder)),
-               ArrayPel.frompointer(pic.getCrAddr(cua, zorder)))
+        yuv = (array(pic.getLumaAddr(cua, zorder), type='short *'),
+               array(pic.getCbAddr(cua, zorder), type='short *'),
+               array(pic.getCrAddr(cua, zorder), type='short *'))
         stride = (pic.getStride(), pic.getCStride())
         for y in xrange(height):
             for x in xrange(width):

@@ -8,10 +8,14 @@ Lib/TLibDecoder/TDecGop.py
 Lib/TLibDecoder/TDecSlice.py
 Lib/TLibDecoder/TDecCu.py
 Lib/TLibDecoder/TDecEntropy.py
+Lib/TLibDecoder/TDecCAVLC.py
+Lib/TLibDecoder/TDecSbac.py
+Lib/TLibDecoder/TDecBinCoderCABAC.py
 
-Lib/TLibCommon/TComPrediction.py, TComWeightPrediction.py
+Lib/TLibCommon/TComPrediction.py, TComWeightPrediction.py < TDecEntropy.py
 Lib/TLibCommon/TComInterpolationFilter.py
 Lib/TLibCommon/TComTrQuant.py
 Lib/TLibCommon/TComLoopFilter.py
-Lib/TLibCommon/TComSampleAdaptiveOffset.py
+Lib/TLibCommon/TComSampleAdaptiveOffset.py < TComPicSym.py
 
+Lib/TLibCommon/TComYuv.py

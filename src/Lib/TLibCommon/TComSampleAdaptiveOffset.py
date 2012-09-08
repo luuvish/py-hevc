@@ -10,15 +10,9 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import SIZE_NONE, SIZE_2Nx2N, SIZE_2NxN, SIZE_Nx2N, SIZE_NxN, \
-                          SIZE_2NxnU, SIZE_2NxnD, SIZE_nLx2N, SIZE_nRx2N
-    from swig.hevc import MAX_QP, MIN_QP
-    from swig.hevc import TEXT_LUMA
-    from swig.hevc import REF_PIC_LIST_0, REF_PIC_LIST_1
+    from swig.hevc import ArrayInt, ArrayPel
 
-    from swig.hevc import LFCUParam
-    from swig.hevc import ArrayUInt, ArrayUChar, ArrayBool, ArrayPel, PelAdd
-
+# TypeDef.h
 SAO_EO_LEN = 4
 SAO_BO_LEN = 4
 SAO_MAX_BO_CLASSES = 32
@@ -28,29 +22,21 @@ SAO_EO_2 = 2
 SAO_EO_3 = 3
 SAO_BO = 4
 MAX_NUM_SAO_TYPE = 5
-
-# TypeDef.h
-SIZE_2Nx2N = 0
-SIZE_2NxN = 1
-SIZE_Nx2N = 2
-SIZE_NxN = 3
-SIZE_2NxnU = 4
-SIZE_2NxnD = 5
-SIZE_nLx2N = 6
-SIZE_nRx2N = 7
-SIZE_NONE = 15
-TEXT_LUMA = 0
-REF_PIC_LIST_0 = 0
-REF_PIC_LIST_1 = 1
 # CommonDef.h
-MIN_QP = 0
-MAX_QP = 51
+MAX_INT = 2147483647
+MAX_DOUBLE = 1.7e+308
 # TComRom.h
-#g_auiZscanToRaster = ArrayUInt.frompointer(cvar.g_auiZscanToRaster)
-#g_auiRasterToZscan = ArrayUInt.frompointer(cvar.g_auiRasterToZscan)
-#g_auiRasterToPelX = ArrayUInt.frompointer(cvar.g_auiRasterToPelX)
-#g_auiRasterToPelY = ArrayUInt.frompointer(cvar.g_auiRasterToPelY)
-#g_aucChromaScale = ArrayUChar.frompointer(cvar.g_aucChromaScale)
+
+# TComDataCU.h
+SGU_L = 0
+SGU_R = 1
+SGU_T = 2
+SGU_B = 3
+SGU_TL = 4
+SGU_TR = 5
+SGU_BL = 6
+SGU_BR = 7
+# NUM_SGU_BORDER
 
 # TComSampleAdaptiveOffset.h
 SAO_MAX_DEPTH = 4
@@ -59,11 +45,12 @@ LUMA_GROUP_NUM = 1 << SAO_BO_BITS
 MAX_NUM_SAO_OFFSETS = 4
 MAX_NUM_SAO_CLASS = 33
 
-def xSign(x):
-    return (x >> 31) | ((-x) >> 31)
+xSign = lambda x: (x >> 31) | ((-x) >> 31)
+
+logf = lambda x: x
 
 
-class TComSampleAdaptiveOffet(object):
+class TComSampleAdaptiveOffset(object):
 
     m_uiMaxDepth = SAO_MAX_DEPTH
 
@@ -99,7 +86,7 @@ class TComSampleAdaptiveOffet(object):
         self.m_pcPic = None
 
         self.m_iOffsetBo = None
-        self.m_iOffsetEo[LUMA_GROUP_NUM]
+        self.m_iOffsetEo = LUMA_GROUP_NUM * [0]
 
         self.m_iPicWidth = 0
         self.m_iPicHeight = 0
@@ -109,7 +96,7 @@ class TComSampleAdaptiveOffet(object):
         self.m_iNumCuInWidth = 0
         self.m_iNumCuInHeight = 0
         self.m_iNumTotalParts = 0
-        m_iNumClass[MAX_NUM_SAO_TYPE]
+
         self.m_eSliceType = 0
         self.m_iPicNalReferenceIdc = 0
 
@@ -122,7 +109,7 @@ class TComSampleAdaptiveOffet(object):
         self.m_iUpBuff1 = None
         self.m_iUpBuff2 = None
         self.m_iUpBufft = None
-        self.ipSwap = None
+    #   self.ipSwap = None
         self.m_bUseNIF = False
         self.m_uiNumSlicesInPic = 0
         self.m_iSGDepth = 0
@@ -176,7 +163,7 @@ class TComSampleAdaptiveOffet(object):
         iCRangeExt = uiMaxY >> 1
 
         self.m_pClipTableBase = ArrayPel(uiMaxY + 2 * iCRangeExt)
-        self.m_iOffsetBo = ArrayPel(uiMaxY + 2 * iCRangeExt)
+        self.m_iOffsetBo = ArrayInt(uiMaxY + 2 * iCRangeExt)
 
         for i in xrange(uiMinY+iCRangeExt):
             self.m_pClipTableBase[i] = uiMinY
@@ -289,7 +276,9 @@ class TComSampleAdaptiveOffet(object):
 
             pSaoPart.DownPartsIdx[0] = self.convertLevelRowCol2Idx(DownLevel, iDownRowIdx, iDownColIdx)
 
-            self.initSAOParam(pcSaoParam, DownLevel, iDownRowIdx, iDownColIdx, iPartIdx, DownStartCUX, DownEndCUX, DownStartCUY, DownEndCUY, iYCbCr)
+            self.initSAOParam(pcSaoParam,
+                DownLevel, iDownRowIdx, iDownColIdx, iPartIdx,
+                DownStartCUX, DownEndCUX, DownStartCUY, DownEndCUY, iYCbCr)
 
             DownStartCUX = StartCUX + NumCULeft
             DownEndCUX = EndCUX
@@ -300,7 +289,9 @@ class TComSampleAdaptiveOffet(object):
 
             pSaoPart.DownPartsIdx[1] = self.convertLevelRowCol2Idx(DownLevel, iDownRowIdx, iDownColIdx)
 
-            self.initSAOParam(pcSaoParam, DownLevel, iDownRowIdx, iDownColIdx, iPartIdx, DownStartCUX, DownEndCUX, DownStartCUY, DownEndCUY, iYCbCr)
+            self.initSAOParam(pcSaoParam,
+                DownLevel, iDownRowIdx, iDownColIdx, iPartIdx,
+                DownStartCUX, DownEndCUX, DownStartCUY, DownEndCUY, iYCbCr)
 
             DownStartCUX = StartCUX
             DownEndCUX = DownStartCUX + NumCULeft - 1
@@ -311,7 +302,9 @@ class TComSampleAdaptiveOffet(object):
 
             pSaoPart.DownPartsIdx[2] = self.convertLevelRowCol2Idx(DownLevel, iDownRowIdx, iDownColIdx)
 
-            self.initSAOParam(pcSaoParam, DownLevel, iDownRowIdx, iDownColIdx, iPartIdx, DownStartCUX, DownEndCUX, DownStartCUY, DownEndCUY, iYCbCr)
+            self.initSAOParam(pcSaoParam,
+                DownLevel, iDownRowIdx, iDownColIdx, iPartIdx,
+                DownStartCUX, DownEndCUX, DownStartCUY, DownEndCUY, iYCbCr)
 
             DownStartCUX = StartCUX + NumCULeft
             DownEndCUX = EndCUX
@@ -322,7 +315,9 @@ class TComSampleAdaptiveOffet(object):
 
             pSaoPart.DownPartsIdx[3] = self.convertLevelRowCol2Idx(DownLevel, iDownRowIdx, iDownColIdx)
 
-            self.initSAOParam(pcSaoParam, DownLevel, iDownRowIdx, iDownColIdx, iPartIdx, DownStartCUX, DownEndCUX, DownStartCUY, DownEndCUY, iYCbCr)
+            self.initSAOParam(pcSaoParam,
+                DownLevel, iDownRowIdx, iDownColIdx, iPartIdx,
+                DownStartCUX, DownEndCUX, DownStartCUY, DownEndCUY, iYCbCr)
         else:
             pSaoPart.DownPartsIdx[0] = -1
             pSaoPart.DownPartsIdx[1] = -1
@@ -428,7 +423,8 @@ class TComSampleAdaptiveOffet(object):
 
                 posOffset = yPos * stride + xPos
 
-                self.processSaoBlock(pPicDec+posOffset, pPicRest+posOffset, stride, iSaoType, xPos, yPos, width, height, pbBorderAvail)
+                self.processSaoBlock(pPicDec+posOffset, pPicRest+posOffset,
+                    stride, iSaoType, xPos, yPos, width, height, pbBorderAvail)
 
     def getPicYuvAddr(self, pcPicYuv, iYCbCr, iAddr=0):
         if iYCbCr == 0:
@@ -623,6 +619,7 @@ class TComSampleAdaptiveOffet(object):
                 self.m_iUpBuff1[x] = xSign(pDec[x] - pDec[x - posShift])
 
             #1st line
+            pDec -= stride
             if pbBorderAvail[SGU_TL]:
                 x = 0
                 edgeType = xSign(pDec[x] - pDec[x-posShift]) - self.m_iUpBuff1[x+1] + 2
@@ -737,8 +734,8 @@ class TComSampleAdaptiveOffet(object):
         saoQTPart = saoParam.psSaoPart[yCbCr]
         saoLcuParam = saoParam.saoLcuParam[yCbCr]
 
-        for idxY in xrange(saoQTPart[partIdx].StartCUY, saoQTPart[partIdx].EndCUY):
-            for idxX in xrange(saoQTPart[partIdx].StartCUX, saoQTPart[partIdx].EndCUX):
+        for idxY in xrange(saoQTPart[partIdx].StartCUY, saoQTPart[partIdx].EndCUY+1):
+            for idxX in xrange(saoQTPart[partIdx].StartCUX, saoQTPart[partIdx].EndCUX+1):
                 addr = idxY * frameWidthInCU + idxX
                 saoLcuParam[addr].partIdxTmp = partIdx
                 saoLcuParam[addr].typeIdx = saoQTPart[partIdx].iBestType
@@ -768,12 +765,13 @@ class TComSampleAdaptiveOffet(object):
             self.m_pTmpU1[i] = pRec[i]
 
         ppLumaTable = None
+        offset = (LUMA_GROUP_NUM+1) * [0]
         frameWidthInCU = self.m_pcPic.getFrameWidthInCU()
         frameHeightInCU = self.m_pcPic.getFrameHeightInCU()
         isChroma = 0 if yCbCr == 0 else 1
 
         offset[0] = 0
-        for idxY in xrange(0, frameHeightInCU):
+        for idxY in xrange(frameHeightInCU):
             addr = idxY * frameWidthInCU
             if yCbCr == 0:
                 pRec = self.m_pcPic.getPicYuvRec().getLumaAddr(addr)

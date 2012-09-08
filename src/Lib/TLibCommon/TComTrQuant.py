@@ -10,7 +10,9 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import ArrayInt, ArrayUInt, ArrayChar, ArrayPel, PelAdd, TCoeffAdd
+    from swig.hevc import ArrayUInt
+
+from .array import array
 
 # TypeDef.h
 COEF_REMAIN_BIN_REDUCTION = 3
@@ -261,113 +263,123 @@ def fastInverseDst(tmp, block, shift):
         block[4*i+3] = Clip3(-32768, 32767, (55 * c[0] + 29 * c[2] - c[3] + rnd_factor) >> shift)
 
 def partialButterfly4(src, dst, shift, line):
+    src = array(src)
+    dst = array(dst)
+
     E, O = 2 * [0], 2 * [0]
     add = 1 << (shift-1)
-    si, di = 0, 0
 
     for j in xrange(line):
         # E and O
-        E[0] = src[si+0] + src[si+3]
-        O[0] = src[si+0] - src[si+3]
-        E[1] = src[si+1] + src[si+2]
-        O[1] = src[si+1] - src[si+2]
+        E[0] = src[0] + src[3]
+        O[0] = src[0] - src[3]
+        E[1] = src[1] + src[2]
+        O[1] = src[1] - src[2]
 
-        dst[di+0*line] = (g_aiT4[0][0] * E[0] + g_aiT4[0][1] * E[1] + add) >> shift
-        dst[di+2*line] = (g_aiT4[2][0] * E[0] + g_aiT4[2][1] * E[1] + add) >> shift
-        dst[di+1*line] = (g_aiT4[1][0] * O[0] + g_aiT4[1][1] * O[1] + add) >> shift
-        dst[di+3*line] = (g_aiT4[3][0] * O[0] + g_aiT4[3][1] * O[1] + add) >> shift
+        dst[0*line] = (g_aiT4[0][0] * E[0] + g_aiT4[0][1] * E[1] + add) >> shift
+        dst[2*line] = (g_aiT4[2][0] * E[0] + g_aiT4[2][1] * E[1] + add) >> shift
+        dst[1*line] = (g_aiT4[1][0] * O[0] + g_aiT4[1][1] * O[1] + add) >> shift
+        dst[3*line] = (g_aiT4[3][0] * O[0] + g_aiT4[3][1] * O[1] + add) >> shift
 
-        si += 4
-        di += 1
+        src += 4
+        dst += 1
 
 def partialButterflyInverse4(src, dst, shift, line):
+    src = array(src)
+    dst = array(dst)
+
     E, O = 2 * [0], 2 * [0]
     add = 1 << (shift-1)
-    si, di = 0, 0
 
     for j in xrange(line):
-        O[0] = g_aiT4[1][0] * src[si+1*line] + g_aiT4[3][0] * src[si+3*line]
-        O[1] = g_aiT4[1][1] * src[si+1*line] + g_aiT4[3][1] * src[si+3*line]
-        E[0] = g_aiT4[0][0] * src[si+0*line] + g_aiT4[2][0] * src[si+2*line]
-        E[1] = g_aiT4[0][1] * src[si+0*line] + g_aiT4[2][1] * src[si+2*line]
+        O[0] = g_aiT4[1][0] * src[1*line] + g_aiT4[3][0] * src[3*line]
+        O[1] = g_aiT4[1][1] * src[1*line] + g_aiT4[3][1] * src[3*line]
+        E[0] = g_aiT4[0][0] * src[0*line] + g_aiT4[2][0] * src[2*line]
+        E[1] = g_aiT4[0][1] * src[0*line] + g_aiT4[2][1] * src[2*line]
 
-        dst[di+0] = Clip3(-32768, 32767, (E[0] + O[0] + add) >> shift)
-        dst[di+1] = Clip3(-32768, 32767, (E[1] + O[1] + add) >> shift)
-        dst[di+2] = Clip3(-32768, 32767, (E[1] - O[1] + add) >> shift)
-        dst[di+3] = Clip3(-32768, 32767, (E[0] - O[0] + add) >> shift)
+        dst[0] = Clip3(-32768, 32767, (E[0] + O[0] + add) >> shift)
+        dst[1] = Clip3(-32768, 32767, (E[1] + O[1] + add) >> shift)
+        dst[2] = Clip3(-32768, 32767, (E[1] - O[1] + add) >> shift)
+        dst[3] = Clip3(-32768, 32767, (E[0] - O[0] + add) >> shift)
 
-        si += 1
-        di += 4
+        src += 1
+        dst += 4
 
 def partialButterfly8(src, dst, shift, line):
+    src = array(src)
+    dst = array(dst)
+
     E, O = 4 * [0], 4 * [0]
     EE, EO = 2 * [0], 2 * [0]
     add = 1 << (shift-1)
-    si, di = 0, 0
 
     for j in xrange(line):
         # E and O
         for k in xrange(4):
-            E[k] = src[si+k] + src[si+7-k]
-            O[k] = src[si+k] - src[si+7-k]
+            E[k] = src[k] + src[7-k]
+            O[k] = src[k] - src[7-k]
         # EE and EO
         EE[0] = E[0] + E[3]
         EO[0] = E[0] - E[3]
         EE[1] = E[1] + E[2]
         EO[1] = E[1] - E[2]
 
-        dst[di+0*line] = (g_aiT8[0][0] * EE[0] + g_aiT8[0][1] * EE[1] + add) >> shift
-        dst[di+4*line] = (g_aiT8[4][0] * EE[0] + g_aiT8[4][1] * EE[1] + add) >> shift
-        dst[di+2*line] = (g_aiT8[2][0] * EO[0] + g_aiT8[2][1] * EO[1] + add) >> shift
-        dst[di+6*line] = (g_aiT8[6][0] * EO[0] + g_aiT8[6][1] * EO[1] + add) >> shift
+        dst[0*line] = (g_aiT8[0][0] * EE[0] + g_aiT8[0][1] * EE[1] + add) >> shift
+        dst[4*line] = (g_aiT8[4][0] * EE[0] + g_aiT8[4][1] * EE[1] + add) >> shift
+        dst[2*line] = (g_aiT8[2][0] * EO[0] + g_aiT8[2][1] * EO[1] + add) >> shift
+        dst[6*line] = (g_aiT8[6][0] * EO[0] + g_aiT8[6][1] * EO[1] + add) >> shift
 
-        dst[di+1*line] = (g_aiT8[1][0] * O[0] + g_aiT8[1][1] * O[1] + g_aiT8[1][2] * O[2] + g_aiT8[1][3] * O[3] + add) >> shift
-        dst[di+3*line] = (g_aiT8[3][0] * O[0] + g_aiT8[3][1] * O[1] + g_aiT8[3][2] * O[2] + g_aiT8[3][3] * O[3] + add) >> shift
-        dst[di+5*line] = (g_aiT8[5][0] * O[0] + g_aiT8[5][1] * O[1] + g_aiT8[5][2] * O[2] + g_aiT8[5][3] * O[3] + add) >> shift
-        dst[di+7*line] = (g_aiT8[7][0] * O[0] + g_aiT8[7][1] * O[1] + g_aiT8[7][2] * O[2] + g_aiT8[7][3] * O[3] + add) >> shift
+        dst[1*line] = (g_aiT8[1][0] * O[0] + g_aiT8[1][1] * O[1] + g_aiT8[1][2] * O[2] + g_aiT8[1][3] * O[3] + add) >> shift
+        dst[3*line] = (g_aiT8[3][0] * O[0] + g_aiT8[3][1] * O[1] + g_aiT8[3][2] * O[2] + g_aiT8[3][3] * O[3] + add) >> shift
+        dst[5*line] = (g_aiT8[5][0] * O[0] + g_aiT8[5][1] * O[1] + g_aiT8[5][2] * O[2] + g_aiT8[5][3] * O[3] + add) >> shift
+        dst[7*line] = (g_aiT8[7][0] * O[0] + g_aiT8[7][1] * O[1] + g_aiT8[7][2] * O[2] + g_aiT8[7][3] * O[3] + add) >> shift
 
-        si += 8
-        di += 1
+        src += 8
+        dst += 1
 
 def partialButterflyInverse8(src, dst, shift, line):
+    src = array(src)
+    dst = array(dst)
+
     E, O = 4 * [0], 4 * [0]
     EE, EO = 2 * [0], 2 * [0]
     add = 1 << (shift-1)
-    si, di = 0, 0
 
     for j in xrange(line):
         for k in xrange(4):
-            O[k] = g_aiT8[1][k] * src[si+1*line] + g_aiT8[3][k] * src[si+3*line] + \
-                   g_aiT8[5][k] * src[si+5*line] + g_aiT8[7][k] * src[si+7*line]
+            O[k] = g_aiT8[1][k] * src[1*line] + g_aiT8[3][k] * src[3*line] + \
+                   g_aiT8[5][k] * src[5*line] + g_aiT8[7][k] * src[7*line]
 
-        EO[0] = g_aiT8[2][0] * src[si+2*line] + g_aiT8[6][0] * src[si+6*line]
-        EO[1] = g_aiT8[2][1] * src[si+2*line] + g_aiT8[6][1] * src[si+6*line]
-        EE[0] = g_aiT8[0][0] * src[si+0*line] + g_aiT8[4][0] * src[si+4*line]
-        EE[1] = g_aiT8[0][1] * src[si+0*line] + g_aiT8[4][1] * src[si+4*line]
+        EO[0] = g_aiT8[2][0] * src[2*line] + g_aiT8[6][0] * src[6*line]
+        EO[1] = g_aiT8[2][1] * src[2*line] + g_aiT8[6][1] * src[6*line]
+        EE[0] = g_aiT8[0][0] * src[0*line] + g_aiT8[4][0] * src[4*line]
+        EE[1] = g_aiT8[0][1] * src[0*line] + g_aiT8[4][1] * src[4*line]
 
         E[0] = EE[0] + EO[0]
         E[3] = EE[0] - EO[0]
         E[1] = EE[1] + EO[1]
         E[2] = EE[1] - EO[1]
         for k in xrange(4):
-            dst[di+k+0] = Clip3(-32768, 32767, (E[  k] + O[  k] + add) >> shift)
-            dst[di+k+4] = Clip3(-32768, 32767, (E[3-k] - O[3-k] + add) >> shift)
+            dst[k+0] = Clip3(-32768, 32767, (E[  k] + O[  k] + add) >> shift)
+            dst[k+4] = Clip3(-32768, 32767, (E[3-k] - O[3-k] + add) >> shift)
 
-        si += 1
-        di += 8
+        src += 1
+        dst += 8
 
 def partialButterfly16(src, dst, shift, line):
+    src = array(src)
+    dst = array(dst)
+
     E, O = 8 * [0], 8 * [0]
     EE, EO = 4 * [0], 4 * [0]
     EEE, EEO = 2 * [0], 2 * [0]
     add = 1 << (shift-1)
-    si, di = 0, 0
 
     for j in xrange(line):
         # E and O
         for k in xrange(8):
-            E[k] = src[si+k] + src[si+15-k]
-            O[k] = src[si+k] - src[si+15-k]
+            E[k] = src[k] + src[15-k]
+            O[k] = src[k] - src[15-k]
         # EE and EO
         for k in xrange(4):
             EE[k] = E[k] + E[7-k]
@@ -378,44 +390,46 @@ def partialButterfly16(src, dst, shift, line):
         EEE[1] = EE[1] + EE[2]
         EEO[1] = EE[1] - EE[2]
 
-        dst[di+ 0*line] = (g_aiT16[ 0][0] * EEE[0] + g_aiT16[ 0][1] * EEE[1] + add) >> shift
-        dst[di+ 8*line] = (g_aiT16[ 8][0] * EEE[0] + g_aiT16[ 8][1] * EEE[1] + add) >> shift
-        dst[di+ 4*line] = (g_aiT16[ 4][0] * EEO[0] + g_aiT16[ 4][1] * EEO[1] + add) >> shift
-        dst[di+12*line] = (g_aiT16[12][0] * EEO[0] + g_aiT16[12][1] * EEO[1] + add) >> shift
+        dst[ 0*line] = (g_aiT16[ 0][0] * EEE[0] + g_aiT16[ 0][1] * EEE[1] + add) >> shift
+        dst[ 8*line] = (g_aiT16[ 8][0] * EEE[0] + g_aiT16[ 8][1] * EEE[1] + add) >> shift
+        dst[ 4*line] = (g_aiT16[ 4][0] * EEO[0] + g_aiT16[ 4][1] * EEO[1] + add) >> shift
+        dst[12*line] = (g_aiT16[12][0] * EEO[0] + g_aiT16[12][1] * EEO[1] + add) >> shift
 
         for k in xrange(2, 16, 4):
-            dst[di+k*line] = (g_aiT16[k][0] * EO[0] + g_aiT16[k][1] * EO[1] + 
-                              g_aiT16[k][2] * EO[2] + g_aiT16[k][3] * EO[3] + add) >> shift
+            dst[k*line] = (g_aiT16[k][0] * EO[0] + g_aiT16[k][1] * EO[1] + 
+                           g_aiT16[k][2] * EO[2] + g_aiT16[k][3] * EO[3] + add) >> shift
 
         for k in xrange(1, 16, 2):
-            dst[di+k*line] = (g_aiT16[k][0] * O[0] + g_aiT16[k][1] * O[1] + 
-                              g_aiT16[k][2] * O[2] + g_aiT16[k][3] * O[3] +
-                              g_aiT16[k][4] * O[4] + g_aiT16[k][5] * O[5] +
-                              g_aiT16[k][6] * O[6] + g_aiT16[k][7] * O[7] + add) >> shift
+            dst[k*line] = (g_aiT16[k][0] * O[0] + g_aiT16[k][1] * O[1] + 
+                           g_aiT16[k][2] * O[2] + g_aiT16[k][3] * O[3] +
+                           g_aiT16[k][4] * O[4] + g_aiT16[k][5] * O[5] +
+                           g_aiT16[k][6] * O[6] + g_aiT16[k][7] * O[7] + add) >> shift
 
-        si += 16
-        di += 1
+        src += 16
+        dst += 1
 
 def partialButterflyInverse16(src, dst, shift, line):
+    src = array(src)
+    dst = array(dst)
+
     E, O = 8 * [0], 8 * [0]
     EE, EO = 4 * [0], 4 * [0]
     EEE, EEO = 2 * [0], 2 * [0]
     add = 1 << (shift-1)
-    si, di = 0, 0
 
     for j in xrange(line):
         for k in xrange(8):
-            O[k] = g_aiT16[ 1][k] * src[si+ 1*line] + g_aiT16[ 3][k] * src[si+ 3*line] + \
-                   g_aiT16[ 5][k] * src[si+ 5*line] + g_aiT16[ 7][k] * src[si+ 7*line] + \
-                   g_aiT16[ 9][k] * src[si+ 9*line] + g_aiT16[11][k] * src[si+11*line] + \
-                   g_aiT16[13][k] * src[si+13*line] + g_aiT16[15][k] * src[si+15*line]
+            O[k] = g_aiT16[ 1][k] * src[ 1*line] + g_aiT16[ 3][k] * src[ 3*line] + \
+                   g_aiT16[ 5][k] * src[ 5*line] + g_aiT16[ 7][k] * src[ 7*line] + \
+                   g_aiT16[ 9][k] * src[ 9*line] + g_aiT16[11][k] * src[11*line] + \
+                   g_aiT16[13][k] * src[13*line] + g_aiT16[15][k] * src[15*line]
         for k in xrange(4):
-            EO[k] = g_aiT16[ 2][k] * src[si+ 2*line] + g_aiT16[ 6][k] * src[si+ 6*line] + \
-                    g_aiT16[10][k] * src[si+10*line] + g_aiT16[14][k] * src[si+14*line]
-        EEO[0] = g_aiT16[4][0] * src[si+4*line] + g_aiT16[12][0] * src[si+12*line]
-        EEE[0] = g_aiT16[0][0] * src[si+0*line] + g_aiT16[ 8][0] * src[si+ 8*line]
-        EEO[1] = g_aiT16[4][1] * src[si+4*line] + g_aiT16[12][1] * src[si+12*line]
-        EEE[1] = g_aiT16[0][1] * src[si+0*line] + g_aiT16[ 8][1] * src[si+ 8*line]
+            EO[k] = g_aiT16[ 2][k] * src[ 2*line] + g_aiT16[ 6][k] * src[ 6*line] + \
+                    g_aiT16[10][k] * src[10*line] + g_aiT16[14][k] * src[14*line]
+        EEO[0] = g_aiT16[4][0] * src[4*line] + g_aiT16[12][0] * src[12*line]
+        EEE[0] = g_aiT16[0][0] * src[0*line] + g_aiT16[ 8][0] * src[ 8*line]
+        EEO[1] = g_aiT16[4][1] * src[4*line] + g_aiT16[12][1] * src[12*line]
+        EEE[1] = g_aiT16[0][1] * src[0*line] + g_aiT16[ 8][1] * src[ 8*line]
 
         for k in xrange(2):
             EE[k  ] = EEE[  k] + EEO[  k]
@@ -424,25 +438,27 @@ def partialButterflyInverse16(src, dst, shift, line):
             E[k  ] = EE[  k] + EO[  k]
             E[k+4] = EE[3-k] - EO[3-k]
         for k in xrange(8):
-            dst[di+k+0] = Clip3(-32768, 32767, (E[  k] + O[  k] + add) >> shift)
-            dst[di+k+8] = Clip3(-32768, 32767, (E[7-k] - O[7-k] + add) >> shift)
+            dst[k+0] = Clip3(-32768, 32767, (E[  k] + O[  k] + add) >> shift)
+            dst[k+8] = Clip3(-32768, 32767, (E[7-k] - O[7-k] + add) >> shift)
 
-        si += 1
-        di += 16
+        src += 1
+        dst += 16
 
 def partialButterfly32(src, dst, shift, line):
+    src = array(src)
+    dst = array(dst)
+
     E, O = 16 * [0], 16 * [0]
     EE, EO = 8 * [0], 8 * [0]
     EEE, EEO = 4 * [0], 4 * [0]
     EEEE, EEEO = 2 * [0], 2 * [0]
     add = 1 << (shift-1)
-    si, di = 0, 0
 
     for j in xrange(line):
         # E and O
         for k in xrange(16):
-            E[k] = src[si+k] + src[si+31-k]
-            O[k] = src[si+k] - src[si+31-k]
+            E[k] = src[k] + src[31-k]
+            O[k] = src[k] - src[31-k]
         # EE and EO
         for k in xrange(8):
             EE[k] = E[k] + E[15-k]
@@ -457,61 +473,63 @@ def partialButterfly32(src, dst, shift, line):
         EEEE[1] = EEE[1] + EEE[2]
         EEEO[1] = EEE[1] - EEE[2]
 
-        dst[di+ 0*line] = (g_aiT32[ 0][0] * EEEE[0] + g_aiT32[ 0][1] * EEEE[1] + add) >> shift
-        dst[di+16*line] = (g_aiT32[16][0] * EEEE[0] + g_aiT32[16][1] * EEEE[1] + add) >> shift
-        dst[di+ 8*line] = (g_aiT32[ 8][0] * EEEO[0] + g_aiT32[ 8][1] * EEEO[1] + add) >> shift
-        dst[di+24*line] = (g_aiT32[24][0] * EEEO[0] + g_aiT32[24][1] * EEEO[1] + add) >> shift
+        dst[ 0*line] = (g_aiT32[ 0][0] * EEEE[0] + g_aiT32[ 0][1] * EEEE[1] + add) >> shift
+        dst[16*line] = (g_aiT32[16][0] * EEEE[0] + g_aiT32[16][1] * EEEE[1] + add) >> shift
+        dst[ 8*line] = (g_aiT32[ 8][0] * EEEO[0] + g_aiT32[ 8][1] * EEEO[1] + add) >> shift
+        dst[24*line] = (g_aiT32[24][0] * EEEO[0] + g_aiT32[24][1] * EEEO[1] + add) >> shift
         for k in xrange(4, 32, 8):
-            dst[di+k*line] = (g_aiT32[k][0] * EEO[0] + g_aiT32[k][1] * EEO[1] + 
-                              g_aiT32[k][2] * EEO[2] + g_aiT32[k][3] * EEO[3] + add) >> shift
+            dst[k*line] = (g_aiT32[k][0] * EEO[0] + g_aiT32[k][1] * EEO[1] + 
+                           g_aiT32[k][2] * EEO[2] + g_aiT32[k][3] * EEO[3] + add) >> shift
         for k in xrange(2, 32, 4):
-            dst[di+k*line] = (g_aiT32[k][0] * EO[0] + g_aiT32[k][1] * EO[1] + 
-                              g_aiT32[k][2] * EO[2] + g_aiT32[k][3] * EO[3] +
-                              g_aiT32[k][4] * EO[4] + g_aiT32[k][5] * EO[5] +
-                              g_aiT32[k][6] * EO[6] + g_aiT32[k][7] * EO[7] + add) >> shift
+            dst[k*line] = (g_aiT32[k][0] * EO[0] + g_aiT32[k][1] * EO[1] + 
+                           g_aiT32[k][2] * EO[2] + g_aiT32[k][3] * EO[3] +
+                           g_aiT32[k][4] * EO[4] + g_aiT32[k][5] * EO[5] +
+                           g_aiT32[k][6] * EO[6] + g_aiT32[k][7] * EO[7] + add) >> shift
         for k in xrange(1, 32, 2):
-            dst[di+k*line] = (g_aiT32[k][ 0] * O[ 0] + g_aiT32[k][ 1] * O[ 1] + 
-                              g_aiT32[k][ 2] * O[ 2] + g_aiT32[k][ 3] * O[ 3] +
-                              g_aiT32[k][ 4] * O[ 4] + g_aiT32[k][ 5] * O[ 5] +
-                              g_aiT32[k][ 6] * O[ 6] + g_aiT32[k][ 7] * O[ 7] +
-                              g_aiT32[k][ 8] * O[ 8] + g_aiT32[k][ 9] * O[ 9] +
-                              g_aiT32[k][10] * O[10] + g_aiT32[k][11] * O[11] +
-                              g_aiT32[k][12] * O[12] + g_aiT32[k][13] * O[13] +
-                              g_aiT32[k][14] * O[14] + g_aiT32[k][15] * O[15] + add) >> shift
+            dst[k*line] = (g_aiT32[k][ 0] * O[ 0] + g_aiT32[k][ 1] * O[ 1] + 
+                           g_aiT32[k][ 2] * O[ 2] + g_aiT32[k][ 3] * O[ 3] +
+                           g_aiT32[k][ 4] * O[ 4] + g_aiT32[k][ 5] * O[ 5] +
+                           g_aiT32[k][ 6] * O[ 6] + g_aiT32[k][ 7] * O[ 7] +
+                           g_aiT32[k][ 8] * O[ 8] + g_aiT32[k][ 9] * O[ 9] +
+                           g_aiT32[k][10] * O[10] + g_aiT32[k][11] * O[11] +
+                           g_aiT32[k][12] * O[12] + g_aiT32[k][13] * O[13] +
+                           g_aiT32[k][14] * O[14] + g_aiT32[k][15] * O[15] + add) >> shift
 
-        si += 32
-        di += 1
+        src += 32
+        dst += 1
 
 def partialButterflyInverse32(src, dst, shift, line):
+    src = array(src)
+    dst = array(dst)
+
     E, O = 16 * [0], 16 * [0]
     EE, EO = 8 * [0], 8 * [0]
     EEE, EEO = 4 * [0], 4 * [0]
     EEEE, EEEO = 2 * [0], 2 * [0]
     add = 1 << (shift-1)
-    si, di = 0, 0
 
     for j in xrange(line):
         for k in xrange(16):
-            O[k] = g_aiT32[ 1][k] * src[si+ 1*line] + g_aiT32[ 3][k] * src[si+ 3*line] + \
-                   g_aiT32[ 5][k] * src[si+ 5*line] + g_aiT32[ 7][k] * src[si+ 7*line] + \
-                   g_aiT32[ 9][k] * src[si+ 9*line] + g_aiT32[11][k] * src[si+11*line] + \
-                   g_aiT32[13][k] * src[si+13*line] + g_aiT32[15][k] * src[si+15*line] + \
-                   g_aiT32[17][k] * src[si+17*line] + g_aiT32[19][k] * src[si+19*line] + \
-                   g_aiT32[21][k] * src[si+21*line] + g_aiT32[23][k] * src[si+23*line] + \
-                   g_aiT32[25][k] * src[si+25*line] + g_aiT32[27][k] * src[si+27*line] + \
-                   g_aiT32[29][k] * src[si+29*line] + g_aiT32[31][k] * src[si+31*line]
+            O[k] = g_aiT32[ 1][k] * src[ 1*line] + g_aiT32[ 3][k] * src[ 3*line] + \
+                   g_aiT32[ 5][k] * src[ 5*line] + g_aiT32[ 7][k] * src[ 7*line] + \
+                   g_aiT32[ 9][k] * src[ 9*line] + g_aiT32[11][k] * src[11*line] + \
+                   g_aiT32[13][k] * src[13*line] + g_aiT32[15][k] * src[15*line] + \
+                   g_aiT32[17][k] * src[17*line] + g_aiT32[19][k] * src[19*line] + \
+                   g_aiT32[21][k] * src[21*line] + g_aiT32[23][k] * src[23*line] + \
+                   g_aiT32[25][k] * src[25*line] + g_aiT32[27][k] * src[27*line] + \
+                   g_aiT32[29][k] * src[29*line] + g_aiT32[31][k] * src[31*line]
         for k in xrange(8):
-            EO[k] = g_aiT32[ 2][k] * src[si+ 2*line] + g_aiT32[ 6][k] * src[si+ 6*line] + \
-                    g_aiT32[10][k] * src[si+10*line] + g_aiT32[14][k] * src[si+14*line] + \
-                    g_aiT32[18][k] * src[si+18*line] + g_aiT32[22][k] * src[si+22*line] + \
-                    g_aiT32[26][k] * src[si+26*line] + g_aiT32[30][k] * src[si+30*line]
+            EO[k] = g_aiT32[ 2][k] * src[ 2*line] + g_aiT32[ 6][k] * src[ 6*line] + \
+                    g_aiT32[10][k] * src[10*line] + g_aiT32[14][k] * src[14*line] + \
+                    g_aiT32[18][k] * src[18*line] + g_aiT32[22][k] * src[22*line] + \
+                    g_aiT32[26][k] * src[26*line] + g_aiT32[30][k] * src[30*line]
         for k in xrange(4):
-            EEO[k] = g_aiT32[ 4][k] * src[si+ 4*line] + g_aiT32[12][k] * src[si+12*line] + \
-                     g_aiT32[20][k] * src[si+20*line] + g_aiT32[28][k] * src[si+28*line]
-        EEEO[0] = g_aiT32[8][0] * src[si+8*line] + g_aiT32[24][0] * src[si+24*line]
-        EEEO[1] = g_aiT32[8][1] * src[si+8*line] + g_aiT32[24][1] * src[si+24*line]
-        EEEE[0] = g_aiT32[0][0] * src[si+0*line] + g_aiT32[16][0] * src[si+16*line]
-        EEEE[1] = g_aiT32[0][1] * src[si+0*line] + g_aiT32[16][1] * src[si+16*line]
+            EEO[k] = g_aiT32[ 4][k] * src[ 4*line] + g_aiT32[12][k] * src[12*line] + \
+                     g_aiT32[20][k] * src[20*line] + g_aiT32[28][k] * src[28*line]
+        EEEO[0] = g_aiT32[8][0] * src[8*line] + g_aiT32[24][0] * src[24*line]
+        EEEO[1] = g_aiT32[8][1] * src[8*line] + g_aiT32[24][1] * src[24*line]
+        EEEE[0] = g_aiT32[0][0] * src[0*line] + g_aiT32[16][0] * src[16*line]
+        EEEE[1] = g_aiT32[0][1] * src[0*line] + g_aiT32[16][1] * src[16*line]
 
         EEE[0] = EEEE[0] + EEEO[0]
         EEE[3] = EEEE[0] - EEEO[0]
@@ -524,11 +542,11 @@ def partialButterflyInverse32(src, dst, shift, line):
             E[k  ] = EE[  k] + EO[  k]
             E[k+8] = EE[7-k] - EO[7-k]
         for k in xrange(16):
-            dst[di+k+ 0] = Clip3(-32768, 32767, (E[   k] + O[   k] + add) >> shift)
-            dst[di+k+16] = Clip3(-32768, 32767, (E[15-k] - O[15-k] + add) >> shift)
+            dst[k+ 0] = Clip3(-32768, 32767, (E[   k] + O[   k] + add) >> shift)
+            dst[k+16] = Clip3(-32768, 32767, (E[15-k] - O[15-k] + add) >> shift)
 
-        si += 1
-        di += 32
+        src += 1
+        dst += 32
 
 def xTrMxN(block, coeff, iWidth, iHeight, uiMode):
     shift_1st = ord(cvar.g_aucConvertToBit[iWidth]) + 1 + cvar.g_uiBitIncrement
@@ -637,15 +655,16 @@ class TComTrQuant(object):
     def transformNxN(self, pcCU, rpcResidual, uiStride, rpcCoeff, rpcArlCoeff,
                      uiWidth, uiHeight, uiAbsSum, eTType, uiAbsPartIdx,
                      useTransformSkip=False):
-        pcCoeff = ArrayInt.frompointer(rpcCoeff)
-        pcResidual = ArrayPel.frompointer(rpcResidual)
+        rpcArlCoeff = array(rpcArlCoeff)
+        rpcCoeff = array(rpcCoeff, type='int *')
+        rpcResidual = array(rpcResidual, type='short *')
 
         if pcCU.getCUTransquantBypass(uiAbsPartIdx):
             uiAbsSum = 0
             for k in xrange(uiHeight):
                 for j in xrange(uiWidth):
-                    pcCoeff[k * uiWidth + j] = pcResidual[k * uiStride + j]
-                    uiAbsSum += abs(pcResidual[k * uiStride + j])
+                    rpcCoeff[k * uiWidth + j] = rpcResidual[k * uiStride + j]
+                    uiAbsSum += abs(rpcResidual[k * uiStride + j])
             return uiAbsSum
 
         uiMode = 0
@@ -657,33 +676,36 @@ class TComTrQuant(object):
         uiAbsSum = 0
         assert(pcCU.getSlice().getSPS().getMaxTrSize() >= uiWidth)
         if useTransformSkip:
-            self._xTransformSkip(pcResidual, uiStride, self.m_plTempCoeff, uiWidth, uiHeight)
+            self._xTransformSkip(rpcResidual, uiStride, self.m_plTempCoeff, uiWidth, uiHeight)
         else:
-            self._xT(uiMode, pcResidual, uiStride, self.m_plTempCoeff, uiWidth, uiHeight)
-        self._xQuant(pcCU, self.m_plTempCoeff, pcCoeff, rpcArlCoeff,
+            self._xT(uiMode, rpcResidual, uiStride, self.m_plTempCoeff, uiWidth, uiHeight)
+        self._xQuant(pcCU, self.m_plTempCoeff, rpcCoeff, rpcArlCoeff,
                      uiWidth, uiHeight, uiAbsSum, eTType, uiAbsPartIdx)
         return uiAbsSum
 
     def invtransformNxN(self, transQuantBypass, eText, uiMode,
                         rpcResidual, uiStride, rpcCoeff,
                         uiWidth, uiHeight, scalingListType, useTransformSkip=False):
-        pcCoeff = ArrayInt.frompointer(rpcCoeff)
-        pcResidual = ArrayPel.frompointer(rpcResidual)
+        rpcCoeff = array(rpcCoeff, type='int *')
+        rpcResidual = array(rpcResidual, type='short *')
 
         if transQuantBypass:
             for k in xrange(uiHeight):
                 for j in xrange(uiWidth):
-                    pcResidual[k * uiStride + j] = pcCoeff[k * uiWidth + j]
+                    rpcResidual[k * uiStride + j] = rpcCoeff[k * uiWidth + j]
             return
-        self._xDeQuant(pcCoeff, self.m_plTempCoeff, uiWidth, uiHeight, scalingListType)
+        self._xDeQuant(rpcCoeff, self.m_plTempCoeff, uiWidth, uiHeight, scalingListType)
         if useTransformSkip:
-            self._xITransformSkip(self.m_plTempCoeff, pcResidual, uiStride, uiWidth, uiHeight)
+            self._xITransformSkip(self.m_plTempCoeff, rpcResidual, uiStride, uiWidth, uiHeight)
         else:
-            self._xIT(uiMode, self.m_plTempCoeff, pcResidual, uiStride, uiWidth, uiHeight)
+            self._xIT(uiMode, self.m_plTempCoeff, rpcResidual, uiStride, uiWidth, uiHeight)
 
     def invRecurTransformNxN(self, pcCU, uiAbsPartIdx, eTxt,
                              rpcResidual, uiAddr, uiStride,
                              uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff):
+        rpcCoeff = array(rpcCoeff, type='int *')
+        rpcResidual = array(rpcResidual, type='short *')
+
         if not pcCU.getCbf(uiAbsPartIdx, eTxt, uiTrMode):
             return
 
@@ -702,7 +724,7 @@ class TComTrQuant(object):
                     return
                 uiWidth <<= 1
                 uiHeight <<= 1
-            pResi = PelAdd(rpcResidual, uiAddr)
+            pResi = rpcResidual + uiAddr
 
             scalingListType = (0 if pcCU.isIntra(uiAbsPartIdx) else 3) + g_eTTable[eTxt]
             assert(scalingListType < 6)
@@ -721,15 +743,15 @@ class TComTrQuant(object):
 
             self.invRecurTransformNxN(pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr,
                 uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff)
-            rpcCoeff = TCoeffAdd(rpcCoeff, uiCoefOffset)
+            rpcCoeff += uiCoefOffset
             uiAbsPartIdx += uiPartOffset
             self.invRecurTransformNxN(pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr+trWidth,
                 uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff)
-            rpcCoeff = TCoeffAdd(rpcCoeff, uiCoefOffset)
+            rpcCoeff += uiCoefOffset
             uiAbsPartIdx += uiPartOffset
             self.invRecurTransformNxN(pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr+uiAddrOffset,
                 uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff)
-            rpcCoeff = TCoeffAdd(rpcCoeff, uiCoefOffset)
+            rpcCoeff += uiCoefOffset
             uiAbsPartIdx += uiPartOffset
             self.invRecurTransformNxN(pcCU, uiAbsPartIdx, eTxt, rpcResidual, uiAddr+uiAddrOffset+trWidth,
                 uiStride, uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff)

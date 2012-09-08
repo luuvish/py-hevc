@@ -6,13 +6,19 @@
 
 import sys
 
-use_swig = True
+use_swig = False
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
     from swig.hevc import TComYuv
-    from swig.hevc import ArrayInt, ArrayPel, ArrayTComMv, PelAdd, IntAdd
+    from swig.hevc import ArrayTComMv, ArrayInt
+else:
+    sys.path.insert(0, '../../..')
+    from swig.hevc import cvar
+    from .TComYuv import TComYuv
+    from swig.hevc import ArrayTComMv, ArrayInt
 
+from .array import array
 from .TComWeightPrediction import TComWeightPrediction
 from .TComInterpolationFilter import TComInterpolationFilter
 
@@ -89,7 +95,7 @@ class TComPrediction(TComWeightPrediction):
                     self.m_filteredBlock[i][j].create(extWidth, extHeight)
             self.m_iYuvExtHeight = (cvar.g_uiMaxCUHeight + 2) << 4
             self.m_iYuvExtStride = (cvar.g_uiMaxCUWidth + 8) << 4
-            self.m_piYuvExt = ArrayInt(self.m_iYuvExtStride * self.m_iYuvExtHeight)
+            self.m_piYuvExt = array(ArrayInt(self.m_iYuvExtStride * self.m_iYuvExtHeight), type='int *')
 
             self.m_acYuvPred[0].create(cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight)
             self.m_acYuvPred[1].create(cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight)
@@ -99,7 +105,7 @@ class TComPrediction(TComWeightPrediction):
     #   if self.m_iLumaRecStride != (cvar.g_uiMaxCUWidth >> 1) + 1:
     #       self.m_iLumaRecStride = (cvar.g_uiMaxCUWidth >> 1) + 1
     #       if not self.m_pLumaRecBuffer:
-    #           self.m_pLumaRecBuffer = ArrayPel(self.m_iLumaRecStride * self.m_iLumaRecStride)
+    #           self.m_pLumaRecBuffer = (self.m_iLumaRecStride * self.m_iLumaRecStride) * [0]
     #
     #   shift = cvar.g_uiBitDepth + cvar.g_uiBitIncrement + 4
     #
@@ -161,38 +167,39 @@ class TComPrediction(TComWeightPrediction):
         return rcMvPred
 
     def predIntraLumaAng(self, pcTComPattern, uiDirMode, piPred, uiStride, iWidth, iHeight, pcCU, bAbove, bLeft):
-        pDst = piPred
+        pDst = array(piPred, type='short *')
 
         assert(ord(cvar.g_aucConvertToBit[iWidth]) >= 0) # 4x4
         assert(ord(cvar.g_aucConvertToBit[iWidth]) <= 5) # 128x128
         assert(iWidth == iHeight)
 
         ptrSrc = pcTComPattern.getPredictorPtr(uiDirMode, ord(cvar.g_aucConvertToBit[iWidth])+2, self.m_piYuvExt.cast())
+        ptrSrc = array(ptrSrc, type='int *')
 
         # get starting pixel in block
         sw = 2 * iWidth + 1
 
         # Create the prediction
         if uiDirMode == PLANAR_IDX:
-            self._xPredIntraPlanar(IntAdd(ptrSrc, sw+1), sw, pDst, uiStride, iWidth, iHeight)
+            self._xPredIntraPlanar(ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight)
         else:
-            self._xPredIntraAng(IntAdd(ptrSrc, sw+1), sw, pDst, uiStride, iWidth, iHeight, uiDirMode, bAbove, bLeft, True)
+            self._xPredIntraAng(ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, uiDirMode, bAbove, bLeft, True)
 
             if uiDirMode == DC_IDX and bAbove and bLeft:
-                self._xDCPredFiltering(IntAdd(ptrSrc, sw+1), sw, pDst, uiStride, iWidth, iHeight)
+                self._xDCPredFiltering(ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight)
 
     def predIntraChromaAng(self, pcTComPattern, piSrc, uiDirMode, piPred, uiStride, iWidth, iHeight, pcCU, bAbove, bLeft):
-        pDst = piPred
-        ptrSrc = piSrc
+        pDst = array(piPred, type='short *')
+        ptrSrc = array(piSrc, type='int *')
 
         # get starting pixel in block
         sw = 2 * iWidth + 1
 
         if uiDirMode == PLANAR_IDX:
-            self._xPredIntraPlanar(IntAdd(ptrSrc, sw+1), sw, pDst, uiStride, iWidth, iHeight)
+            self._xPredIntraPlanar(ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight)
         else:
             # Create the prediction
-            self._xPredIntraAng(IntAdd(ptrSrc, sw+1), sw, pDst, uiStride, iWidth, iHeight, uiDirMode, bAbove, bLeft, False)
+            self._xPredIntraAng(ptrSrc+sw+1, sw, pDst, uiStride, iWidth, iHeight, uiDirMode, bAbove, bLeft, False)
 
     def getPredicBuf(self):
         return self.m_piYuvExt.cast()
@@ -201,17 +208,44 @@ class TComPrediction(TComWeightPrediction):
     def getPredicBufHeight(self):
         return self.m_iYuvExtHeight
 
+    def _xCheckIdenticalMotion(self, pcCU, PartAddr):
+        if pcCU.getSlice().isInterB() and not pcCU.getSlice().getPPS().getWPBiPred():
+            if pcCU.getCUMvField(REF_PIC_LIST_0).getRefIdx(PartAddr) >= 0 and \
+               pcCU.getCUMvField(REF_PIC_LIST_1).getRefIdx(PartAddr) >= 0:
+                RefPOCL0 = pcCU.getSlice().getRefPic(REF_PIC_LIST_0, pcCU.getCUMvField(REF_PIC_LIST_0).getRefIdx(PartAddr)).getPOC()
+                RefPOCL1 = pcCU.getSlice().getRefPic(REF_PIC_LIST_1, pcCU.getCUMvField(REF_PIC_LIST_1).getRefIdx(PartAddr)).getPOC()
+                if RefPOCL0 == RefPOCL1 and \
+                   pcCU.getCUMvField(REF_PIC_LIST_0).getMv(PartAddr) == pcCU.getCUMvField(REF_PIC_LIST_1).getMv(PartAddr):
+                    return True
+        return False
+
+    def _xDCPredFiltering(self, piSrc, iSrcStride, rpDst, iDstStride, iWidth, iHeight):
+        piSrc = array(piSrc, bias=-(iSrcStride+1), type='int *')
+
+        # boundary pixels processing
+        rpDst[0] = (piSrc[-iSrcStride] + piSrc[-1] + 2 * rpDst[0] + 2) >> 2
+
+        for x in xrange(1, iWidth):
+            rpDst[x] = (piSrc[x - iSrcStride] + 3 * rpDst[x] + 2) >> 2
+
+        iDstStride2 = iDstStride
+        iSrcStride2 = iSrcStride-1
+        for y in xrange(1, iHeight):
+            rpDst[iDstStride2] = (piSrc[iSrcStride2] + 3 * rpDst[iDstStride2] + 2) >> 2
+            iDstStride2 += iDstStride
+            iSrcStride2 += iSrcStride
+
     def _predIntraGetPredValDC(self, piSrc, iSrcStride, iWidth, iHeight, bAbove, bLeft):
-        pSrc = ArrayInt.frompointer(IntAdd(piSrc, -(iSrcStride+1)))
+        piSrc = array(piSrc, bias=-(iSrcStride+1), type='int *')
         iSum = 0
         pDcVal = 0
 
         if bAbove:
             for iInd in xrange(iWidth):
-                iSum += pSrc[(iSrcStride+1) + iInd - iSrcStride]
+                iSum += piSrc[iInd - iSrcStride]
         if bLeft:
             for iInd in xrange(iHeight):
-                iSum += pSrc[(iSrcStride+1) + iInd * iSrcStride - 1]
+                iSum += piSrc[iInd * iSrcStride - 1]
 
         if bAbove and bLeft:
             pDcVal = (iSum + iWidth) / (iWidth + iHeight)
@@ -220,15 +254,14 @@ class TComPrediction(TComWeightPrediction):
         elif bLeft:
             pDcVal = (iSum + iHeight/2) / iHeight
         else:
-            pDcVal = pSrc[(iSrcStride+1) - 1] # Default DC value already calculated and placed in the prediction array if no neighbors are available
+            pDcVal = piSrc[-1] # Default DC value already calculated and placed in the prediction array if no neighbors are available
 
         return pDcVal
 
     def _xPredIntraAng(self, piSrc, srcStride, rpDst, dstStride, width, height,
                        dirMode, blkAboveAvailable, blkLeftAvailable, bFilter):
         blkSize = width
-        pSrc = ArrayInt.frompointer(IntAdd(piSrc, -(srcStride+1)))
-        pDst = ArrayPel.frompointer(rpDst)
+        piSrc = array(piSrc, bias=-(srcStride+1), type='int *')
 
         # Map the mode index to main prediction direction and angle
         assert(dirMode > 0) #no planar
@@ -252,44 +285,44 @@ class TComPrediction(TComWeightPrediction):
 
             for k in xrange(blkSize):
                 for l in xrange(blkSize):
-                    pDst[k * dstStride + l] = dcval
+                    rpDst[k * dstStride + l] = dcval
         # Do angular predictions
         else:
             refMain = None
             refSize = None
-            refAbove = ArrayPel(2 * MAX_CU_SIZE + 1)
-            refLeft = ArrayPel(2 * MAX_CU_SIZE + 1)
+            refAbove = (2 * MAX_CU_SIZE + 1) * [0]
+            refLeft = (2 * MAX_CU_SIZE + 1) * [0]
 
             # Initialise the Main and Left reference array.
             if intraPredAngle < 0:
                 for k in xrange(blkSize+1):
-                    refAbove[k + blkSize - 1] = pSrc[(srcStride+1) + k - srcStride - 1]
+                    refAbove[k + blkSize - 1] = piSrc[k - srcStride - 1]
                 for k in xrange(blkSize+1):
-                    refLeft[k + blkSize - 1] = pSrc[(srcStride+1) + (k-1) * srcStride - 1]
-                refMain = refAbove if modeVer else refLeft
-                refSide = refLeft if modeVer else refAbove
+                    refLeft[k + blkSize - 1] = piSrc[(k-1) * srcStride - 1]
+                refMain = array(refAbove if modeVer else refLeft, base=(blkSize-1))
+                refSide = array(refLeft if modeVer else refAbove, base=(blkSize-1))
 
                 # Extend the Main reference to the left.
                 invAngleSum = 128 # rounding for (shift by 8)
                 for k in xrange(-1, blkSize * intraPredAngle >> 5, -1):
                     invAngleSum += invAngle
-                    refMain[(blkSize-1) + k] = refSide[(blkSize-1) + (invAngleSum >> 8)]
+                    refMain[k] = refSide[invAngleSum >> 8]
             else:
                 for k in xrange(2*blkSize+1):
-                    refAbove[k] = pSrc[(srcStride+1) + k - srcStride - 1]
+                    refAbove[k] = piSrc[k - srcStride - 1]
                 for k in xrange(2*blkSize+1):
-                    refLeft[k] = pSrc[(srcStride+1) + (k-1) * srcStride - 1]
-                refMain = ArrayPel.frompointer(PelAdd((refAbove if modeVer else refLeft).cast(), -(blkSize-1)))
-                refSide = ArrayPel.frompointer(PelAdd((refLeft if modeVer else refAbove).cast(), -(blkSize-1)))
+                    refLeft[k] = piSrc[(k-1) * srcStride - 1]
+                refMain = array(refAbove if modeVer else refLeft)
+                refSide = array(refLeft if modeVer else refAbove)
 
             if intraPredAngle == 0:
                 for k in xrange(blkSize):
                     for l in xrange(blkSize):
-                        pDst[k * dstStride + l] = refMain[(blkSize-1) + l + 1]
+                        rpDst[k * dstStride + l] = refMain[l + 1]
 
                 if bFilter:
                     for k in xrange(blkSize):
-                        pDst[k * dstStride] = Clip(pDst[k*dstStride] + ((refSide[(blkSize-1) + k+1] - refSide[(blkSize-1) + 0]) >> 1))
+                        rpDst[k * dstStride] = Clip(rpDst[k*dstStride] + ((refSide[k+1] - refSide[0]) >> 1))
             else:
                 deltaPos = 0
                 deltaInt = 0
@@ -305,30 +338,29 @@ class TComPrediction(TComWeightPrediction):
                         # Do linear filtering
                         for l in xrange(blkSize):
                             refMainIndex = l + deltaInt + 1
-                            pDst[k * dstStride + l] = \
-                                ((32-deltaFract)*refMain[(blkSize-1) + refMainIndex] +
-                                 deltaFract * refMain[(blkSize-1) + refMainIndex+1] + 16) >> 5
+                            rpDst[k * dstStride + l] = \
+                                ((32-deltaFract)*refMain[refMainIndex] +
+                                 deltaFract * refMain[refMainIndex+1] + 16) >> 5
                     else:
                         # Just copy the integer samples
                         for l in xrange(blkSize):
-                            pDst[k * dstStride + l] = refMain[(blkSize-1) + l + deltaInt + 1]
+                            rpDst[k * dstStride + l] = refMain[l + deltaInt + 1]
 
             # Flip the block if this is the horizontal mode
             if modeHor:
                 for k in xrange(blkSize-1):
                     for l in xrange(k+1, blkSize):
-                        pDst[k * dstStride + l], pDst[l * dstStride + k] = \
-                            pDst[l * dstStride + k], pDst[k * dstStride + l]
+                        rpDst[k * dstStride + l], rpDst[l * dstStride + k] = \
+                            rpDst[l * dstStride + k], rpDst[k * dstStride + l]
 
     def _xPredIntraPlanar(self, piSrc, srcStride, rpDst, dstStride, width, height):
         assert(width == height)
-        pSrc = ArrayInt.frompointer(IntAdd(piSrc, -(srcStride+1)))
-        pDst = ArrayPel.frompointer(rpDst)
+        piSrc = array(piSrc, bias=-(srcStride+1), type='int *')
 
-        leftColumn = ArrayInt(MAX_CU_SIZE)
-        topRow = ArrayInt(MAX_CU_SIZE)
-        bottomRow = ArrayInt(MAX_CU_SIZE)
-        rightColumn = ArrayInt(MAX_CU_SIZE)
+        leftColumn = MAX_CU_SIZE * [0]
+        topRow = MAX_CU_SIZE * [0]
+        bottomRow = MAX_CU_SIZE * [0]
+        rightColumn = MAX_CU_SIZE * [0]
         blkSize = width
         offset2D = width
         shift1D = ord(cvar.g_aucConvertToBit[width]) + 2
@@ -336,8 +368,8 @@ class TComPrediction(TComWeightPrediction):
 
         # Get left and above reference column and row
         for k in xrange(blkSize+1):
-            topRow[k] = pSrc[(srcStride+1) + k - srcStride]
-            leftColumn[k] = pSrc[(srcStride+1) + k * srcStride - 1]
+            topRow[k] = piSrc[k - srcStride]
+            leftColumn[k] = piSrc[k * srcStride - 1]
 
         # Prepare intermediate variables used in interpolation
         bottomLeft = leftColumn[blkSize]
@@ -354,15 +386,19 @@ class TComPrediction(TComWeightPrediction):
             for l in xrange(blkSize):
                 horPred += rightColumn[k]
                 topRow[l] += bottomRow[l]
-                pDst[k * dstStride + l] = (horPred + topRow[l]) >> shift2D
+                rpDst[k * dstStride + l] = (horPred + topRow[l]) >> shift2D
 
     def _xPredInterUni(self, pcCU, uiPartAddr, iWidth, iHeight, eRefPicList, rpcYuvPred, iPartIdx, bi=False):
         iRefIdx = pcCU.getCUMvField(eRefPicList).getRefIdx(uiPartAddr)
         assert(iRefIdx >= 0)
         cMv = pcCU.getCUMvField(eRefPicList).getMv(uiPartAddr)
         pcCU.clipMv(cMv)
-        self._xPredInterLumaBlk(pcCU, pcCU.getSlice().getRefPic(eRefPicList, iRefIdx).getPicYuvRec(), uiPartAddr, cMv, iWidth, iHeight, rpcYuvPred, bi)
-        self._xPredInterChromaBlk(pcCU, pcCU.getSlice().getRefPic(eRefPicList, iRefIdx).getPicYuvRec(), uiPartAddr, cMv, iWidth, iHeight, rpcYuvPred, bi)
+        self._xPredInterLumaBlk(
+            pcCU, pcCU.getSlice().getRefPic(eRefPicList, iRefIdx).getPicYuvRec(),
+            uiPartAddr, cMv, iWidth, iHeight, rpcYuvPred, bi)
+        self._xPredInterChromaBlk(
+            pcCU, pcCU.getSlice().getRefPic(eRefPicList, iRefIdx).getPicYuvRec(),
+            uiPartAddr, cMv, iWidth, iHeight, rpcYuvPred, bi)
 
     def _xPredInterBi(self, pcCU, uiPartAddr, iWidth, iHeight, rpcYuvPred, iPartIdx):
         pcMbYuv = None
@@ -401,10 +437,10 @@ class TComPrediction(TComWeightPrediction):
     def _xPredInterLumaBlk(self, cu, refPic, partAddr, mv, width, height, dstPic, bi):
         refStride = refPic.getStride()
         refOffset = (mv.getHor() >> 2) + (mv.getVer() >> 2) * refStride
-        ref = PelAdd(refPic.getLumaAddr(cu.getAddr(), cu.getZorderIdxInCU() + partAddr), refOffset)
+        ref = array(refPic.getLumaAddr(cu.getAddr(), cu.getZorderIdxInCU() + partAddr), base=refOffset, type='short *')
 
         dstStride = dstPic.getStride()
-        dst = dstPic.getLumaAddr(partAddr)
+        dst = array(dstPic.getLumaAddr(partAddr), type='short *')
 
         xFrac = mv.getHor() & 0x3
         yFrac = mv.getVer() & 0x3
@@ -415,13 +451,13 @@ class TComPrediction(TComWeightPrediction):
             self.m_if.filterVerLuma(ref, refStride, dst, dstStride, width, height, yFrac, True, not bi)
         else:
             tmpStride = self.m_filteredBlockTmp[0].getStride()
-            tmp = self.m_filteredBlockTmp[0].getLumaAddr()
+            tmp = array(self.m_filteredBlockTmp[0].getLumaAddr(), type='short *')
 
             filterSize = NTAPS_LUMA
             halfFilterSize = filterSize >> 1
 
-            self.m_if.filterHorLuma(PelAdd(ref, - (halfFilterSize-1) * refStride), refStride, tmp, tmpStride, width, height+filterSize-1, xFrac, False)
-            self.m_if.filterVerLuma(PelAdd(tmp, + (halfFilterSize-1) * tmpStride), tmpStride, dst, dstStride, width, height, yFrac, False, not bi)
+            self.m_if.filterHorLuma(ref - (halfFilterSize-1)*refStride, refStride, tmp, tmpStride, width, height+filterSize-1, xFrac, False)
+            self.m_if.filterVerLuma(tmp + (halfFilterSize-1)*tmpStride, tmpStride, dst, dstStride, width, height, yFrac, False, not bi)
 
     def _xPredInterChromaBlk(self, cu, refPic, partAddr, mv, width, height, dstPic, bi):
         refStride = refPic.getCStride()
@@ -429,11 +465,11 @@ class TComPrediction(TComWeightPrediction):
 
         refOffset = (mv.getHor() >> 3) + (mv.getVer() >> 3) * refStride
 
-        refCb = PelAdd(refPic.getCbAddr(cu.getAddr(), cu.getZorderIdxInCU() + partAddr), refOffset)
-        refCr = PelAdd(refPic.getCrAddr(cu.getAddr(), cu.getZorderIdxInCU() + partAddr), refOffset)
+        refCb = array(refPic.getCbAddr(cu.getAddr(), cu.getZorderIdxInCU() + partAddr), base=refOffset, type='short *')
+        refCr = array(refPic.getCrAddr(cu.getAddr(), cu.getZorderIdxInCU() + partAddr), base=refOffset, type='short *')
 
-        dstCb = dstPic.getCbAddr(partAddr)
-        dstCr = dstPic.getCrAddr(partAddr)
+        dstCb = array(dstPic.getCbAddr(partAddr), type='short *')
+        dstCr = array(dstPic.getCrAddr(partAddr), type='short *')
 
         xFrac = mv.getHor() & 0x7
         yFrac = mv.getVer() & 0x7
@@ -441,7 +477,7 @@ class TComPrediction(TComWeightPrediction):
         cxHeight = height >> 1
 
         extStride = self.m_filteredBlockTmp[0].getStride()
-        extY = self.m_filteredBlockTmp[0].getLumaAddr()
+        extY = array(self.m_filteredBlockTmp[0].getLumaAddr(), type='short *')
 
         filterSize = NTAPS_CHROMA
         halfFilterSize = filterSize >> 1
@@ -453,11 +489,11 @@ class TComPrediction(TComWeightPrediction):
             self.m_if.filterVerChroma(refCb, refStride, dstCb, dstStride, cxWidth, cxHeight, yFrac, True, not bi)
             self.m_if.filterVerChroma(refCr, refStride, dstCr, dstStride, cxWidth, cxHeight, yFrac, True, not bi)
         else:
-            self.m_if.filterHorChroma(PelAdd(refCb, - (halfFilterSize-1) * refStride), refStride, extY, extStride, cxWidth, cxHeight+filterSize-1, xFrac, False)
-            self.m_if.filterVerChroma(PelAdd(extY, + (halfFilterSize-1) * extStride), extStride, dstCb, dstStride, cxWidth, cxHeight, yFrac, False, not bi)
+            self.m_if.filterHorChroma(refCb - (halfFilterSize-1)*refStride, refStride, extY, extStride, cxWidth, cxHeight+filterSize-1, xFrac, False)
+            self.m_if.filterVerChroma(extY + (halfFilterSize-1)*extStride, extStride, dstCb, dstStride, cxWidth, cxHeight, yFrac, False, not bi)
 
-            self.m_if.filterHorChroma(PelAdd(refCr, - (halfFilterSize-1) * refStride), refStride, extY, extStride, cxWidth, cxHeight+filterSize-1, xFrac, False)
-            self.m_if.filterVerChroma(PelAdd(extY, + (halfFilterSize-1) * extStride), extStride, dstCr, dstStride, cxWidth, cxHeight, yFrac, False, not bi)
+            self.m_if.filterHorChroma(refCr - (halfFilterSize-1)*refStride, refStride, extY, extStride, cxWidth, cxHeight+filterSize-1, xFrac, False)
+            self.m_if.filterVerChroma(extY + (halfFilterSize-1)*extStride, extStride, dstCr, dstStride, cxWidth, cxHeight, yFrac, False, not bi)
 
     def _xWeightedAverage(self, pcCU, pcYuvSrc0, pcYuvSrc1, iRefIdx0, iRefIdx1, uiPartIdx, iWidth, iHeight, rpcYuvDst):
         if iRefIdx0 >= 0 and iRefIdx1 >= 0:
@@ -466,31 +502,3 @@ class TComPrediction(TComWeightPrediction):
             pcYuvSrc0.copyPartToPartYuv(rpcYuvDst, uiPartIdx, iWidth, iHeight)
         elif iRefIdx0 < 0 and iRefIdx1 >= 0:
             pcYuvSrc1.copyPartToPartYuv(rpcYuvDst, uiPartIdx, iWidth, iHeight)
-
-    def _xDCPredFiltering(self, piSrc, iSrcStride, rpDst, iDstStride, iWidth, iHeight):
-        pSrc = ArrayInt.frompointer(IntAdd(piSrc, -(iSrcStride+1)))
-        pDst = ArrayPel.frompointer(rpDst)
-
-        # boundary pixels processing
-        pDst[0] = (pSrc[(iSrcStride+1) - iSrcStride] + pSrc[(iSrcStride+1) - 1] + 2 * pDst[0] + 2) >> 2
-
-        for x in xrange(1, iWidth):
-            pDst[x] = (pSrc[(iSrcStride+1) + x - iSrcStride] + 3 * pDst[x] + 2) >> 2
-
-        iDstStride2 = iDstStride
-        iSrcStride2 = iSrcStride-1
-        for y in xrange(1, iHeight):
-            pDst[iDstStride2] = (pSrc[(iSrcStride+1) + iSrcStride2] + 3 * pDst[iDstStride2] + 2) >> 2
-            iDstStride2 += iDstStride
-            iSrcStride2 += iSrcStride
-
-    def _xCheckIdenticalMotion(self, pcCU, PartAddr):
-        if pcCU.getSlice().isInterB() and not pcCU.getSlice().getPPS().getWPBiPred():
-            if pcCU.getCUMvField(REF_PIC_LIST_0).getRefIdx(PartAddr) >= 0 and \
-               pcCU.getCUMvField(REF_PIC_LIST_1).getRefIdx(PartAddr) >= 0:
-                RefPOCL0 = pcCU.getSlice().getRefPic(REF_PIC_LIST_0, pcCU.getCUMvField(REF_PIC_LIST_0).getRefIdx(PartAddr)).getPOC()
-                RefPOCL1 = pcCU.getSlice().getRefPic(REF_PIC_LIST_1, pcCU.getCUMvField(REF_PIC_LIST_1).getRefIdx(PartAddr)).getPOC()
-                if RefPOCL0 == RefPOCL1 and \
-                   pcCU.getCUMvField(REF_PIC_LIST_0).getMv(PartAddr) == pcCU.getCUMvField(REF_PIC_LIST_1).getMv(PartAddr):
-                    return True
-        return False

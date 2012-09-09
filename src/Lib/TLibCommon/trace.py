@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    module : src/Lib/TLibCommon/TComDump.py
+    module : src/Lib/TLibCommon/trace.py
     HM 8.0 Python Implementation
 """
 
@@ -17,7 +17,107 @@ from .array import array
 g_auiRasterToZscan = ArrayUInt.frompointer(cvar.g_auiRasterToZscan)
 
 
-fpCU = open('dumpCU.txt', 'wt')
+def trace(enable, init=None, wrapper=None, before=None, after=None):
+    if enable:
+        if init:
+            init()
+
+        def trace_func(func):
+            if wrapper:
+                def func_hook(*args, **kwargs):
+                    return wrapper(func)(*args, **kwargs)
+            else:
+                def func_hook(*args, **kwargs):
+                    if before:
+                        before(*args, **kwargs)
+                    ret = func(*args, **kwargs)
+                    if after:
+                        after(*args, **kwargs)
+                    return ret
+            return func_hook
+        return trace_func
+    else:
+        def trace_none(func):
+            return func
+        return trace_none
+
+
+g_hTrace = None
+g_nSymbolCounter = 0
+
+def initCavlc():
+    global g_hTrace
+    global g_nSymbolCounter
+    g_hTrace = open('trace_dec.txt', 'wt')
+    g_nSymbolCounter = 0
+
+def traceSPSHeader(pSPS):
+    g_hTrace.write("=========== Sequence Parameter Set ID: %d ===========\n" % pSPS.getSPSId())
+
+def tracePPSHeader(pPPS):
+    g_hTrace.write("=========== Picture Parameter Set ID: %d ===========\n" % pPPS.getPPSId())
+
+def traceSliceHeader(pSlice):
+    g_hTrace.write("=========== Slice ===========\n")
+
+def traceReadCode(func):
+    def wrap(self, length, pSymbolName=''):
+        rValue = func(self, length)
+        if pSymbolName:
+            global g_nSymbolCounter
+            g_hTrace.write("%8d  " % g_nSymbolCounter)
+            g_hTrace.write("%-40s u(%d) : %d\n" % (pSymbolName, length, rValue))
+            g_hTrace.flush()
+            g_nSymbolCounter += 1
+        return rValue
+    return wrap
+
+def traceReadUvlc(func):
+    def wrap(self, pSymbolName=''):
+        rValue = func(self)
+        if pSymbolName:
+            global g_nSymbolCounter
+            g_hTrace.write("%8d  " % g_nSymbolCounter)
+            g_hTrace.write("%-40s u(v) : %d\n" % (pSymbolName, rValue))
+            g_hTrace.flush()
+            g_nSymbolCounter += 1
+        return rValue
+    return wrap
+
+def traceReadSvlc(func):
+    def wrap(self, pSymbolName=''):
+        rValue = func(self)
+        if pSymbolName:
+            global g_nSymbolCounter
+            g_hTrace.write("%8d  " % g_nSymbolCounter)
+            g_hTrace.write("%-40s s(v) : %d\n" % (pSymbolName, rValue))
+            g_hTrace.flush()
+            g_nSymbolCounter += 1
+        return rValue
+    return wrap
+
+def traceReadFlag(func):
+    def wrap(self, pSymbolName=''):
+        rValue = func(self)
+        if pSymbolName:
+            global g_nSymbolCounter
+            g_hTrace.write("%8d  " % g_nSymbolCounter)
+            g_hTrace.write("%-40s u(1) : %d\n" % (pSymbolName, rValue))
+            g_hTrace.flush()
+            g_nSymbolCounter += 1
+        return rValue
+    return wrap
+
+
+fpCU = None
+
+use_trace_cu_info = True
+use_trace_cu_tcoeff = False
+use_trace_cu_recon = False
+
+def initCU():
+    global fpCU
+    fpCU = open('dumpCU.txt', 'wt')
 
 def dumpCU(pcCU):
     width, height = cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight
@@ -28,7 +128,7 @@ def dumpCU(pcCU):
     fpCU.write('POC[%d] CUA[%d]\n' % (poc, cua))
     fpCU.write('\n')
 
-    if True:
+    if use_trace_cu_info:
         fpCU.write('depth\n')
         for y in xrange(height/4):
             for x in xrange(width/4):
@@ -114,7 +214,7 @@ def dumpCU(pcCU):
             fpCU.write('\n')
         fpCU.write('\n')
 
-    if True:
+    if use_trace_cu_tcoeff:
         fpCU.write('tcoeff\n')
         tc = (array(pcCU.getCoeffY(), type='int *'),
               array(pcCU.getCoeffCb(), type='int *'),
@@ -132,7 +232,7 @@ def dumpCU(pcCU):
             fpCU.write('\n')
         fpCU.write('\n')
 
-    if True:
+    if use_trace_cu_recon:
         fpCU.write('reconst\n')
         zorder = pcCU.getZorderIdxInCU()
         pic = pcCU.getPic().getPicYuvRec()

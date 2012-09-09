@@ -42,7 +42,7 @@ else:
     from .TDecSlice import TDecSlice
     from .TDecCu import TDecCu
     from .TDecEntropy import TDecEntropy
-    from swig.hevc import TDecCavlc
+    from .TDecCavlc import TDecCavlc
     from swig.hevc import TDecSbac
     from swig.hevc import TDecBinCABAC
     from ..TLibCommon.TComPrediction import TComPrediction

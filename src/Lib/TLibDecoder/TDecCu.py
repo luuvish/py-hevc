@@ -36,6 +36,8 @@ else:
     from swig.hevc import ArrayUInt
 
 from ..TLibCommon.array import array
+from ..TLibCommon.trace import trace, initCU, dumpCU
+use_trace = False
 
 # TypeDef.h
 DM_CHROMA_IDX = 36
@@ -131,6 +133,7 @@ class TDecCu(object):
         ruiIsLast = self._xDecodeCU(pcCU, 0, 0, ruiIsLast)
         return ruiIsLast
 
+    @trace(enable=use_trace, init=initCU, after=lambda self, pcCU: dumpCU(pcCU))
     def decompressCU(self, pcCU):
         self._xDecompressCU(pcCU, pcCU, 0, 0)
 

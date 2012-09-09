@@ -29,15 +29,6 @@ MAX_NUM_VPS = 16
 B_SLICE = 0
 P_SLICE = 1
 
-dump_cu = True
-if dump_cu:
-    from ..TLibCommon.TComDump import dumpCU as _dumpCU
-    def dumpCU(pcCU):
-        if pcCU.getPic().getPOC() == 22:
-            _dumpCU(pcCU)
-else:
-    def dumpCU(pcCU): pass
-
 
 class TDecSlice(object):
 
@@ -241,8 +232,7 @@ class TDecSlice(object):
 
             uiIsLast = self.m_pcCuDecoder.decodeCU(pcCU, uiIsLast)
             self.m_pcCuDecoder.decompressCU(pcCU)
-            dumpCU(pcCU)
-
+ 
             # If at the end of a LCU line but not at the end of a substream, perform CABAC flush
             if not uiIsLast and pcSlice.getPPS().getNumSubstreams() > 1:
                 if uiCol == uiTileLCUX + uiTileWidth - 1 and \

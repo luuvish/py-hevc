@@ -12,28 +12,31 @@ if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
 
-    from swig.hevc import TDecCavlc
     from swig.hevc import TDecSbac
-    from swig.hevc import TDecBinCABAC
+    from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
+    from swig.hevc import VectorBool, VectorInt
+
     from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
     from swig.hevc import SEIpictureDigest, digest_get
-
-    from swig.hevc import VectorBool, VectorInt
-    from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
 else:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
+#   from ..TLibCommon import TComRom as cvar # depend on TDecCavlc
 
-    from swig.hevc import TDecCavlc
-    from swig.hevc import TDecSbac
-    from swig.hevc import TDecBinCABAC
+    from .TDecSbac import TDecSbac
+    from .TDecBinCabac import TDecBinCabac
+#   from swig.hevc import TComInputBitstream
+    from swig.hevc import ArrayTComInputBitstream
+#   ArrayTComInputBitstream = lambda size: [TComInputBitstream() for i in xrange(size)]
+    from ..TLibCommon.pointer import pointer
+    ArrayTDecSbac = lambda size: pointer([TDecSbac() for i in xrange(size)])
+    ArrayTDecBinCABAC = lambda size: pointer([TDecBinCabac() for i in xrange(size)])
+    from swig.hevc import VectorBool, VectorInt # depend on TComPic
+
     from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
     from swig.hevc import SEIpictureDigest, digest_get
 
-    from swig.hevc import VectorBool, VectorInt
-    from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
-
-from ..TLibCommon.array import array
+from ..TLibCommon.pointer import pointer
 
 CLOCKS_PER_SEC = 1
 
@@ -134,7 +137,7 @@ class TDecGop(object):
         uiNumSubstreams = pcSlice.getPPS().getNumSubstreams()
 
         # init each couple {EntropyDecoder, Substream}
-        puiSubstreamSizes = pcSlice.getSubstreamSizes()
+        puiSubstreamSizes = pointer(pcSlice.getSubstreamSizes(), type='uint *')
         ppcSubstreams = ArrayTComInputBitstream(uiNumSubstreams)
         self.m_pcSbacDecoders = ArrayTDecSbac(uiNumSubstreams)
         self.m_pcBinCABACs = ArrayTDecBinCABAC(uiNumSubstreams)
@@ -213,7 +216,7 @@ class TDecGop(object):
         if pcSlice.getSPS().getUseSAO():
             if pcSlice.getSaoEnabledFlag() or pcSlice.getSaoEnabledFlagChroma():
                 saoParam = rpcPic.getPicSym().getSaoParam()
-                abSaoFlag = array(saoParam.bSaoFlag, type='bool *')
+                abSaoFlag = pointer(saoParam.bSaoFlag, type='bool *')
                 abSaoFlag[0] = pcSlice.getSaoEnabledFlag()
                 abSaoFlag[1] = pcSlice.getSaoEnabledFlagChroma()
                 self.m_pcSAO.setSaoLcuBasedOptimization(1)

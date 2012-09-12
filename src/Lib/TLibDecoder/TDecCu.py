@@ -11,55 +11,49 @@ if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
 
+    from swig.hevc import TComMv
     from swig.hevc import TComYuv, ArrayTComYuv
     from swig.hevc import TComDataCU, ArrayTComDataCU
-    from swig.hevc import TComMv
-
-    from swig.hevc import initZscanToRaster, initRasterToZscan, \
-                          initRasterToPelXY, initMotionReferIdx
-
     from swig.hevc import ArrayTComMvField, ArrayUChar
-    from swig.hevc import ArrayUInt
+    Char = lambda c: ord(c)
 else:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
+#   from ..TLibCommon import TComRom as cvar # depend on TDecCavlc
 
+    from swig.hevc import TComMv
     from ..TLibCommon.TComYuv import TComYuv
     ArrayTComYuv = lambda size: [TComYuv() for i in xrange(size)]
     from swig.hevc import TComDataCU, ArrayTComDataCU
-    from swig.hevc import TComMv
-
-    from swig.hevc import initZscanToRaster, initRasterToZscan, \
-                          initRasterToPelXY, initMotionReferIdx
-
     from swig.hevc import ArrayTComMvField, ArrayUChar
-    from swig.hevc import ArrayUInt
+#   Char = lambda c: c
+    Char = lambda c: ord(c)
 
-from ..TLibCommon.array import array
+from ..TLibCommon.pointer import pointer
 from ..TLibCommon.trace import trace, initCU, dumpCU
-use_trace = False
 
-# TypeDef.h
-DM_CHROMA_IDX = 36
-REG_DCT = 65535
-# TypeDef.h
-SIZE_2Nx2N = 0
-MODE_INTER = 0
-MODE_INTRA = 1
-TEXT_LUMA = 0
-TEXT_CHROMA = 1
-TEXT_CHROMA_U = 2
-TEXT_CHROMA_V = 3
-REF_PIC_LIST_0 = 0
-REF_PIC_LIST_1 = 1
-# CommonDef.h
-Clip = lambda x: min(cvar.g_uiIBDI_MAX, max(0, x))
-MRG_MAX_NUM_CANDS = 5
-# TComRom.h
-g_auiZscanToRaster = ArrayUInt.frompointer(cvar.g_auiZscanToRaster)
-g_auiRasterToPelX = ArrayUInt.frompointer(cvar.g_auiRasterToPelX)
-g_auiRasterToPelY = ArrayUInt.frompointer(cvar.g_auiRasterToPelY)
-g_eTTable = (0,3,1,2)
+from ..TLibCommon.TypeDef import (
+    DM_CHROMA_IDX, REG_DCT,
+    SIZE_2Nx2N, MODE_INTER, MODE_INTRA,
+    TEXT_LUMA, TEXT_CHROMA, TEXT_CHROMA_U, TEXT_CHROMA_V,
+    REF_PIC_LIST_0, REF_PIC_LIST_1
+)
+
+from ..TLibCommon.CommonDef import (Clip, MRG_MAX_NUM_CANDS)
+
+from ..TLibCommon.TComRom import (
+    initZscanToRaster,
+    initRasterToZscan,
+    initRasterToPelXY,
+    initMotionReferIdx,
+    g_auiZscanToRaster,
+    g_auiRasterToPelX,
+    g_auiRasterToPelY,
+    g_aucConvertToBit,
+    g_eTTable
+)
+
+use_trace = False
 
 
 class TDecCu(object):
@@ -103,7 +97,7 @@ class TDecCu(object):
 
         # initialize partition order.
         piTmp = g_auiZscanToRaster
-        initZscanToRaster(self.m_uiMaxDepth, 1, 0, piTmp.cast())
+        initZscanToRaster(self.m_uiMaxDepth, 1, 0, piTmp)
         initRasterToZscan(uiMaxWidth, uiMaxHeight, self.m_uiMaxDepth)
 
         # initialize conversion matrix from partition index to pel
@@ -407,8 +401,8 @@ class TDecCu(object):
         uiWidth = cvar.g_uiMaxCUWidth >> uiDepth
         uiHeight = cvar.g_uiMaxCUHeight >> uiDepth
 
-        piPcmY = array(pcCU.getPCMSampleY(), type='short *')
-        piRecoY = array(self.m_ppcYuvReco[uiDepth].getLumaAddr(0, uiWidth), type='short *')
+        piPcmY = pointer(pcCU.getPCMSampleY(), type='short *')
+        piRecoY = pointer(self.m_ppcYuvReco[uiDepth].getLumaAddr(0, uiWidth), type='short *')
 
         uiStride = self.m_ppcYuvResi[uiDepth].getStride()
 
@@ -418,10 +412,10 @@ class TDecCu(object):
         uiCWidth = uiWidth >> 1
         uiCHeight = uiHeight >> 1
 
-        piPcmCb = array(pcCU.getPCMSampleCb(), type='short *')
-        piPcmCr = array(pcCU.getPCMSampleCr(), type='short *')
-        pRecoCb = array(self.m_ppcYuvReco[uiDepth].getCbAddr(), type='short *')
-        pRecoCr = array(self.m_ppcYuvReco[uiDepth].getCrAddr(), type='short *')
+        piPcmCb = pointer(pcCU.getPCMSampleCb(), type='short *')
+        piPcmCr = pointer(pcCU.getPCMSampleCr(), type='short *')
+        pRecoCb = pointer(self.m_ppcYuvReco[uiDepth].getCbAddr(), type='short *')
+        pRecoCr = pointer(self.m_ppcYuvReco[uiDepth].getCrAddr(), type='short *')
 
         uiCStride = self.m_ppcYuvReco[uiDepth].getCStride()
 
@@ -433,8 +427,8 @@ class TDecCu(object):
         uiWidth = cvar.g_uiMaxCUWidth >> uiDepth
         uiHeight = cvar.g_uiMaxCUHeight >> uiDepth
 
-        piPcmY = array(pcCU.getPCMSampleY(), type='short *')
-        piRecoY = array(self.m_ppcYuvReco[uiDepth].getLumaAddr(0, uiWidth), type='short *')
+        piPcmY = pointer(pcCU.getPCMSampleY(), type='short *')
+        piRecoY = pointer(self.m_ppcYuvReco[uiDepth].getLumaAddr(0, uiWidth), type='short *')
 
         uiStride = self.m_ppcYuvReco[uiDepth].getStride()
 
@@ -448,10 +442,10 @@ class TDecCu(object):
         uiWidthC = uiWidth >> 1
         uiHeightC = uiHeight >> 1
 
-        piPcmCb = array(pcCU.getPCMSampleCb(), type='short *')
-        piPcmCr = array(pcCU.getPCMSampleCr(), type='short *')
-        piRecoCb = array(self.m_ppcYuvReco[uiDepth].getCbAddr(), type='short *')
-        piRecoCr = array(self.m_ppcYuvReco[uiDepth].getCrAddr(), type='short *')
+        piPcmCb = pointer(pcCU.getPCMSampleCb(), type='short *')
+        piPcmCr = pointer(pcCU.getPCMSampleCr(), type='short *')
+        piRecoCb = pointer(self.m_ppcYuvReco[uiDepth].getCbAddr(), type='short *')
+        piRecoCr = pointer(self.m_ppcYuvReco[uiDepth].getCrAddr(), type='short *')
 
         uiStrideC = self.m_ppcYuvReco[uiDepth].getCStride()
 
@@ -481,7 +475,7 @@ class TDecCu(object):
         pResi = self.m_ppcYuvResi[uiDepth].getLumaAddr()
 
         self.m_pcTrQuant.setQPforQuant(
-            ord(pcCU.getQP(uiAbsPartIdx)), TEXT_LUMA,
+            Char(pcCU.getQP(uiAbsPartIdx)), TEXT_LUMA,
             pcCU.getSlice().getSPS().getQpBDOffsetY(), 0)
         self.m_pcTrQuant.invRecurTransformNxN(
             pcCU, 0, TEXT_LUMA, pResi,
@@ -491,7 +485,7 @@ class TDecCu(object):
         # Cb and Cr
         curChromaQpOffset = pcCU.getSlice().getPPS().getChromaCbQpOffset() + pcCU.getSlice().getSliceQpDeltaCb()
         self.m_pcTrQuant.setQPforQuant(
-            ord(pcCU.getQP(uiAbsPartIdx)), TEXT_CHROMA,
+            Char(pcCU.getQP(uiAbsPartIdx)), TEXT_CHROMA,
             pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
 
         uiWidth >>= 1
@@ -505,7 +499,7 @@ class TDecCu(object):
 
         curChromaQpOffset = pcCU.getSlice().getPPS().getChromaCrQpOffset() + pcCU.getSlice().getSliceQpDeltaCr()
         self.m_pcTrQuant.setQPforQuant(
-            ord(pcCU.getQP(uiAbsPartIdx)), TEXT_CHROMA,
+            Char(pcCU.getQP(uiAbsPartIdx)), TEXT_CHROMA,
             pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
 
         piCoeff = pcCU.getCoeffCr()
@@ -532,7 +526,7 @@ class TDecCu(object):
                 piPicReco = pcCU.getPic().getPicYuvRec().getCrAddr(pcCU.getAddr(), pcCU.getZorderIdxInCU() + uiPartIdx)
             uiPcmLeftShiftBit = cvar.g_uiBitDepth + cvar.g_uiBitIncrement - pcCU.getSlice().getSPS().getPCMBitDepthChroma()
 
-        piPicReco = array(piPicReco, type='short *')
+        piPicReco = pointer(piPicReco, type='short *')
         for uiY in xrange(uiHeight):
             for uiX in xrange(uiWidth):
                 piReco[uiX] = piPCM[uiX] << uiPcmLeftShiftBit
@@ -581,20 +575,20 @@ class TDecCu(object):
         piReco = pcRecoYuv.getLumaAddr(uiAbsPartIdx)
         piPred = pcPredYuv.getLumaAddr(uiAbsPartIdx)
         piResi = pcResiYuv.getLumaAddr(uiAbsPartIdx)
-        piPred = array(piPred, type='short *')
-        piResi = array(piResi, type='short *')
-        piReco = array(piReco, type='short *')
+        piPred = pointer(piPred, type='short *')
+        piResi = pointer(piResi, type='short *')
+        piReco = pointer(piReco, type='short *')
 
         uiNumCoeffInc = (pcCU.getSlice().getSPS().getMaxCUWidth() *
                          pcCU.getSlice().getSPS().getMaxCUHeight()) >> \
                         (pcCU.getSlice().getSPS().getMaxCUDepth() << 1)
-        pcCoeff = array(pcCU.getCoeffY(), base=(uiNumCoeffInc*uiAbsPartIdx), type='int *')
+        pcCoeff = pointer(pcCU.getCoeffY(), base=(uiNumCoeffInc*uiAbsPartIdx), type='int *')
 
         uiLumaPredMode = pcCU.getLumaIntraDir(uiAbsPartIdx)
 
         uiZOrder = pcCU.getZorderIdxInCU() + uiAbsPartIdx
         piRecIPred = pcCU.getPic().getPicYuvRec().getLumaAddr(pcCU.getAddr(), uiZOrder)
-        piRecIPred = array(piRecIPred, type='short *')
+        piRecIPred = pointer(piRecIPred, type='short *')
         uiRecIPredStride = pcCU.getPic().getPicYuvRec().getStride()
         useTransformSkip = pcCU.getTransformSkip(uiAbsPartIdx, TEXT_LUMA)
 
@@ -615,7 +609,7 @@ class TDecCu(object):
                                              pcCU, bAboveAvail, bLeftAvail)
 
         #===== inverse transform =====
-        self.m_pcTrQuant.setQPforQuant(ord(pcCU.getQP(0)), TEXT_LUMA, pcCU.getSlice().getSPS().getQpBDOffsetY(), 0)
+        self.m_pcTrQuant.setQPforQuant(Char(pcCU.getQP(0)), TEXT_LUMA, pcCU.getSlice().getSPS().getQpBDOffsetY(), 0)
 
         scalingListType = (0 if pcCU.isIntra(uiAbsPartIdx) else 3) + g_eTTable[TEXT_LUMA]
         assert(scalingListType < 6)
@@ -637,7 +631,7 @@ class TDecCu(object):
 
     def _xIntraRecChromaBlk(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, uiChromaId):
         uiFullDepth = pcCU.getDepth(0) + uiTrDepth
-        uiLog2TrSize = ord(cvar.g_aucConvertToBit[pcCU.getSlice().getSPS().getMaxCUWidth() >> uiFullDepth]) + 2
+        uiLog2TrSize = g_aucConvertToBit[pcCU.getSlice().getSPS().getMaxCUWidth() >> uiFullDepth] + 2
 
         if uiLog2TrSize == 2:
             assert(uiTrDepth > 0)
@@ -654,15 +648,15 @@ class TDecCu(object):
         piReco = pcRecoYuv.getCrAddr(uiAbsPartIdx) if uiChromaId > 0 else pcRecoYuv.getCbAddr(uiAbsPartIdx)
         piPred = pcPredYuv.getCrAddr(uiAbsPartIdx) if uiChromaId > 0 else pcPredYuv.getCbAddr(uiAbsPartIdx)
         piResi = pcResiYuv.getCrAddr(uiAbsPartIdx) if uiChromaId > 0 else pcResiYuv.getCbAddr(uiAbsPartIdx)
-        piPred = array(piPred, type='short *')
-        piResi = array(piResi, type='short *')
-        piReco = array(piReco, type='short *')
+        piPred = pointer(piPred, type='short *')
+        piResi = pointer(piResi, type='short *')
+        piReco = pointer(piReco, type='short *')
 
         uiNumCoeffInc = ((pcCU.getSlice().getSPS().getMaxCUWidth() *
                           pcCU.getSlice().getSPS().getMaxCUHeight()) >> \
                          (pcCU.getSlice().getSPS().getMaxCUDepth() << 1)) >> 2
-        pcCoeff = array(pcCU.getCoeffCr() if uiChromaId > 0 else pcCU.getCoeffCb(),
-                        base=(uiNumCoeffInc*uiAbsPartIdx), type='int *')
+        pcCoeff = pointer(pcCU.getCoeffCr() if uiChromaId > 0 else pcCU.getCoeffCb(),
+                          base=(uiNumCoeffInc*uiAbsPartIdx), type='int *')
 
         uiChromaPredMode = pcCU.getChromaIntraDir(0)
 
@@ -670,7 +664,7 @@ class TDecCu(object):
         piRecIPred = \
             pcCU.getPic().getPicYuvRec().getCrAddr(pcCU.getAddr(), uiZOrder) if uiChromaId > 0 else \
             pcCU.getPic().getPicYuvRec().getCbAddr(pcCU.getAddr(), uiZOrder)
-        piRecIPred = array(piRecIPred, type='short *')
+        piRecIPred = pointer(piRecIPred, type='short *')
         uiRecIPredStride = pcCU.getPic().getPicYuvRec().getCStride()
         useTransformSkipChroma = pcCU.getTransformSkip(uiAbsPartIdx, eText)
         #===== init availability pattern =====
@@ -702,7 +696,7 @@ class TDecCu(object):
         else:
             curChromaQpOffset = pcCU.getSlice().getPPS().getChromaCrQpOffset() + \
                                 pcCU.getSlice().getSliceQpDeltaCr()
-        self.m_pcTrQuant.setQPforQuant(ord(pcCU.getQP(0)), eText, pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
+        self.m_pcTrQuant.setQPforQuant(Char(pcCU.getQP(0)), eText, pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
 
         scalingListType = (0 if pcCU.isIntra(uiAbsPartIdx) else 3) + g_eTTable[eText]
         assert(scalingListType < 6)

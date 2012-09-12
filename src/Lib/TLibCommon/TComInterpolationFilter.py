@@ -10,10 +10,11 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
+else:
+    from . import TComRom as cvar
 
-from .array import array
+from .pointer import pointer
 
-# TComInterpolationFilter.h
 NTAPS_LUMA = 8
 NTAPS_CHROMA = 4
 IF_INTERNAL_PREC = 14
@@ -46,8 +47,8 @@ class TComInterpolationFilter(object):
 
     @staticmethod
     def filterCopy(src, srcStride, dst, dstStride, width, height, isFirst, isLast):
-        src = array(src.cast(), type='short *')
-        dst = array(dst, type='short *')
+        src = pointer(src.cast(), type='short *')
+        dst = pointer(dst, type='short *')
 
         if isFirst == isLast:
             for row in xrange(height):
@@ -103,8 +104,8 @@ class TComInterpolationFilter(object):
 
             cStride = srcStride if isVertical else 1
             src -= (N/2 - 1) * cStride
-            src = array(src.cast(), type='short *')
-            dst = array(dst, type='short *')
+            src = pointer(src.cast(), type='short *')
+            dst = pointer(dst, type='short *')
 
             offset = 0
             maxVal = 0

@@ -10,42 +10,28 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import LFCUParam
-    from swig.hevc import ArrayUInt
+    Char = lambda c: ord(c)
+else:
+    from . import TComRom as cvar
+    Char = lambda c: c
 
-from .array import array
+from .pointer import pointer
 
-# TypeDef.h
-SIZE_2Nx2N = 0
-SIZE_2NxN = 1
-SIZE_Nx2N = 2
-SIZE_NxN = 3
-SIZE_2NxnU = 4
-SIZE_2NxnD = 5
-SIZE_nLx2N = 6
-SIZE_nRx2N = 7
-SIZE_NONE = 15
-TEXT_LUMA = 0
-REF_PIC_LIST_0 = 0
-REF_PIC_LIST_1 = 1
-# CommonDef.h
-MIN_QP = 0
-MAX_QP = 51
-Clip = lambda x: min(cvar.g_uiIBDI_MAX, max(0, x))
-Clip3 = lambda minVal, maxVal, a: min(max(minVal, a), maxVal)
-# TComRom.h
-g_auiZscanToRaster = ArrayUInt.frompointer(cvar.g_auiZscanToRaster)
-g_auiRasterToZscan = ArrayUInt.frompointer(cvar.g_auiRasterToZscan)
-g_auiRasterToPelX = ArrayUInt.frompointer(cvar.g_auiRasterToPelX)
-g_auiRasterToPelY = ArrayUInt.frompointer(cvar.g_auiRasterToPelY)
-g_aucChromaScale= (
-     0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,
-    17,18,19,20,21,22,23,24,25,26,27,28,29,29,30,31,32,
-    33,33,34,34,35,35,36,36,37,37,38,39,40,41,42,43,44,
-    45,46,47,48,49,50,51
+from .TypeDef import LFCUParam
+from .TypeDef import (
+    SIZE_2Nx2N, SIZE_2NxN, SIZE_Nx2N, SIZE_NxN,
+    SIZE_2NxnU, SIZE_2NxnD, SIZE_nLx2N, SIZE_nRx2N, SIZE_NONE,
+    TEXT_LUMA, REF_PIC_LIST_0, REF_PIC_LIST_1
 )
 
-# TComLoopFilter.h
+from .CommonDef import (MIN_QP, MAX_QP, Clip, Clip3)
+
+from .TComRom import (
+    g_auiZscanToRaster, g_auiRasterToZscan,
+    g_auiRasterToPelX, g_auiRasterToPelY,
+    g_aucChromaScale
+)
+
 DEBLOCK_SMALLEST_BLOCK = 8
 
 EDGE_VER = 0
@@ -426,7 +412,7 @@ class TComLoopFilter(object):
     def _xEdgeFilterLuma(self, pcCU, uiAbsZorderIdx, uiDepth, iDir, iEdge):
         pcPicYuvRec = pcCU.getPic().getPicYuvRec()
         piSrc = pcPicYuvRec.getLumaAddr(pcCU.getAddr(), uiAbsZorderIdx)
-        piTmpSrc = array(piSrc, type='short *')
+        piTmpSrc = pointer(piSrc, type='short *')
 
         iStride = pcPicYuvRec.getStride()
         iQP = 0
@@ -462,7 +448,7 @@ class TComLoopFilter(object):
             uiBsAbsIdx = self._xCalcBsIdx(pcCU, uiAbsZorderIdx, iDir, iEdge, iIdx)
             uiBs = self.m_aapucBS[iDir][uiBsAbsIdx]
             if uiBs:
-                iQP_Q = ord(pcCU.getQP(uiBsAbsIdx))
+                iQP_Q = Char(pcCU.getQP(uiBsAbsIdx))
                 uiPartQIdx = uiBsAbsIdx
                 # Derive neighboring PU index
                 if iDir == EDGE_VER:
@@ -476,7 +462,7 @@ class TComLoopFilter(object):
                         not pcCU.getSlice().getLFCrossSliceBoundaryFlag(),
                         False, False, False, not self.m_bLFCrossTileBoundary)
 
-                iQP_P = ord(pcCUP.getQP(uiPartPIdx))
+                iQP_P = Char(pcCUP.getQP(uiPartPIdx))
                 iQP = (iQP_P + iQP_Q + 1) >> 1
                 iBitdepthScale = 1 << (cvar.g_uiBitIncrement + cvar.g_uiBitDepth - 8)
 
@@ -560,8 +546,8 @@ class TComLoopFilter(object):
         uiBsAbsIdx = 0
         ucBs = 0
 
-        piTmpSrcCb = array(piSrcCb, type='short *')
-        piTmpSrcCr = array(piSrcCr, type='short *')
+        piTmpSrcCb = pointer(piSrcCb, type='short *')
+        piTmpSrcCr = pointer(piSrcCr, type='short *')
 
         if iDir == EDGE_VER:
             iOffset = 1
@@ -581,7 +567,7 @@ class TComLoopFilter(object):
             ucBs = self.m_aapucBS[iDir][uiBsAbsIdx]
 
             if ucBs > 1:
-                iQP_Q = ord(pcCU.getQP(uiBsAbsIdx))
+                iQP_Q = Char(pcCU.getQP(uiBsAbsIdx))
                 uiPartQIdx = uiBsAbsIdx
                 # Derive neighboring PU index
                 if iDir == EDGE_VER:
@@ -595,7 +581,7 @@ class TComLoopFilter(object):
                         not pcCU.getSlice().getLFCrossSliceBoundaryFlag(),
                         False, False, False, not self.m_bLFCrossTileBoundary)
 
-                iQP_P = ord(pcCUP.getQP(uiPartPIdx))
+                iQP_P = Char(pcCUP.getQP(uiPartPIdx))
                 iQP = QpUV((iQP_P + iQP_Q + 1) >> 1)
                 iBitdepthScale = 1 << (cvar.g_uiBitIncrement + cvar.g_uiBitDepth - 8)
 
@@ -621,7 +607,7 @@ class TComLoopFilter(object):
 
     def _xPelFilterLuma(self, piSrc, iOffset, d, beta, tc, sw,
                         bPartPNoFilter, bPartQNoFilter, iThrCut, bFilterSecondP, bFilterSecondQ):
-        piSrc = array(piSrc, bias=-iOffset*4, type='short *')
+        piSrc = pointer(piSrc, bias=-iOffset*4, type='short *')
 
         m4 = piSrc[+iOffset*0]
         m3 = piSrc[-iOffset*1]
@@ -666,7 +652,7 @@ class TComLoopFilter(object):
             piSrc[+iOffset*2] = m6
 
     def _xPelFilterChroma(self, piSrc, iOffset, tc, bPartPNoFilter, bPartQNoFilter):
-        piSrc = array(piSrc, bias=-iOffset*2, type='short *')
+        piSrc = pointer(piSrc, bias=-iOffset*2, type='short *')
 
         m4 = piSrc[+iOffset*0]
         m3 = piSrc[-iOffset*1]
@@ -683,7 +669,7 @@ class TComLoopFilter(object):
             piSrc[+iOffset*0] = m4
 
     def _xUseStrongFiltering(self, offset, d, beta, tc, piSrc):
-        piSrc = array(piSrc, bias=-offset*4, type='short *')
+        piSrc = pointer(piSrc, bias=-offset*4, type='short *')
 
         m4 = piSrc[+offset*0]
         m3 = piSrc[-offset*1]
@@ -695,11 +681,11 @@ class TComLoopFilter(object):
         return d_strong < (beta>>3) and d < (beta>>2) and abs(m3-m4) < ((tc*5+1)>>1)
 
     def _xCalcDP(self, piSrc, iOffset):
-        piSrc = array(piSrc, bias=-iOffset*3, type='short *')
+        piSrc = pointer(piSrc, bias=-iOffset*3, type='short *')
 
         return abs(piSrc[-iOffset*3] - 2*piSrc[-iOffset*2] + piSrc[-iOffset*1])
 
     def _xCalcDQ(self, piSrc, iOffset):
-        piSrc = array(piSrc, type='short *')
+        piSrc = pointer(piSrc, type='short *')
 
         return abs(piSrc[+iOffset*0] - 2*piSrc[+iOffset*1] + piSrc[+iOffset*2])

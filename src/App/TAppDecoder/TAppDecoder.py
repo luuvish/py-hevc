@@ -10,26 +10,20 @@ from time import clock
 use_swig = False
 if use_swig:
     sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
     from swig.hevc import TAppDecTop
+    from swig.hevc import cvar
 else:
     from .TAppDecTop import TAppDecTop
-    class CVar(object):
-        def __init__(self):
-            self.g_md5_mismatch = False
-    cvar = CVar()
+    from ...Lib.TLibCommon import TComRom as cvar
+
+from ...Lib.TLibCommon.CommonDef import (
+    NV_VERSION,
+    NVM_COMPILEDBY,
+    NVM_ONOS,
+    NVM_BITS
+)
 
 CLOCKS_PER_SEC = 1
-
-NV_VERSION = "8.0" # Current software version
-
-__GNUC__ = 4
-__GNUC_MINOR__ = 2
-__GNUC_PATCHLEVEL__ = 1
-
-NVM_COMPILEDBY = "[GCC %d.%d.%d]" % (__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
-NVM_ONOS = "[Mac OS X]"
-NVM_BITS = "[%d bit] " % 64 # used for checking 64-bit O/S
 
 
 cvar.g_md5_mismatch = False

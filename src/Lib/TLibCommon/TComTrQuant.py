@@ -10,175 +10,49 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import ArrayUInt
+else:
+    from . import TComRom as cvar
 
-from .array import array
+from .pointer import pointer
 
-# TypeDef.h
-COEF_REMAIN_BIN_REDUCTION = 3
-SBH_THRESHOLD = 4
-C1FLAG_NUMBER = 8
-C2FLAG_NUMBER = 1
-MLS_GRP_NUM = 64
-MLS_CG_SIZE = 4
-ARL_C_PRECISION = 7
-LEVEL_RANGE = 30
-SCAN_SET_SIZE = 16
-LOG2_SCAN_SET_SIZE = 4
-REG_DCT = 65535
-# TypeDef.h
-I_SLICE = 2
-MODE_INTRA = 1
-TEXT_LUMA = 0
-TEXT_CHROMA = 1
-SCAN_ZIGZAG = 0
-SCAN_HOR = 1
-SCAN_VER = 2
-SCAN_DIAG = 3
-# CommonDef.h
-MAX_INT = 2147483647
-MAX_INT64 = 0x7FFFFFFFFFFFFFFF
-MAX_DOUBLE = 1.7e+308
-MAX_QP = 51
-Clip3 = lambda minVal, maxVal, a: min(max(minVal, a), maxVal)
-# TComRom.h
-MAX_CU_DEPTH = 7
-MAX_CU_SIZE = 1 << MAX_CU_DEPTH
-QUANT_IQUANT_SHIFT = 20
-QUANT_SHIFT = 14
-SCALE_BITS = 15
-MAX_TR_DYNAMIC_RANGE = 15
-SHIFT_INV_1ST = 7
-SHIFT_INV_2ND = 12
-MAX_MATRIX_SIZE_NUM = 8
-SCALING_LIST_NUM = 6
-SCALING_LIST_REM_NUM = 6
-SCALING_LIST_SQT = 0
-SCALING_LIST_VER = 1
-SCALING_LIST_HOR = 2
-SCALING_LIST_DIR_NUM = 3
-SCALING_LIST_8x8 = 1
-SCALING_LIST_16x16 = 2
-SCALING_LIST_32x32 = 3
-SCALING_LIST_SIZE_NUM = 4
-# ContextTables.h
-NUM_QT_CBF_CTX = 5
-NUM_SIG_CG_FLAG_CTX = 2
-NUM_SIG_FLAG_CTX = 42
-NUM_ONE_FLAG_CTX = 24
-NUM_ABS_FLAG_CTX = 6
-# TComTrQuant.h
+from .TypeDef import (
+    COEF_REMAIN_BIN_REDUCTION, SBH_THRESHOLD, C1FLAG_NUMBER, C2FLAG_NUMBER,
+    MLS_GRP_NUM, MLS_CG_SIZE, ARL_C_PRECISION, LEVEL_RANGE,
+    SCAN_SET_SIZE, LOG2_SCAN_SET_SIZE, REG_DCT,
+    I_SLICE, MODE_INTRA, TEXT_LUMA, TEXT_CHROMA,
+    SCAN_ZIGZAG, SCAN_HOR, SCAN_VER, SCAN_DIAG
+)
+
+from .CommonDef import (
+    MAX_INT, MAX_INT64, MAX_DOUBLE, MAX_QP,
+    Clip3
+)
+
+from .TComRom import (
+    MAX_CU_DEPTH, MAX_CU_SIZE, QUANT_IQUANT_SHIFT, QUANT_SHIFT, SCALE_BITS,
+    MAX_TR_DYNAMIC_RANGE, SHIFT_INV_1ST, SHIFT_INV_2ND, MAX_MATRIX_SIZE_NUM,
+    SCALING_LIST_NUM, SCALING_LIST_REM_NUM, SCALING_LIST_SQT,
+    SCALING_LIST_VER, SCALING_LIST_HOR, SCALING_LIST_DIR_NUM,
+    SCALING_LIST_8x8, SCALING_LIST_16x16, SCALING_LIST_32x32, SCALING_LIST_SIZE_NUM,
+    g_quantScales, g_invQuantScales, g_aucConvertToBit,
+    g_aiT4, g_aiT8, g_aiT16, g_aiT32,
+    g_aucChromaScale, g_auiSigLastScan,
+    g_uiGroupIdx, g_auiGoRiceRange, g_auiGoRicePrefixLen,
+    g_sigLastScan8x8, g_sigLastScanCG32x32,
+    g_scalingListSize, g_scalingListSizeX, g_scalingListNum, g_eTTable
+)
+
+from .ContextTables import (
+    NUM_QT_CBF_CTX,
+    NUM_SIG_CG_FLAG_CTX,
+    NUM_SIG_FLAG_CTX,
+    NUM_ONE_FLAG_CTX,
+    NUM_ABS_FLAG_CTX
+)
+
+
 QP_BITS = 15
 RDOQ_CHROMA = 1
-
-
-g_quantScales = (26214,23302,20560,18396,16384,14564)
-g_invQuantScales = (40,45,51,57,64,72)
-
-g_aiT4 = (
-    ( 64, 64, 64, 64),
-    ( 83, 36,-36,-83),
-    ( 64,-64,-64, 64),
-    ( 36,-83, 83,-36)
-)
-
-g_aiT8 = (
-    ( 64, 64, 64, 64, 64, 64, 64, 64),
-    ( 89, 75, 50, 18,-18,-50,-75,-89),
-    ( 83, 36,-36,-83,-83,-36, 36, 83),
-    ( 75,-18,-89,-50, 50, 89, 18,-75),
-    ( 64,-64,-64, 64, 64,-64,-64, 64),
-    ( 50,-89, 18, 75,-75,-18, 89,-50),
-    ( 36,-83, 83,-36,-36, 83,-83, 36),
-    ( 18,-50, 75,-89, 89,-75, 50,-18)
-)
-
-g_aiT16 = (
-    ( 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64),
-    ( 90, 87, 80, 70, 57, 43, 25,  9, -9,-25,-43,-57,-70,-80,-87,-90),
-    ( 89, 75, 50, 18,-18,-50,-75,-89,-89,-75,-50,-18, 18, 50, 75, 89),
-    ( 87, 57,  9,-43,-80,-90,-70,-25, 25, 70, 90, 80, 43, -9,-57,-87),
-    ( 83, 36,-36,-83,-83,-36, 36, 83, 83, 36,-36,-83,-83,-36, 36, 83),
-    ( 80,  9,-70,-87,-25, 57, 90, 43,-43,-90,-57, 25, 87, 70, -9,-80),
-    ( 75,-18,-89,-50, 50, 89, 18,-75,-75, 18, 89, 50,-50,-89,-18, 75),
-    ( 70,-43,-87,  9, 90, 25,-80,-57, 57, 80,-25,-90, -9, 87, 43,-70),
-    ( 64,-64,-64, 64, 64,-64,-64, 64, 64,-64,-64, 64, 64,-64,-64, 64),
-    ( 57,-80,-25, 90, -9,-87, 43, 70,-70,-43, 87,  9,-90, 25, 80,-57),
-    ( 50,-89, 18, 75,-75,-18, 89,-50,-50, 89,-18,-75, 75, 18,-89, 50),
-    ( 43,-90, 57, 25,-87, 70,  9,-80, 80, -9,-70, 87,-25,-57, 90,-43),
-    ( 36,-83, 83,-36,-36, 83,-83, 36, 36,-83, 83,-36,-36, 83,-83, 36),
-    ( 25,-70, 90,-80, 43,  9,-57, 87,-87, 57, -9,-43, 80,-90, 70,-25),
-    ( 18,-50, 75,-89, 89,-75, 50,-18,-18, 50,-75, 89,-89, 75,-50, 18),
-    (  9,-25, 43,-57, 70,-80, 87,-90, 90,-87, 80,-70, 57,-43, 25, -9)
-)
-
-g_aiT32 = (
-    ( 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64),
-    ( 90, 90, 88, 85, 82, 78, 73, 67, 61, 54, 46, 38, 31, 22, 13,  4, -4,-13,-22,-31,-38,-46,-54,-61,-67,-73,-78,-82,-85,-88,-90,-90),
-    ( 90, 87, 80, 70, 57, 43, 25,  9, -9,-25,-43,-57,-70,-80,-87,-90,-90,-87,-80,-70,-57,-43,-25, -9,  9, 25, 43, 57, 70, 80, 87, 90),
-    ( 90, 82, 67, 46, 22, -4,-31,-54,-73,-85,-90,-88,-78,-61,-38,-13, 13, 38, 61, 78, 88, 90, 85, 73, 54, 31,  4,-22,-46,-67,-82,-90),
-    ( 89, 75, 50, 18,-18,-50,-75,-89,-89,-75,-50,-18, 18, 50, 75, 89, 89, 75, 50, 18,-18,-50,-75,-89,-89,-75,-50,-18, 18, 50, 75, 89),
-    ( 88, 67, 31,-13,-54,-82,-90,-78,-46, -4, 38, 73, 90, 85, 61, 22,-22,-61,-85,-90,-73,-38,  4, 46, 78, 90, 82, 54, 13,-31,-67,-88),
-    ( 87, 57,  9,-43,-80,-90,-70,-25, 25, 70, 90, 80, 43, -9,-57,-87,-87,-57, -9, 43, 80, 90, 70, 25,-25,-70,-90,-80,-43,  9, 57, 87),
-    ( 85, 46,-13,-67,-90,-73,-22, 38, 82, 88, 54, -4,-61,-90,-78,-31, 31, 78, 90, 61,  4,-54,-88,-82,-38, 22, 73, 90, 67, 13,-46,-85),
-    ( 83, 36,-36,-83,-83,-36, 36, 83, 83, 36,-36,-83,-83,-36, 36, 83, 83, 36,-36,-83,-83,-36, 36, 83, 83, 36,-36,-83,-83,-36, 36, 83),
-    ( 82, 22,-54,-90,-61, 13, 78, 85, 31,-46,-90,-67,  4, 73, 88, 38,-38,-88,-73, -4, 67, 90, 46,-31,-85,-78,-13, 61, 90, 54,-22,-82),
-    ( 80,  9,-70,-87,-25, 57, 90, 43,-43,-90,-57, 25, 87, 70, -9,-80,-80, -9, 70, 87, 25,-57,-90,-43, 43, 90, 57,-25,-87,-70,  9, 80),
-    ( 78, -4,-82,-73, 13, 85, 67,-22,-88,-61, 31, 90, 54,-38,-90,-46, 46, 90, 38,-54,-90,-31, 61, 88, 22,-67,-85,-13, 73, 82,  4,-78),
-    ( 75,-18,-89,-50, 50, 89, 18,-75,-75, 18, 89, 50,-50,-89,-18, 75, 75,-18,-89,-50, 50, 89, 18,-75,-75, 18, 89, 50,-50,-89,-18, 75),
-    ( 73,-31,-90,-22, 78, 67,-38,-90,-13, 82, 61,-46,-88, -4, 85, 54,-54,-85,  4, 88, 46,-61,-82, 13, 90, 38,-67,-78, 22, 90, 31,-73),
-    ( 70,-43,-87,  9, 90, 25,-80,-57, 57, 80,-25,-90, -9, 87, 43,-70,-70, 43, 87, -9,-90,-25, 80, 57,-57,-80, 25, 90,  9,-87,-43, 70),
-    ( 67,-54,-78, 38, 85,-22,-90,  4, 90, 13,-88,-31, 82, 46,-73,-61, 61, 73,-46,-82, 31, 88,-13,-90, -4, 90, 22,-85,-38, 78, 54,-67),
-    ( 64,-64,-64, 64, 64,-64,-64, 64, 64,-64,-64, 64, 64,-64,-64, 64, 64,-64,-64, 64, 64,-64,-64, 64, 64,-64,-64, 64, 64,-64,-64, 64),
-    ( 61,-73,-46, 82, 31,-88,-13, 90, -4,-90, 22, 85,-38,-78, 54, 67,-67,-54, 78, 38,-85,-22, 90,  4,-90, 13, 88,-31,-82, 46, 73,-61),
-    ( 57,-80,-25, 90, -9,-87, 43, 70,-70,-43, 87,  9,-90, 25, 80,-57,-57, 80, 25,-90,  9, 87,-43,-70, 70, 43,-87, -9, 90,-25,-80, 57),
-    ( 54,-85, -4, 88,-46,-61, 82, 13,-90, 38, 67,-78,-22, 90,-31,-73, 73, 31,-90, 22, 78,-67,-38, 90,-13,-82, 61, 46,-88,  4, 85,-54),
-    ( 50,-89, 18, 75,-75,-18, 89,-50,-50, 89,-18,-75, 75, 18,-89, 50, 50,-89, 18, 75,-75,-18, 89,-50,-50, 89,-18,-75, 75, 18,-89, 50),
-    ( 46,-90, 38, 54,-90, 31, 61,-88, 22, 67,-85, 13, 73,-82,  4, 78,-78, -4, 82,-73,-13, 85,-67,-22, 88,-61,-31, 90,-54,-38, 90,-46),
-    ( 43,-90, 57, 25,-87, 70,  9,-80, 80, -9,-70, 87,-25,-57, 90,-43,-43, 90,-57,-25, 87,-70, -9, 80,-80,  9, 70,-87, 25, 57,-90, 43),
-    ( 38,-88, 73, -4,-67, 90,-46,-31, 85,-78, 13, 61,-90, 54, 22,-82, 82,-22,-54, 90,-61,-13, 78,-85, 31, 46,-90, 67,  4,-73, 88,-38),
-    ( 36,-83, 83,-36,-36, 83,-83, 36, 36,-83, 83,-36,-36, 83,-83, 36, 36,-83, 83,-36,-36, 83,-83, 36, 36,-83, 83,-36,-36, 83,-83, 36),
-    ( 31,-78, 90,-61,  4, 54,-88, 82,-38,-22, 73,-90, 67,-13,-46, 85,-85, 46, 13,-67, 90,-73, 22, 38,-82, 88,-54, -4, 61,-90, 78,-31),
-    ( 25,-70, 90,-80, 43,  9,-57, 87,-87, 57, -9,-43, 80,-90, 70,-25,-25, 70,-90, 80,-43, -9, 57,-87, 87,-57,  9, 43,-80, 90,-70, 25),
-    ( 22,-61, 85,-90, 73,-38, -4, 46,-78, 90,-82, 54,-13,-31, 67,-88, 88,-67, 31, 13,-54, 82,-90, 78,-46,  4, 38,-73, 90,-85, 61,-22),
-    ( 18,-50, 75,-89, 89,-75, 50,-18,-18, 50,-75, 89,-89, 75,-50, 18, 18,-50, 75,-89, 89,-75, 50,-18,-18, 50,-75, 89,-89, 75,-50, 18),
-    ( 13,-38, 61,-78, 88,-90, 85,-73, 54,-31,  4, 22,-46, 67,-82, 90,-90, 82,-67, 46,-22, -4, 31,-54, 73,-85, 90,-88, 78,-61, 38,-13),
-    (  9,-25, 43,-57, 70,-80, 87,-90, 90,-87, 80,-70, 57,-43, 25, -9, -9, 25,-43, 57,-70, 80,-87, 90,-90, 87,-80, 70,-57, 43,-25,  9),
-    (  4,-13, 22,-31, 38,-46, 54,-61, 67,-73, 78,-82, 85,-88, 90,-90, 90,-90, 88,-85, 82,-78, 73,-67, 61,-54, 46,-38, 31,-22, 13, -4)
-)
-
-g_aucChromaScale= (
-     0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,
-    17,18,19,20,21,22,23,24,25,26,27,28,29,29,30,31,32,
-    33,33,34,34,35,35,36,36,37,37,38,39,40,41,42,43,44,
-    45,46,47,48,49,50,51
-)
-
-g_auiSigLastScan = [] #ArrayUInt.frompointer(cvar.g_auiSigLastScan)
-
-g_uiGroupIdx = (
-    0,1,2,3,4,4,5,5,
-    6,6,6,6,7,7,7,7,
-    8,8,8,8,8,8,8,8,
-    9,9,9,9,9,9,9,9
-)
-
-g_auiGoRiceRange = (7, 14, 26, 46, 78)
-g_auiGoRicePrefixLen = (8, 7, 6, 5, 4)
-
-g_sigLastScan8x8 = (
-    (0, 1, 2, 3),
-    (0, 1, 2, 3),
-    (0, 2, 1, 3),
-    (0, 2, 1, 3)
-)
-g_sigLastScanCG32x32 = ArrayUInt.frompointer(cvar.g_sigLastScanCG32x32)
-
-g_scalingListSize = (16,64,256,1024)
-g_scalingListSizeX = (4, 8, 16, 32)
-g_scalingListNum = (6,6,6,2)
-g_eTTable = (0,3,1,2)
-
 
 class estBitsSbacStruct(object):
 
@@ -263,8 +137,8 @@ def fastInverseDst(tmp, block, shift):
         block[4*i+3] = Clip3(-32768, 32767, (55 * c[0] + 29 * c[2] - c[3] + rnd_factor) >> shift)
 
 def partialButterfly4(src, dst, shift, line):
-    src = array(src)
-    dst = array(dst)
+    src = pointer(src)
+    dst = pointer(dst)
 
     E, O = 2 * [0], 2 * [0]
     add = 1 << (shift-1)
@@ -285,8 +159,8 @@ def partialButterfly4(src, dst, shift, line):
         dst += 1
 
 def partialButterflyInverse4(src, dst, shift, line):
-    src = array(src)
-    dst = array(dst)
+    src = pointer(src)
+    dst = pointer(dst)
 
     E, O = 2 * [0], 2 * [0]
     add = 1 << (shift-1)
@@ -306,8 +180,8 @@ def partialButterflyInverse4(src, dst, shift, line):
         dst += 4
 
 def partialButterfly8(src, dst, shift, line):
-    src = array(src)
-    dst = array(dst)
+    src = pointer(src)
+    dst = pointer(dst)
 
     E, O = 4 * [0], 4 * [0]
     EE, EO = 2 * [0], 2 * [0]
@@ -338,8 +212,8 @@ def partialButterfly8(src, dst, shift, line):
         dst += 1
 
 def partialButterflyInverse8(src, dst, shift, line):
-    src = array(src)
-    dst = array(dst)
+    src = pointer(src)
+    dst = pointer(dst)
 
     E, O = 4 * [0], 4 * [0]
     EE, EO = 2 * [0], 2 * [0]
@@ -367,8 +241,8 @@ def partialButterflyInverse8(src, dst, shift, line):
         dst += 8
 
 def partialButterfly16(src, dst, shift, line):
-    src = array(src)
-    dst = array(dst)
+    src = pointer(src)
+    dst = pointer(dst)
 
     E, O = 8 * [0], 8 * [0]
     EE, EO = 4 * [0], 4 * [0]
@@ -409,8 +283,8 @@ def partialButterfly16(src, dst, shift, line):
         dst += 1
 
 def partialButterflyInverse16(src, dst, shift, line):
-    src = array(src)
-    dst = array(dst)
+    src = pointer(src)
+    dst = pointer(dst)
 
     E, O = 8 * [0], 8 * [0]
     EE, EO = 4 * [0], 4 * [0]
@@ -445,8 +319,8 @@ def partialButterflyInverse16(src, dst, shift, line):
         dst += 16
 
 def partialButterfly32(src, dst, shift, line):
-    src = array(src)
-    dst = array(dst)
+    src = pointer(src)
+    dst = pointer(dst)
 
     E, O = 16 * [0], 16 * [0]
     EE, EO = 8 * [0], 8 * [0]
@@ -499,8 +373,8 @@ def partialButterfly32(src, dst, shift, line):
         dst += 1
 
 def partialButterflyInverse32(src, dst, shift, line):
-    src = array(src)
-    dst = array(dst)
+    src = pointer(src)
+    dst = pointer(dst)
 
     E, O = 16 * [0], 16 * [0]
     EE, EO = 8 * [0], 8 * [0]
@@ -549,8 +423,8 @@ def partialButterflyInverse32(src, dst, shift, line):
         dst += 32
 
 def xTrMxN(block, coeff, iWidth, iHeight, uiMode):
-    shift_1st = ord(cvar.g_aucConvertToBit[iWidth]) + 1 + cvar.g_uiBitIncrement
-    shift_2nd = ord(cvar.g_aucConvertToBit[iHeight]) + 8
+    shift_1st = g_aucConvertToBit[iWidth] + 1 + cvar.g_uiBitIncrement
+    shift_2nd = g_aucConvertToBit[iHeight] + 8
     tmp = (64*64) * [0]
 
     if iWidth == 4 and iHeight == 4:
@@ -655,9 +529,9 @@ class TComTrQuant(object):
     def transformNxN(self, pcCU, rpcResidual, uiStride, rpcCoeff, rpcArlCoeff,
                      uiWidth, uiHeight, uiAbsSum, eTType, uiAbsPartIdx,
                      useTransformSkip=False):
-        rpcArlCoeff = array(rpcArlCoeff)
-        rpcCoeff = array(rpcCoeff, type='int *')
-        rpcResidual = array(rpcResidual, type='short *')
+        rpcArlCoeff = pointer(rpcArlCoeff)
+        rpcCoeff = pointer(rpcCoeff, type='int *')
+        rpcResidual = pointer(rpcResidual, type='short *')
 
         if pcCU.getCUTransquantBypass(uiAbsPartIdx):
             uiAbsSum = 0
@@ -686,8 +560,8 @@ class TComTrQuant(object):
     def invtransformNxN(self, transQuantBypass, eText, uiMode,
                         rpcResidual, uiStride, rpcCoeff,
                         uiWidth, uiHeight, scalingListType, useTransformSkip=False):
-        rpcCoeff = array(rpcCoeff, type='int *')
-        rpcResidual = array(rpcResidual, type='short *')
+        rpcCoeff = pointer(rpcCoeff, type='int *')
+        rpcResidual = pointer(rpcResidual, type='short *')
 
         if transQuantBypass:
             for k in xrange(uiHeight):
@@ -703,8 +577,8 @@ class TComTrQuant(object):
     def invRecurTransformNxN(self, pcCU, uiAbsPartIdx, eTxt,
                              rpcResidual, uiAddr, uiStride,
                              uiWidth, uiHeight, uiMaxTrMode, uiTrMode, rpcCoeff):
-        rpcCoeff = array(rpcCoeff, type='int *')
-        rpcResidual = array(rpcResidual, type='short *')
+        rpcCoeff = pointer(rpcCoeff, type='int *')
+        rpcResidual = pointer(rpcResidual, type='short *')
 
         if not pcCU.getCbf(uiAbsPartIdx, eTxt, uiTrMode):
             return
@@ -717,7 +591,7 @@ class TComTrQuant(object):
 
         if uiTrMode == uiStopTrMode:
             uiDepth = pcCU.getDepth(uiAbsPartIdx) + uiTrMode
-            uiLog2TrSize = ord(cvar.g_aucConvertToBit[pcCU.getSlice().getSPS().getMaxCUWidth() >> uiDepth]) + 2
+            uiLog2TrSize = g_aucConvertToBit[pcCU.getSlice().getSPS().getMaxCUWidth() >> uiDepth] + 2
             if eTxt != TEXT_LUMA and uiLog2TrSize == 2:
                 uiQPDiv = pcCU.getPic().getNumPartInCU() >> ((uiDepth-1) << 1)
                 if (uiAbsPartIdx % uiQPDiv) != 0:
@@ -882,7 +756,7 @@ class TComTrQuant(object):
                                 del self.m_errScale[sizeId][listId][qp][dir]
 
     def setErrScaleCoeff(self, list, size, qp, dir):
-        uiLog2TrSize = ord(cvar.g_aucConvertToBit[g_scalingListSizeX[size]]) + 2
+        uiLog2TrSize = g_aucConvertToBit[g_scalingListSizeX[size]] + 2
         uiBitDepth = cvar.g_uiBitDepth + cvar.g_uiBitIncrement
 
         iTransformShift = MAX_TR_DYNAMIC_RANGE - uiBitDepth - uiLog2TrSize
@@ -1097,7 +971,7 @@ class TComTrQuant(object):
 
     def _xTransformSkip(self, piBlkResi, uiStride, psCoeff, width, height):
         assert(width == height)
-        uiLog2TrSize = ord(cvar.g_aucConvertToBit[width]) + 2
+        uiLog2TrSize = g_aucConvertToBit[width] + 2
         uiBitDepth = cvar.g_uiBitDepth + cvar.g_uiBitIncrement
         shift = MAX_TR_DYNAMIC_RANGE - uiBitDepth - uiLog2TrSize
         if shift >= 0:
@@ -1198,7 +1072,7 @@ class TComTrQuant(object):
         if self.m_bUseRDOQ and (eTType == TEXT_LUMA or RDOQ_CHROMA) and useRDOQForTransformSkip:
             self._xRateDistOptQuant(pcCU, piCoef, pDes, pArlDes, iWidth, iHeight, uiAcSum, eTType, uiAbsPartIdx)
         else:
-            log2BlockSize = ord(cvar.g_aucConvertToBit[iWidth]) + 2
+            log2BlockSize = g_aucConvertToBit[iWidth] + 2
 
             scanIdx = pcCU.getCoefScanIdx(uiAbsPartIdx, iWidth, eTType==TEXT_LUMA, pcCU.isIntra(uiAbsPartIdx))
             if scanIdx == SCAN_ZIGZAG:
@@ -1227,7 +1101,7 @@ class TComTrQuant(object):
 
             dir = SCALING_LIST_SQT
 
-            uiLog2TrSize = ord(cvar.g_aucConvertToBit[iWidth]) + 2
+            uiLog2TrSize = g_aucConvertToBit[iWidth] + 2
             scalingListType = (0 if pcCU.isIntra(uiAbsPartIdx) else 3) + g_eTTable[eTType]
             assert(scalingListType < 6)
             piQuantCoeff = self.getQuantCoeff(scalingListType, self.m_cQP.m_iRem, uiLog2TrSize-2, dir)
@@ -1267,14 +1141,14 @@ class TComTrQuant(object):
         iQBits = self.m_cQP.m_iBits
         dTemp = 0
         dir = SCALING_LIST_SQT
-        uiLog2TrSize = ord(cvar.g_aucConvertToBit[uiWidth]) + 2
+        uiLog2TrSize = g_aucConvertToBit[uiWidth] + 2
         uiQ = g_quantScales[self.m_cQP.rem()]
 
         uiBitDepth = cvar.g_uiBitDepth + cvar.g_uiBitIncrement
         iTransformShift = MAX_TR_DYNAMIC_RANGE - uiBitDepth - uiLog2TrSize
         uiGoRiceParam = 0
         d64BlockUncodedCost = 0.0
-        uiLog2BlkSize = ord(cvar.g_aucConvertToBit[uiWidth]) + 2
+        uiLog2BlkSize = g_aucConvertToBit[uiWidth] + 2
         uiMaxNumCoeff = uiWidth * uiHeight
         scalingListType = (0 if pcCU.isIntra(uiAbsPartIdx) else 3) + g_eTTable[eTType]
         assert(scalingListType < 6)
@@ -1764,7 +1638,7 @@ class TComTrQuant(object):
             iWidth = self.m_uiMaxTrSize
             iHeight = self.m_uiMaxTrSize
 
-        uiLog2TrSize = ord(cvar.g_aucConvertToBit[iWidth]) + 2
+        uiLog2TrSize = g_aucConvertToBit[iWidth] + 2
 
         uiBitDepth = cvar.g_uiBitDepth + cvar.g_uiBitIncrement
         iTransformShift = MAX_TR_DYNAMIC_RANGE - uiBitDepth - uiLog2TrSize
@@ -1813,7 +1687,7 @@ class TComTrQuant(object):
 
     def _xITransformSkip(self, plCoef, pResidual, uiStride, width, height):
         assert(width == height)
-        uiLog2TrSize = ord(cvar.g_aucConvertToBit[width]) + 2
+        uiLog2TrSize = g_aucConvertToBit[width] + 2
         uiBitDepth = cvar.g_uiBitDepth + cvar.g_uiBitIncrement
         shift = MAX_TR_DYNAMIC_RANGE - uiBitDepth - uiLog2TrSize
         if shift > 0:

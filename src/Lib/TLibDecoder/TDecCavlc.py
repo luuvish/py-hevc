@@ -12,52 +12,51 @@ if use_swig:
     from swig.hevc import cvar
     from swig.hevc import parseSEImessage
     from swig.hevc import ArrayUInt
+    Char = lambda c: ord(c)
 else:
     sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
+    from ..TLibCommon import TComRom as cvar
     from swig.hevc import parseSEImessage
-    ArrayUInt = lambda size: [0 for i in xrange(size)]
+    ArrayUInt = lambda size: [0 for i in xrange(size)] # TComPPS
+    Char = lambda c: c
 
 from .TDecEntropy import TDecEntropy
 
-from ..TLibCommon.array import array
-from ..TLibCommon.trace import trace
-from ..TLibCommon.trace import initCavlc, \
-                               traceSPSHeader, tracePPSHeader, traceSliceHeader, \
-                               traceReadCode, traceReadUvlc, \
-                               traceReadSvlc, traceReadFlag
+from ..TLibCommon.pointer import pointer
+
+from ..TLibCommon.trace import (
+    trace, initCavlc,
+    traceSPSHeader, tracePPSHeader, traceSliceHeader,
+    traceReadCode, traceReadUvlc, traceReadSvlc, traceReadFlag
+)
 
 use_trace = False
 
-# TypeDef.h
-MRG_MAX_NUM_CANDS_SIGNALED = 5
-# TypeDef.h
-SAO_BO_LEN = 4
-SAO_BO = 4
-B_SLICE = 0
-P_SLICE = 1
-I_SLICE = 2
-REF_PIC_LIST_0 = 0
-REF_PIC_LIST_1 = 1
-SCAN_DIAG = 3
-# CommonDef.h
-MAX_NUM_REF = 4
-Clip3 = lambda minVal, maxVal, a: min(max(minVal, a), maxVal)
-MRG_MAX_NUM_CANDS = 5
-NAL_UNIT_CODED_SLICE_CRA = 4
-NAL_UNIT_CODED_SLICE_CRANT = 5
-NAL_UNIT_CODED_SLICE_BLA = 6
-NAL_UNIT_CODED_SLICE_BLANT = 7
-NAL_UNIT_CODED_SLICE_IDR = 8
-# TComRom.h
-SCALING_LIST_START_VALUE = 8
-MAX_MATRIX_COEF_NUM = 64
-SCALING_LIST_8x8 = 1
-SCALING_LIST_SIZE_NUM = 4
-g_auiSigLastScan = []
-g_sigLastScanCG32x32 = ArrayUInt.frompointer(cvar.g_sigLastScanCG32x32)
-g_scalingListSize = (16,64,256,1024)
-g_scalingListNum = (6,6,6,2)
+from ..TLibCommon.TypeDef import (
+    MRG_MAX_NUM_CANDS_SIGNALED,
+    SAO_BO_LEN, SAO_BO,
+    B_SLICE, P_SLICE, I_SLICE,
+    REF_PIC_LIST_0, REF_PIC_LIST_1,
+    SCAN_DIAG
+)
+
+from ..TLibCommon.CommonDef import (
+    MAX_NUM_REF, Clip3, MRG_MAX_NUM_CANDS,
+    NAL_UNIT_CODED_SLICE_CRA,
+    NAL_UNIT_CODED_SLICE_CRANT,
+    NAL_UNIT_CODED_SLICE_BLA,
+    NAL_UNIT_CODED_SLICE_BLANT,
+    NAL_UNIT_CODED_SLICE_IDR
+)
+
+from ..TLibCommon.TComRom import (
+    SCALING_LIST_START_VALUE, MAX_MATRIX_COEF_NUM,
+    SCALING_LIST_8x8, SCALING_LIST_SIZE_NUM,
+    g_auiSigLastScan,
+    g_sigLastScanCG32x32,
+    g_scalingListSize,
+    g_scalingListNum
+)
 
 
 class TDecCavlc(TDecEntropy):
@@ -327,14 +326,14 @@ class TDecCavlc(TDecEntropy):
             pcPPS.setUniformSpacingIdr(uiCode)
 
             if pcPPS.getUniformSpacingIdr() == 0:
-                columnWidth = array(ArrayUInt(pcPPS.getNumColumnsMinus1()), type='uint *')
+                columnWidth = ArrayUInt(pcPPS.getNumColumnsMinus1())
                 for i in xrange(pcPPS.getNumColumnsMinus1()):
                     uiCode = self._xReadUvlc('column_width')
                     columnWidth[i] = uiCode
                 pcPPS.setColumnWidth(columnWidth.cast())
                 del columnWidth
 
-                rowHeight = array(ArrayUInt(pcPPS.getNumRowsMinus1()), type='uint *')
+                rowHeight = ArrayUInt(pcPPS.getNumRowsMinus1())
                 for i in xrange(pcPPS.getNumRowsMinus1()):
                     uiCode = self._xReadUvlc('row_height')
                     rowHeight[i] = uiCode
@@ -763,7 +762,7 @@ class TDecCavlc(TDecEntropy):
             elif tilesOrEntropyCodingSyncIdc == 2: # wavefront
                 numSubstreams = pps.getNumSubstreams()
                 rpcSlice.allocSubstreamSizes(numSubstreams)
-                pSubstreamSizes = array(rpcSlice.getSubstreamSizes(), type='uint *')
+                pSubstreamSizes = pointer(rpcSlice.getSubstreamSizes(), type='uint *')
                 for idx in xrange(numSubstreams-1):
                     if idx < numEntryPointOffsets:
                         pSubstreamSizes[idx] = entryPointOffset[idx] << 3
@@ -818,7 +817,7 @@ class TDecCavlc(TDecEntropy):
         iDQp = self._xReadSvlc()
 
         qpBdOffsetY = pcCU.getSlice().getSPS().getQpBDOffsetY()
-        qp = ((ord(pcCU.getRefQP(uiAbsPartIdx)) + iDQp + 52 + 2*qpBdOffsetY) % (52 + qpBdOffsetY)) - qpBdOffsetY
+        qp = ((Char(pcCU.getRefQP(uiAbsPartIdx)) + iDQp + 52 + 2*qpBdOffsetY) % (52 + qpBdOffsetY)) - qpBdOffsetY
 
         uiAbsQpCUPartIdx = (uiAbsPartIdx >> ((cvar.g_uiMaxCUDepth - pcCU.getSlice().getPPS().getMaxCUDQPDepth()) << 1)) << \
                                             ((cvar.g_uiMaxCUDepth - pcCU.getSlice().getPPS().getMaxCUDQPDepth()) << 1)

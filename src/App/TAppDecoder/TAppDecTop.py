@@ -9,34 +9,35 @@ import sys
 use_swig = False
 if use_swig:
     sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-    from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
-    from swig.hevc import VectorUint8
-
-    from swig.hevc import InputByteStream, AnnexBStats, byteStreamNALUnit
-    from swig.hevc import InputNALUnit, read
     from swig.hevc import TDecTop
     from swig.hevc import TVideoIOYuv
-else:
-    sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
-    from swig.hevc import VectorUint8
 
     from swig.hevc import InputByteStream, AnnexBStats, byteStreamNALUnit
     from swig.hevc import InputNALUnit, read
+    from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
+    from swig.hevc import VectorUint8
+else:
+    sys.path.insert(0, '../../..')
     from ...Lib.TLibDecoder.TDecTop import TDecTop
-#   from ...Lib.TLibVideoIO.TVideoIOYuv import TVideoIOYuv
-    from swig.hevc import TVideoIOYuv
+    from ...Lib.TLibVideoIO.TVideoIOYuv import TVideoIOYuv
+    from swig.hevc import cvar
+#   from ...Lib.TLibCommon import TComRom as cvar # depend on TDecCavlc
+
+    from swig.hevc import InputByteStream, AnnexBStats, byteStreamNALUnit
+    from swig.hevc import InputNALUnit, read
+    from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
+    from swig.hevc import VectorUint8
 
 from .TAppDecCfg import TAppDecCfg
 
-# CommonDef.h
-MAX_INT = 2147483647
-NAL_UNIT_CODED_SLICE_BLA = 6
-NAL_UNIT_CODED_SLICE_BLANT = 7
-NAL_UNIT_CODED_SLICE_IDR = 8
-NAL_UNIT_SPS = 26
+from ...Lib.TLibCommon.CommonDef import (
+    MAX_INT,
+    NAL_UNIT_CODED_SLICE_BLA,
+    NAL_UNIT_CODED_SLICE_BLANT,
+    NAL_UNIT_CODED_SLICE_IDR,
+    NAL_UNIT_SPS
+)
 
 
 class TAppDecTop(TAppDecCfg):

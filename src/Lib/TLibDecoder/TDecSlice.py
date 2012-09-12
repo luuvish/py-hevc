@@ -10,24 +10,32 @@ from time import clock
 use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
+
+    from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
+
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
-    from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
 else:
     sys.path.insert(0, '../../..')
+
+    from .TDecSbac import TDecSbac
+    from .TDecBinCabac import TDecBinCabac
+    from swig.hevc import TComInputBitstream
+    from swig.hevc import ArrayTComInputBitstream
+#   ArrayTComInputBitstream = lambda size: [TComInputBitstream() for i in xrange(size)]
+    from ..TLibCommon.pointer import pointer
+    ArrayTDecSbac = lambda size: pointer([TDecSbac() for i in xrange(size)])
+    ArrayTDecBinCABAC = lambda size: pointer([TDecBinCabac() for i in xrange(size)])
+
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
-    from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
 
-from ..TLibCommon.array import array
+from ..TLibCommon.pointer import pointer
 
-# TypeDef.h
-MAX_NUM_SPS = 32
-MAX_NUM_PPS = 256
-MAX_NUM_VPS = 16
-# TypeDef.h
-B_SLICE = 0
-P_SLICE = 1
+from ..TLibCommon.TypeDef import (
+    MAX_NUM_SPS, MAX_NUM_PPS, MAX_NUM_VPS,
+    B_SLICE, P_SLICE
+)
 
 
 class TDecSlice(object):
@@ -50,22 +58,22 @@ class TDecSlice(object):
         pass
 
     def destroy(self):
-        if self.m_pcBufferSbacDecoders:
+        if self.m_pcBufferSbacDecoders != None:
             del self.m_pcBufferSbacDecoders
             self.m_pcBufferSbacDecoders = None
-        if self.m_pcBufferBinCABACs:
+        if self.m_pcBufferBinCABACs != None:
             del self.m_pcBufferBinCABACs
             self.m_pcBufferBinCABACs = None
-        if self.m_pcBufferLowLatSbacDecoders:
+        if self.m_pcBufferLowLatSbacDecoders != None:
             del self.m_pcBufferLowLatSbacDecoders
             self.m_pcBufferLowLatSbacDecoders = None
-        if self.m_pcBufferLowLatBinCABACs:
+        if self.m_pcBufferLowLatBinCABACs != None:
             del self.m_pcBufferLowLatBinCABACs
             self.m_pcBufferLowLatBinCABACs = None
 
     def decompressSlice(self, pcBitstream, ppcSubstreams, rpcPic, pcSbacDecoder, pcSbacDecoders):
-        ppcSubstreams = ArrayTComInputBitstream.frompointer(ppcSubstreams)
-        pcSbacDecoders = ArrayTDecSbac.frompointer(pcSbacDecoders)
+        ppcSubstreams = pointer(ppcSubstreams, type='TComInputBitstream *')
+        pcSbacDecoders = pointer(pcSbacDecoders, type='TDecSbac *')
 
         pcCU = None
         uiIsLast = 0
@@ -82,9 +90,9 @@ class TDecSlice(object):
         iNumSubstreams = pcSlice.getPPS().getNumSubstreams()
 
         # delete decoders if already allocated in previous slice
-        if self.m_pcBufferSbacDecoders:
+        if self.m_pcBufferSbacDecoders != None:
             del self.m_pcBufferSbacDecoders
-        if self.m_pcBufferBinCABACs:
+        if self.m_pcBufferBinCABACs != None:
             del self.m_pcBufferBinCABACs
         # allocate new decoders based on tile numbaer
         self.m_pcBufferSbacDecoders = ArrayTDecSbac(uiTilesAcross)
@@ -96,9 +104,9 @@ class TDecSlice(object):
             self.m_pcBufferSbacDecoders[ui].load(pcSbacDecoder)
 
         # free memory if already allocated in previous call
-        if self.m_pcBufferLowLatSbacDecoders:
+        if self.m_pcBufferLowLatSbacDecoders != None:
             del self.m_pcBufferLowLatSbacDecoders
-        if self.m_pcBufferLowLatBinCABACs:
+        if self.m_pcBufferLowLatBinCABACs != None:
             del self.m_pcBufferLowLatBinCABACs
         self.m_pcBufferLowLatSbacDecoders = ArrayTDecSbac(uiTilesAcross)
         self.m_pcBufferLowLatBinCABACs = ArrayTDecBinCABAC(uiTilesAcross)
@@ -210,7 +218,7 @@ class TDecSlice(object):
             if pcSlice.getSPS().getUseSAO() and \
                (pcSlice.getSaoEnabledFlag() or pcSlice.getSaoEnabledFlagChroma()):
                 saoParam = rpcPic.getPicSym().getSaoParam()
-                abSaoFlag = array(saoParam.bSaoFlag, type='bool *')
+                abSaoFlag = pointer(saoParam.bSaoFlag, type='bool *')
                 abSaoFlag[0] = pcSlice.getSaoEnabledFlag()
                 if iCUAddr == iStartCUAddr:
                     abSaoFlag[1] = pcSlice.getSaoEnabledFlagChroma()

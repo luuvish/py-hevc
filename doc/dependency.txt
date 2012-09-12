@@ -1,18 +1,22 @@
+Lib/TLibCommon/TypeDef.py
+Lib/TLibCommon/CommonDef.py
+Lib/TLibCommon/TComRom.py
+
 App/TAppDecoder/TAppDecoder.py
 App/TAppDecoder/TAppDecTop.py, TAppDecCfg.py
 
 Lib/TLibVideoIO/TVideoIOYuv.py < TComPicYuv.py
 
 Lib/TLibDecoder/TDecTop.py
-Lib/TLibDecoder/TDecGop.py
+Lib/TLibDecoder/TDecGop.py < TComInputBitstream.py, TDecSbac.py, TDecBinCabac.py
 Lib/TLibDecoder/TDecSlice.py
-Lib/TLibDecoder/TDecCu.py
+Lib/TLibDecoder/TDecCu.py < TComYuv.py
 Lib/TLibDecoder/TDecEntropy.py
-Lib/TLibDecoder/TDecCavlc.py
-Lib/TLibDecoder/TDecSbac.py
-Lib/TLibDecoder/TDecBinCoderCabac.py
+Lib/TLibDecoder/TDecCavlc.py < TComRom.py
+Lib/TLibDecoder/TDecSbac.py < TComRom.py, TComTrQuant.py
+Lib/TLibDecoder/TDecBinCabac.py
 
-Lib/TLibCommon/TComPrediction.py, TComWeightPrediction.py < TDecEntropy.py
+Lib/TLibCommon/TComPrediction.py, TComWeightPrediction.py < TDecEntropy.py, TComYuv.py
 Lib/TLibCommon/TComInterpolationFilter.py
 Lib/TLibCommon/TComTrQuant.py
 Lib/TLibCommon/TComLoopFilter.py

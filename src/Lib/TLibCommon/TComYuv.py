@@ -10,17 +10,14 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import ArrayUInt
+else:
+    from . import TComRom as cvar
 
-from .array import array
+from .pointer import pointer
 
-# CommonDef.h
-Clip = lambda x: min(cvar.g_uiIBDI_MAX, max(0, x))
-# TComRom.h
-g_auiZscanToRaster = ArrayUInt.frompointer(cvar.g_auiZscanToRaster)
-g_auiRasterToPelX = ArrayUInt.frompointer(cvar.g_auiRasterToPelX)
-g_auiRasterToPelY = ArrayUInt.frompointer(cvar.g_auiRasterToPelY)
-# TComInterpolationFilter.h
+from .CommonDef import Clip
+from .TComRom import (g_auiZscanToRaster, g_auiRasterToPelX, g_auiRasterToPelY)
+
 IF_INTERNAL_PREC = 14
 IF_INTERNAL_OFFS = 1 << (IF_INTERNAL_PREC-1)
 
@@ -38,9 +35,9 @@ class TComYuv(object):
         self.m_iCHeight = 0
 
     def create(self, iWidth, iHeight):
-        self.m_apiBufY = array((iWidth*iHeight   ) * [0], type='short *')
-        self.m_apiBufU = array((iWidth*iHeight>>2) * [0], type='short *')
-        self.m_apiBufV = array((iWidth*iHeight>>2) * [0], type='short *')
+        self.m_apiBufY = pointer((iWidth*iHeight   ) * [0], type='short *')
+        self.m_apiBufU = pointer((iWidth*iHeight>>2) * [0], type='short *')
+        self.m_apiBufV = pointer((iWidth*iHeight>>2) * [0], type='short *')
 
         self.m_iWidth = iWidth
         self.m_iHeight = iHeight
@@ -70,8 +67,8 @@ class TComYuv(object):
         iWidth = self.m_iWidth >> uiPartDepth
         iHeight = self.m_iHeight >> uiPartDepth
 
-        pSrc = array(self.getLumaAddr(uiPartIdx, iWidth), type='short *')
-        pDst = array(pcPicYuvDst.getLumaAddr(iCuAddr, uiAbsZorderIdx), type='short *')
+        pSrc = pointer(self.getLumaAddr(uiPartIdx, iWidth), type='short *')
+        pDst = pointer(pcPicYuvDst.getLumaAddr(iCuAddr, uiAbsZorderIdx), type='short *')
 
         iSrcStride = self.getStride()
         iDstStride = pcPicYuvDst.getStride()
@@ -85,10 +82,10 @@ class TComYuv(object):
         iWidth = self.m_iCWidth >> uiPartDepth
         iHeight = self.m_iCHeight >> uiPartDepth
 
-        pSrcU = array(self.getCbAddr(uiPartIdx, iWidth), type='short *')
-        pSrcV = array(self.getCrAddr(uiPartIdx, iWidth), type='short *')
-        pDstU = array(pcPicYuvDst.getCbAddr(iCuAddr, uiAbsZorderIdx), type='short *')
-        pDstV = array(pcPicYuvDst.getCrAddr(iCuAddr, uiAbsZorderIdx), type='short *')
+        pSrcU = pointer(self.getCbAddr(uiPartIdx, iWidth), type='short *')
+        pSrcV = pointer(self.getCrAddr(uiPartIdx, iWidth), type='short *')
+        pDstU = pointer(pcPicYuvDst.getCbAddr(iCuAddr, uiAbsZorderIdx), type='short *')
+        pDstV = pointer(pcPicYuvDst.getCrAddr(iCuAddr, uiAbsZorderIdx), type='short *')
 
         iSrcStride = self.getCStride()
         iDstStride = pcPicYuvDst.getCStride()
@@ -107,8 +104,8 @@ class TComYuv(object):
         self.copyFromPicChroma(pcPicYuvSrc, iCuAddr, uiAbsZorderIdx)
 
     def copyFromPicLuma(self, pcPicYuvSrc, iCuAddr, uiAbsZorderIdx):
-        pDst = array(self.m_apiBufY, type='short *')
-        pSrc = array(pcPicYuvSrc.getLumaAddr(iCuAddr, uiAbsZorderIdx), type='short *')
+        pDst = pointer(self.m_apiBufY, type='short *')
+        pSrc = pointer(pcPicYuvSrc.getLumaAddr(iCuAddr, uiAbsZorderIdx), type='short *')
 
         iDstStride = self.getStride()
         iSrcStride = pcPicYuvSrc.getStride()
@@ -119,10 +116,10 @@ class TComYuv(object):
         pSrc += iSrcStride
 
     def copyFromPicChroma(self, pcPicYuvSrc, iCuAddr, uiAbsZorderIdx):
-        pDstU = array(self.m_apiBufU, type='short *')
-        pDstV = array(self.m_apiBufV, type='short *')
-        pSrcU = array(pcPicYuvSrc.getCbAddr(iCuAddr, uiAbsZorderIdx), type='short *')
-        pSrcV = array(pcPicYuvSrc.getCrAddr(iCuAddr, uiAbsZorderIdx), type='short *')
+        pDstU = pointer(self.m_apiBufU, type='short *')
+        pDstV = pointer(self.m_apiBufV, type='short *')
+        pSrcU = pointer(pcPicYuvSrc.getCbAddr(iCuAddr, uiAbsZorderIdx), type='short *')
+        pSrcV = pointer(pcPicYuvSrc.getCrAddr(iCuAddr, uiAbsZorderIdx), type='short *')
 
         iDstStride = self.getCStride()
         iSrcStride = pcPicYuvSrc.getCStride()
@@ -141,8 +138,8 @@ class TComYuv(object):
         self.copyToPartChroma(pcYuvDst, uiDstPartIdx)
 
     def copyToPartLuma(self, pcYuvDst, uiDstPartIdx):
-        pSrc = array(self.m_apiBufY, type='short *')
-        pDst = array(pcYuvDst.getLumaAddr(uiDstPartIdx), type='short *')
+        pSrc = pointer(self.m_apiBufY, type='short *')
+        pDst = pointer(pcYuvDst.getLumaAddr(uiDstPartIdx), type='short *')
 
         iSrcStride = self.getStride()
         iDstStride = pcYuvDst.getStride()
@@ -153,10 +150,10 @@ class TComYuv(object):
         pSrc += iSrcStride
 
     def copyToPartChroma(self, pcYuvDst, uiDstPartIdx):
-        pSrcU = array(self.m_apiBufU, type='short *')
-        pSrcV = array(self.m_apiBufV, type='short *')
-        pDstU = array(pcYuvDst.getCbAddr(uiDstPartIdx), type='short *')
-        pDstV = array(pcYuvDst.getCrAddr(uiDstPartIdx), type='short *')
+        pSrcU = pointer(self.m_apiBufU, type='short *')
+        pSrcV = pointer(self.m_apiBufV, type='short *')
+        pDstU = pointer(pcYuvDst.getCbAddr(uiDstPartIdx), type='short *')
+        pDstV = pointer(pcYuvDst.getCrAddr(uiDstPartIdx), type='short *')
 
         iSrcStride = self.getCStride()
         iDstStride = pcYuvDst.getCStride()
@@ -175,8 +172,8 @@ class TComYuv(object):
         self.copyPartToChroma(pcYuvDst, uiSrcPartIdx)
 
     def copyPartToLuma(self, pcYuvDst, uiSrcPartIdx):
-        pSrc = array(self.getLumaAddr(uiSrcPartIdx), type='short *')
-        pDst = array(pcYuvDst.getLumaAddr(0), type='short *')
+        pSrc = pointer(self.getLumaAddr(uiSrcPartIdx), type='short *')
+        pDst = pointer(pcYuvDst.getLumaAddr(0), type='short *')
 
         iSrcStride = self.getStride()
         iDstStride = pcYuvDst.getStride()
@@ -191,10 +188,10 @@ class TComYuv(object):
             pSrc += iSrcStride
 
     def copyPartToChroma(self, pcYuvDst, uiSrcPartIdx):
-        pSrcU = array(self.getCbAddr(uiSrcPartIdx), type='short *')
-        pSrcV = array(self.getCrAddr(uiSrcPartIdx), type='short *')
-        pDstU = array(pcYuvDst.getCbAddr(0), type='short *')
-        pDstV = array(pcYuvDst.getCrAddr(0), type='short *')
+        pSrcU = pointer(self.getCbAddr(uiSrcPartIdx), type='short *')
+        pSrcV = pointer(self.getCrAddr(uiSrcPartIdx), type='short *')
+        pDstU = pointer(pcYuvDst.getCbAddr(0), type='short *')
+        pDstV = pointer(pcYuvDst.getCrAddr(0), type='short *')
 
         iSrcStride = self.getCStride()
         iDstStride = pcYuvDst.getCStride()
@@ -217,8 +214,8 @@ class TComYuv(object):
         self.copyPartToPartChroma(pcYuvDst, uiPartIdx, iWidth>>1, iHeight>>1)
 
     def copyPartToPartLuma(self, pcYuvDst, uiPartIdx, iWidth, iHeight):
-        pSrc = array(self.getLumaAddr(uiPartIdx), type='short *')
-        pDst = array(pcYuvDst.getLumaAddr(uiPartIdx), type='short *')
+        pSrc = pointer(self.getLumaAddr(uiPartIdx), type='short *')
+        pDst = pointer(pcYuvDst.getLumaAddr(uiPartIdx), type='short *')
         if pSrc == pDst:
             #th not a good idea
             #th best would be to fix the caller 
@@ -234,8 +231,8 @@ class TComYuv(object):
 
     def copyPartToPartChroma(self, pcYuvDst, uiPartIdx, iWidth, iHeight, chromaId=None):
         if chromaId == 0:
-            pSrcU = array(self.getCbAddr(uiPartIdx), type='short *')
-            pDstU = array(pcYuvDst.getCbAddr(uiPartIdx), type='short *')
+            pSrcU = pointer(self.getCbAddr(uiPartIdx), type='short *')
+            pDstU = pointer(pcYuvDst.getCbAddr(uiPartIdx), type='short *')
             if pSrcU == pDstU:
                 return
             iSrcStride = self.getCStride()
@@ -247,8 +244,8 @@ class TComYuv(object):
             pDstU += iDstStride
             return
         elif chromaId == 1:
-            pSrcV = array(self.getCrAddr(uiPartIdx), type='short *')
-            pDstV = array(pcYuvDst.getCrAddr(uiPartIdx), type='short *')
+            pSrcV = pointer(self.getCrAddr(uiPartIdx), type='short *')
+            pDstV = pointer(pcYuvDst.getCrAddr(uiPartIdx), type='short *')
             if pSrcU == pDstU:
                 return
             iSrcStride = self.getCStride()
@@ -260,10 +257,10 @@ class TComYuv(object):
             pDstV += iDstStride
             return
 
-        pSrcU = array(self.getCbAddr(uiPartIdx), type='short *')
-        pSrcV = array(self.getCrAddr(uiPartIdx), type='short *')
-        pDstU = array(pcYuvDst.getCbAddr(uiPartIdx), type='short *')
-        pDstV = array(pcYuvDst.getCrAddr(uiPartIdx), type='short *')
+        pSrcU = pointer(self.getCbAddr(uiPartIdx), type='short *')
+        pSrcV = pointer(self.getCrAddr(uiPartIdx), type='short *')
+        pDstU = pointer(pcYuvDst.getCbAddr(uiPartIdx), type='short *')
+        pDstV = pointer(pcYuvDst.getCrAddr(uiPartIdx), type='short *')
         if pSrcU == pDstU and pSrcV == pDstV:
             #th not a good idea
             #th best would be to fix the caller 
@@ -286,9 +283,9 @@ class TComYuv(object):
         self.addClipChroma(pcYuvSrc0, pcYuvSrc1, uiTrUnitIdx, uiPartSize>>1)
 
     def addClipLuma(self, pcYuvSrc0, pcYuvSrc1, uiTrUnitIdx, uiPartSize):
-        pSrc0 = array(pcYuvSrc0.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pSrc1 = array(pcYuvSrc1.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pDst = array(self.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrc0 = pointer(pcYuvSrc0.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrc1 = pointer(pcYuvSrc1.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pDst = pointer(self.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
 
         iSrc0Stride = pcYuvSrc0.getStride()
         iSrc1Stride = pcYuvSrc1.getStride()
@@ -301,12 +298,12 @@ class TComYuv(object):
             pDst += iDstStride
 
     def addClipChroma(self, pcYuvSrc0, pcYuvSrc1, uiTrUnitIdx, uiPartSize):
-        pSrcU0 = array(pcYuvSrc0.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pSrcU1 = array(pcYuvSrc1.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pSrcV0 = array(pcYuvSrc0.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pSrcV1 = array(pcYuvSrc1.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pDstU = array(self.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pDstV = array(self.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrcU0 = pointer(pcYuvSrc0.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrcU1 = pointer(pcYuvSrc1.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrcV0 = pointer(pcYuvSrc0.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrcV1 = pointer(pcYuvSrc1.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pDstU = pointer(self.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pDstV = pointer(self.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
 
         iSrc0Stride = pcYuvSrc0.getCStride()
         iSrc1Stride = pcYuvSrc1.getCStride()
@@ -327,9 +324,9 @@ class TComYuv(object):
         self.subtractChroma(pcYuvSrc0, pcYuvSrc1, uiTrUnitIdx, uiPartSize>>1)
 
     def subtractLuma(self, pcYuvSrc0, pcYuvSrc1, uiTrUnitIdx, uiPartSize):
-        pSrc0 = array(pcYuvSrc0.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pSrc1 = array(pcYuvSrc1.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pDst = array(self.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrc0 = pointer(pcYuvSrc0.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrc1 = pointer(pcYuvSrc1.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pDst = pointer(self.getLumaAddr(uiTrUnitIdx, uiPartSize), type='short *')
 
         iSrc0Stride = pcYuvSrc0.getStride()
         iSrc1Stride = pcYuvSrc1.getStride()
@@ -342,12 +339,12 @@ class TComYuv(object):
             pDst += iDstStride
 
     def subtractChroma(self, pcYuvSrc0, pcYuvSrc1, uiTrUnitIdx, uiPartSize):
-        pSrcU0 = array(pcYuvSrc0.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pSrcU1 = array(pcYuvSrc1.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pSrcV0 = array(pcYuvSrc0.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pSrcV1 = array(pcYuvSrc1.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pDstU = array(self.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
-        pDstV = array(self.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrcU0 = pointer(pcYuvSrc0.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrcU1 = pointer(pcYuvSrc1.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrcV0 = pointer(pcYuvSrc0.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pSrcV1 = pointer(pcYuvSrc1.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pDstU = pointer(self.getCbAddr(uiTrUnitIdx, uiPartSize), type='short *')
+        pDstV = pointer(self.getCrAddr(uiTrUnitIdx, uiPartSize), type='short *')
 
         iSrc0Stride = pcYuvSrc0.getCStride()
         iSrc1Stride = pcYuvSrc1.getCStride()
@@ -364,17 +361,17 @@ class TComYuv(object):
             pDstV += iDstStride
 
     def addAvg(self, pcYuvSrc0, pcYuvSrc1, iPartUnitIdx, iWidth, iHeight):
-        pSrcY0 = array(pcYuvSrc0.getLumaAddr(iPartUnitIdx), type='short *')
-        pSrcU0 = array(pcYuvSrc0.getCbAddr(iPartUnitIdx), type='short *')
-        pSrcV0 = array(pcYuvSrc0.getCrAddr(iPartUnitIdx), type='short *')
+        pSrcY0 = pointer(pcYuvSrc0.getLumaAddr(iPartUnitIdx), type='short *')
+        pSrcU0 = pointer(pcYuvSrc0.getCbAddr(iPartUnitIdx), type='short *')
+        pSrcV0 = pointer(pcYuvSrc0.getCrAddr(iPartUnitIdx), type='short *')
 
-        pSrcY1 = array(pcYuvSrc1.getLumaAddr(iPartUnitIdx), type='short *')
-        pSrcU1 = array(pcYuvSrc1.getCbAddr(iPartUnitIdx), type='short *')
-        pSrcV1 = array(pcYuvSrc1.getCrAddr(iPartUnitIdx), type='short *')
+        pSrcY1 = pointer(pcYuvSrc1.getLumaAddr(iPartUnitIdx), type='short *')
+        pSrcU1 = pointer(pcYuvSrc1.getCbAddr(iPartUnitIdx), type='short *')
+        pSrcV1 = pointer(pcYuvSrc1.getCrAddr(iPartUnitIdx), type='short *')
 
-        pDstY = array(self.getLumaAddr(iPartUnitIdx), type='short *')
-        pDstU = array(self.getCbAddr(iPartUnitIdx), type='short *')
-        pDstV = array(self.getCrAddr(iPartUnitIdx), type='short *')
+        pDstY = pointer(self.getLumaAddr(iPartUnitIdx), type='short *')
+        pDstU = pointer(self.getCbAddr(iPartUnitIdx), type='short *')
+        pDstV = pointer(self.getCrAddr(iPartUnitIdx), type='short *')
 
         iSrc0Stride = pcYuvSrc0.getStride()
         iSrc1Stride = pcYuvSrc1.getStride()
@@ -414,13 +411,13 @@ class TComYuv(object):
             pDstV += iDstStride
 
     def removeHighFreq(self, pcYuvSrc, uiPartIdx, iWidth, iHeight):
-        pSrc = array(pcYuvSrc.getLumaAddr(uiPartIdx), type='short *')
-        pSrcU = array(pcYuvSrc.getCbAddr(uiPartIdx), type='short *')
-        pSrcV = array(pcYuvSrc.getCrAddr(uiPartIdx), type='short *')
+        pSrc = pointer(pcYuvSrc.getLumaAddr(uiPartIdx), type='short *')
+        pSrcU = pointer(pcYuvSrc.getCbAddr(uiPartIdx), type='short *')
+        pSrcV = pointer(pcYuvSrc.getCrAddr(uiPartIdx), type='short *')
 
-        pDst = array(self.getLumaAddr(uiPartIdx), type='short *')
-        pDstU = array(self.getCbAddr(uiPartIdx), type='short *')
-        pDstV = array(self.getCrAddr(uiPartIdx), type='short *')
+        pDst = pointer(self.getLumaAddr(uiPartIdx), type='short *')
+        pDstU = pointer(self.getCbAddr(uiPartIdx), type='short *')
+        pDstV = pointer(self.getCrAddr(uiPartIdx), type='short *')
 
         iSrcStride = pcYuvSrc.getStride()
         iDstStride = self.getStride()
@@ -448,27 +445,27 @@ class TComYuv(object):
 
     def getLumaAddr(self, iPartUnitIdx=None, iBlkSize=None):
         if iPartUnitIdx is None and iBlkSize is None:
-            return array(self.m_apiBufY, type='short *')
+            return pointer(self.m_apiBufY, type='short *')
         elif iBlkSize is None:
-            return array(self.m_apiBufY, type='short *') + self.getAddrOffset(iPartUnitIdx, self.m_iWidth)
+            return pointer(self.m_apiBufY, type='short *') + self.getAddrOffset(iPartUnitIdx, self.m_iWidth)
         else:
-            return array(self.m_apiBufY, type='short *') + self.getAddrOffset(iPartUnitIdx, iBlkSize, self.m_iWidth)
+            return pointer(self.m_apiBufY, type='short *') + self.getAddrOffset(iPartUnitIdx, iBlkSize, self.m_iWidth)
 
     def getCbAddr(self, iPartUnitIdx=None, iBlkSize=None):
         if iPartUnitIdx is None and iBlkSize is None:
-            return array(self.m_apiBufU, type='short *')
+            return pointer(self.m_apiBufU, type='short *')
         elif iBlkSize is None:
-            return array(self.m_apiBufU, type='short *') + (self.getAddrOffset(iPartUnitIdx, self.m_iCWidth) >> 1)
+            return pointer(self.m_apiBufU, type='short *') + (self.getAddrOffset(iPartUnitIdx, self.m_iCWidth) >> 1)
         else:
-            return array(self.m_apiBufU, type='short *') + self.getAddrOffset(iPartUnitIdx, iBlkSize, self.m_iCWidth)
+            return pointer(self.m_apiBufU, type='short *') + self.getAddrOffset(iPartUnitIdx, iBlkSize, self.m_iCWidth)
 
     def getCrAddr(self, iPartUnitIdx=None, iBlkSize=None):
         if iPartUnitIdx is None and iBlkSize is None:
-            return array(self.m_apiBufV, type='short *')
+            return pointer(self.m_apiBufV, type='short *')
         elif iBlkSize is None:
-            return array(self.m_apiBufV, type='short *') + (self.getAddrOffset(iPartUnitIdx, self.m_iCWidth) >> 1)
+            return pointer(self.m_apiBufV, type='short *') + (self.getAddrOffset(iPartUnitIdx, self.m_iCWidth) >> 1)
         else:
-            return array(self.m_apiBufV, type='short *') + self.getAddrOffset(iPartUnitIdx, iBlkSize, self.m_iCWidth)
+            return pointer(self.m_apiBufV, type='short *') + self.getAddrOffset(iPartUnitIdx, iBlkSize, self.m_iCWidth)
 
     def getStride(self):
         return self.m_iWidth

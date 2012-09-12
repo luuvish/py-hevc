@@ -11,30 +11,30 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import TComPicYuv
-    from swig.hevc import PelArray_frompointer as Pel
 else:
     from ..TLibCommon.TComPicYuv import TComPicYuv
-    def Pel(pel): return pel
+
+from ..TLibCommon.pointer import pointer
+from ..TLibCommon.CommonDef import Clip3
 
 
 def _scalePlane(img, stride, width, height, shiftbits, minval, maxval):
 
     def invScalePlane(img, stride, width, height, shiftbits, minval, maxval):
-        Clip3 = lambda min, max, i: min if i < min else max if i > max else i
+        img = pointer(img, type='short *')
         offset = 1 << (shiftbits-1)
-        base = 0
-        for y in range(height):
-            for x in range(width):
-                val = (img[base + x] + offset) >> shiftbits
-                img[base + x] = Clip3(minval, maxval, val)
-            base += stride
+        for y in xrange(height):
+            for x in xrange(width):
+                val = (img[x] + offset) >> shiftbits
+                img[x] = Clip3(minval, maxval, val)
+            img += stride
 
     def scalePlane(img, stride, width, height, shiftbits):
-        base = 0
-        for y in range(height):
-            for x in range(width):
-                img[base + x] <<= shiftbits
-            base += stride
+        img = pointer(img, type='short *')
+        for y in xrange(height):
+            for x in xrange(width):
+                img[x] <<= shiftbits
+            img += stride
 
     if shiftbits == 0:
         return
@@ -93,29 +93,29 @@ class TVideoIOYuv(object):
 
         def readPlane(dst, fd, is16bit, stride, width, height, pad_x, pad_y):
             read_len = width * (2 if is16bit else 1)
-            buf = [] #bytearray(read_len)
-            base = 0
-            for y in range(height):
+            dst = pointer(dst, type='short *')
+            buf = bytearray(read_len)
+            for y in xrange(height):
                 buf = fd.read(read_len)
             #   if fd.eof() or fd.fail():
             #       buf = []
             #       return False
 
                 if not is16bit:
-                    for x in range(width):
-                        dst[base + x] = buf[x]
+                    for x in xrange(width):
+                        dst[x] = buf[x]
                 else:
-                    for x in range(width):
-                        dst[base + x] = (buf[2*x+1] << 8) | buf[2*x]
+                    for x in xrange(width):
+                        dst[x] = (buf[2*x+1] << 8) | buf[2*x]
 
-                for x in range(width, width + pad_x):
-                    dst[base + x] = dst[base + width - 1]
-                base += stride
-            for y in range(height, height + pad_y):
-                for x in range(width + pad_x):
-                    dst[base + x] = dst[base - stride + x]
-                base += stride
-            buf = []
+                for x in xrange(width, width + pad_x):
+                    dst[x] = dst[width - 1]
+                dst += stride
+            for y in xrange(height, height + pad_y):
+                for x in xrange(width + pad_x):
+                    dst[x] = dst[x - stride]
+                dst += stride
+            del buf
             return True
 
         if self.isEof():
@@ -123,6 +123,7 @@ class TVideoIOYuv(object):
 
         iStride = pPicYuv.getStride()
 
+        aiPad = pointer(aiPad, type='int *')
         pad_h = aiPad[0]
         pad_v = aiPad[1]
         width_full = pPicYuv.getWidth()
@@ -135,9 +136,14 @@ class TVideoIOYuv(object):
         minval = 0
         maxval = (1 << desired_bitdepth) - 1
 
-        if not readPlane(Pel(pPicYuv.getLumaAddr()), self.m_cHandle, is16bit, iStride, width, height, pad_h, pad_v):
+        if self.m_bitdepthShift < 0 and desired_bitdepth >= 8:
+            # ITU-R BT.709 compliant clipping for converting say 10b to 8b
+            minval = 1 << (desired_bitdepth - 8)
+            maxval = (0xff << (desired_bitdepth - 8)) -1
+
+        if not readPlane(pPicYuv.getLumaAddr(), self.m_cHandle, is16bit, iStride, width, height, pad_h, pad_v):
             return False
-        _scalePlane(Pel(pPicYuv.getLumaAddr()), iStride, width_full, height_full, self.m_bitdepthShift, minval, maxval)
+        _scalePlane(pPicYuv.getLumaAddr(), iStride, width_full, height_full, self.m_bitdepthShift, minval, maxval)
 
         iStride >>= 1
         width_full >>= 1
@@ -147,36 +153,37 @@ class TVideoIOYuv(object):
         pad_h >>= 1
         pad_v >>= 1
 
-        if not readPlane(Pel(pPicYuv.getCbAddr()), self.m_cHandle, is16bit, iStride, width, height, pad_h, pad_v):
+        if not readPlane(pPicYuv.getCbAddr(), self.m_cHandle, is16bit, iStride, width, height, pad_h, pad_v):
             return False
-        _scalePlane(Pel(pPicYuv.getCbAddr()), iStride, width_full, height_full, self.m_bitdepthShift, minval, maxval)
+        _scalePlane(pPicYuv.getCbAddr(), iStride, width_full, height_full, self.m_bitdepthShift, minval, maxval)
 
-        if not readPlane(Pel(pPicYuv.getCrAddr()), self.m_cHandle, is16bit, iStride, width, height, pad_h, pad_v):
+        if not readPlane(pPicYuv.getCrAddr(), self.m_cHandle, is16bit, iStride, width, height, pad_h, pad_v):
             return False
-        _scalePlane(Pel(pPicYuv.getCrAddr()), iStride, width_full, height_full, self.m_bitdepthShift, minval, maxval)
+        _scalePlane(pPicYuv.getCrAddr(), iStride, width_full, height_full, self.m_bitdepthShift, minval, maxval)
 
         return True
 
     def write(self, pPicYuv, cropLeft=0, cropRight=0, cropTop=0, cropBottom=0):
 
-        def writePlane(fd, src, base, is16bit, stride, width, height):
+        def writePlane(fd, src, is16bit, stride, width, height):
             write_len = width * (2 if is16bit else 1)
+            src = pointer(src, type='short *')
             buf = bytearray(write_len)
-            for y in range(height):
+            for y in xrange(height):
                 if not is16bit:
-                    for x in range(width):
-                        buf[x] = src[base + x]
+                    for x in xrange(width):
+                        buf[x] = src[x]
                 else:
-                    for x in range(width):
-                        buf[2*x] = src[base + x] & 0xff
-                        buf[2*x+1] = (src[base + x] >> 8) & 0xff
+                    for x in xrange(width):
+                        buf[2*x+0] = src[x] & 0xff
+                        buf[2*x+1] = (src[x] >> 8) & 0xff
 
                 fd.write(buf)
             #   if fd.eof() or fd.fail():
             #       buf = []
             #       return False
-                base += stride
-            buf = []
+                src += stride
+            del buf
             return False
 
         iStride = pPicYuv.getStride()
@@ -193,15 +200,22 @@ class TVideoIOYuv(object):
 
             minval = 0
             maxval = (1 << self.m_fileBitdepth) - 1
-            _scalePlane(Pel(dstPicYuv.getLumaAddr()), dstPicYuv.getStride(), dstPicYuv.getWidth(), dstPicYuv.getHeight(), -self.m_bitdepthShift, minval, maxval)
-            _scalePlane(Pel(dstPicYuv.getCbAddr()), dstPicYuv.getCStride(), dstPicYuv.getWidth()>>1, dstPicYuv.getHeight()>>1, -self.m_bitdepthShift, minval, maxval)
-            _scalePlane(Pel(dstPicYuv.getCrAddr()), dstPicYuv.getCStride(), dstPicYuv.getWidth()>>1, dstPicYuv.getHeight()>>1, -self.m_bitdepthShift, minval, maxval)
+
+            if -self.m_bitdepthShift < 0 and self.m_fileBitdepth >= 8:
+                # ITU-R BT.709 compliant clipping for converting say 10b to 8b
+                minval = 1 << (self.m_fileBitdepth - 8)
+                maxval = (0xff << (self.m_fileBitdepth - 8)) - 1
+
+            _scalePlane(dstPicYuv.getLumaAddr(), dstPicYuv.getStride(), dstPicYuv.getWidth(), dstPicYuv.getHeight(), -self.m_bitdepthShift, minval, maxval)
+            _scalePlane(dstPicYuv.getCbAddr(), dstPicYuv.getCStride(), dstPicYuv.getWidth()>>1, dstPicYuv.getHeight()>>1, -self.m_bitdepthShift, minval, maxval)
+            _scalePlane(dstPicYuv.getCrAddr(), dstPicYuv.getCStride(), dstPicYuv.getWidth()>>1, dstPicYuv.getHeight()>>1, -self.m_bitdepthShift, minval, maxval)
         else:
             dstPicYuv = pPicYuv
 
-        planeOffset = 0
+        # location of upper left pel in a plane
+        planeOffset = 0 #cropLeft + cropTop * iStride;
 
-        if not writePlane(self.m_cHandle, Pel(dstPicYuv.getLumaAddr()), planeOffset, is16bit, iStride, width, height):
+        if not writePlane(self.m_cHandle, pointer(dstPicYuv.getLumaAddr(), base=planeOffset, type='short *'), is16bit, iStride, width, height):
             retval = False
 
         width >>= 1
@@ -210,12 +224,12 @@ class TVideoIOYuv(object):
         cropLeft >>= 1
         cropRight >>= 1
 
-        planeOffset = 0
+        planeOffset = 0 # cropLeft + cropTop * iStride;
 
-        if not writePlane(self.m_cHandle, Pel(dstPicYuv.getCbAddr()), planeOffset, is16bit, iStride, width, height):
+        if not writePlane(self.m_cHandle, pointer(dstPicYuv.getCbAddr(), base=planeOffset, type='short *'), is16bit, iStride, width, height):
             retval = False
 
-        if not writePlane(self.m_cHandle, Pel(dstPicYuv.getCrAddr()), planeOffset, is16bit, iStride, width, height):
+        if not writePlane(self.m_cHandle, pointer(dstPicYuv.getCrAddr(), base=planeOffset, type='short *'), is16bit, iStride, width, height):
             retval = False
 
         if self.m_bitdepthShift != 0:

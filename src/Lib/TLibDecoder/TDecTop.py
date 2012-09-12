@@ -9,12 +9,8 @@ import sys
 use_swig = False
 if use_swig:
     sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
 
-    from swig.hevc import ParameterSetManagerDecoder
-    from swig.hevc import TComListTComPic
-    from swig.hevc import TComSlice
-    from swig.hevc import SEImessages
+    from swig.hevc import initROM, destroyROM
     from swig.hevc import TDecGop
     from swig.hevc import TDecSlice
     from swig.hevc import TDecCu
@@ -22,58 +18,67 @@ if use_swig:
     from swig.hevc import TDecCavlc
     from swig.hevc import TDecSbac
     from swig.hevc import TDecBinCABAC
+
+    from swig.hevc import cvar
     from swig.hevc import TComPrediction
     from swig.hevc import TComTrQuant
     from swig.hevc import TComLoopFilter
     from swig.hevc import TComSampleAdaptiveOffset
+
     from swig.hevc import TComPic
-
-    from swig.hevc import TComVPS, TComSPS, TComPPS
-    from swig.hevc import initROM, destroyROM
-else:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-
     from swig.hevc import ParameterSetManagerDecoder
     from swig.hevc import TComListTComPic
     from swig.hevc import TComSlice
     from swig.hevc import SEImessages
+    from swig.hevc import TComVPS, TComSPS, TComPPS
+else:
+    sys.path.insert(0, '../../..')
+
+    from ..TLibCommon.TComRom import initROM, destroyROM
     from .TDecGop import TDecGop
     from .TDecSlice import TDecSlice
     from .TDecCu import TDecCu
     from .TDecEntropy import TDecEntropy
     from .TDecCavlc import TDecCavlc
+#   from .TDecSbac import TDecSbac
+#   from .TDecBinCabac import TDecBinCabac as TDecBinCABAC
     from swig.hevc import TDecSbac
     from swig.hevc import TDecBinCABAC
+
+    from swig.hevc import cvar
+#   from ..TLibCommon import TComRom as cvar # depend on TDecCavlc
     from ..TLibCommon.TComPrediction import TComPrediction
-#   from swig.hevc import TComPrediction
     from ..TLibCommon.TComTrQuant import TComTrQuant
     from ..TLibCommon.TComLoopFilter import TComLoopFilter
 #   from ..TLibCommon.TComSampleAdaptiveOffset import TComSampleAdaptiveOffset
     from swig.hevc import TComSampleAdaptiveOffset
+
     from swig.hevc import TComPic
-
+    from swig.hevc import ParameterSetManagerDecoder
+    from swig.hevc import TComListTComPic
+    from swig.hevc import TComSlice
+    from swig.hevc import SEImessages
     from swig.hevc import TComVPS, TComSPS, TComPPS
-    from swig.hevc import initROM, destroyROM
 
-# TypeDef.h
-B_SLICE = 0
-REF_PIC_LIST_0 = 0
-REF_PIC_LIST_1 = 1
-# CommonDef.h
-MAX_INT = 2147483647
-NAL_UNIT_CODED_SLICE = 1
-NAL_UNIT_CODED_SLICE_TFD = 2
-NAL_UNIT_CODED_SLICE_TLA = 3
-NAL_UNIT_CODED_SLICE_CRA = 4
-NAL_UNIT_CODED_SLICE_CRANT = 5
-NAL_UNIT_CODED_SLICE_BLA = 6
-NAL_UNIT_CODED_SLICE_BLANT = 7
-NAL_UNIT_CODED_SLICE_IDR = 8
-NAL_UNIT_VPS = 25
-NAL_UNIT_SPS = 26
-NAL_UNIT_PPS = 27
-NAL_UNIT_SEI = 31
+from ..TLibCommon.TypeDef import (
+    B_SLICE, REF_PIC_LIST_0, REF_PIC_LIST_1
+)
+
+from ..TLibCommon.CommonDef import (
+    MAX_INT,
+    NAL_UNIT_CODED_SLICE,
+    NAL_UNIT_CODED_SLICE_TFD,
+    NAL_UNIT_CODED_SLICE_TLA,
+    NAL_UNIT_CODED_SLICE_CRA,
+    NAL_UNIT_CODED_SLICE_CRANT,
+    NAL_UNIT_CODED_SLICE_BLA,
+    NAL_UNIT_CODED_SLICE_BLANT,
+    NAL_UNIT_CODED_SLICE_IDR,
+    NAL_UNIT_VPS,
+    NAL_UNIT_SPS,
+    NAL_UNIT_PPS,
+    NAL_UNIT_SEI
+)
 
 
 warningMessage = False

@@ -9,28 +9,20 @@ import sys
 use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
     from swig.hevc import TComMv
     from swig.hevc import ArrayTComMvField, ArrayUChar
 
-from ..TLibCommon.array import array
+from ..TLibCommon.pointer import pointer
 
-# TypeDef.h
-SIZE_2Nx2N = 0
-SIZE_NxN = 3
-MODE_INTER = 0
-MODE_INTRA = 1
-TEXT_LUMA = 0
-TEXT_CHROMA_U = 2
-TEXT_CHROMA_V = 3
-REF_PIC_LIST_0 = 0
-REF_PIC_LIST_1 = 1
-AM_EXPL = 1
-# CommonDef.h
-NOT_VALID = -1
-MRG_MAX_NUM_CANDS = 5
-# TComRom.h
-g_auiPUOffset = (0, 8, 4, 4, 2, 10, 1, 5)
+from ..TLibCommon.TypeDef import (
+    SIZE_2Nx2N, SIZE_NxN, MODE_INTER, MODE_INTRA,
+    TEXT_LUMA, TEXT_CHROMA_U, TEXT_CHROMA_V,
+    REF_PIC_LIST_0, REF_PIC_LIST_1, AM_EXPL
+)
+
+from ..TLibCommon.CommonDef import (NOT_VALID, MRG_MAX_NUM_CANDS)
+
+from ..TLibCommon.TComRom import (g_auiPUOffset, g_aucConvertToBit)
 
 
 class TDecEntropy(object):
@@ -51,7 +43,7 @@ class TDecEntropy(object):
         uiPUOffset = (g_auiPUOffset[ePartSize] <<
                       ((pcCU.getSlice().getSPS().getMaxCUDepth() - uiDepth) << 1)) >> 4
 
-        cMvFieldNeighbours = ArrayTComMvField(MRG_MAX_NUM_CANDS << 1) # double length for mv of both lists
+        cMvFieldNeighbours = ArrayTComMvField(MRG_MAX_NUM_CANDS<<1) # double length for mv of both lists
         uhInterDirNeighbours = ArrayUChar(MRG_MAX_NUM_CANDS)
 
         for ui in xrange(MRG_MAX_NUM_CANDS):
@@ -178,6 +170,11 @@ class TDecEntropy(object):
     def getEntropyDecoder(self):
         return self.m_pcEntropyDecoderIf
 
+    def updateContextTables(self, eSliceType, iQp):
+        self.m_pcEntropyDecoderIf.updateContextTables(eSliceType, iQp)
+    def decodeFlush(self):
+        self.m_pcEntropyDecoderIf.decodeFlush()
+
     def decodeSplitFlag(self, pcCU, uiAbsPartIdx, uiDepth):
         self.m_pcEntropyDecoderIf.parseSplitFlag(pcCU, uiAbsPartIdx, uiDepth)
     def decodeSkipFlag(self, pcCU, uiAbsPartIdx, uiDepth):
@@ -214,14 +211,30 @@ class TDecEntropy(object):
     def decodeQP(self, pcCU, uiAbsPartIdx):
         if pcCU.getSlice().getPPS().getUseDQP():
             self.m_pcEntropyDecoderIf.parseDeltaQP(pcCU, uiAbsPartIdx, pcCU.getDepth(uiAbsPartIdx))
-    def updateContextTables(self, eSliceType, iQp):
-        self.m_pcEntropyDecoderIf.updateContextTables(eSliceType, iQp)
+
+    def decodeCoeff(self, pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight, bCodeDQP):
+        uiMinCoeffSize = pcCU.getPic().getMinCUWidth() * pcCU.getPic().getMinCUHeight()
+        uiLumaOffset = uiMinCoeffSize * uiAbsPartIdx
+        uiChromaOffset = uiLumaOffset >> 2
+
+        if not pcCU.isIntra(uiAbsPartIdx):
+            uiQtRootCbf = 1
+            if not (pcCU.getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N and pcCU.getMergeFlag(uiAbsPartIdx)):
+                uiQtRootCbf = self.m_pcEntropyDecoderIf.parseQtRootCbf(pcCU, uiAbsPartIdx, uiDepth, uiQtRootCbf)
+            if not uiQtRootCbf:
+                pcCU.setCbfSubParts(0, 0, 0, uiAbsPartIdx, uiDepth)
+                pcCU.setTrIdxSubParts(0, uiAbsPartIdx, uiDepth)
+                return bCodeDQP
+        bCodeDQP = self._xDecodeTransform(pcCU, uiLumaOffset, uiChromaOffset,
+                                          uiAbsPartIdx, uiAbsPartIdx, uiDepth, uiWidth, uiHeight,
+                                          0, 0, bCodeDQP)
+        return bCodeDQP
 
     def _xDecodeTransform(self, pcCU, offsetLuma, offsetChroma,
                           uiAbsPartIdx, absTUPartIdx, uiDepth, uiWidth, uiHeight,
                           uiTrIdx, uiInnerQuadIdx, bCodeDQP):
         uiSubdiv = 0
-        uiLog2TrafoSize = ord(cvar.g_aucConvertToBit[pcCU.getSlice().getSPS().getMaxCUWidth()]) + 2 - uiDepth
+        uiLog2TrafoSize = g_aucConvertToBit[pcCU.getSlice().getSPS().getMaxCUWidth()] + 2 - uiDepth
 
         if uiTrIdx == 0:
             self.m_bakAbsPartIdxCU = uiAbsPartIdx
@@ -293,9 +306,9 @@ class TDecEntropy(object):
             uiLumaTrMode, uiChromaTrMode = \
                 pcCU.convertTransIdx(uiStartAbsPartIdx, uiTrDepth, uiLumaTrMode, uiChromaTrMode)
             for ui in xrange(4 * uiQPartNum):
-                cbfY = array(pcCU.getCbf(TEXT_LUMA), type='uchar *')
-                cbfU = array(pcCU.getCbf(TEXT_CHROMA_U), type='uchar *')
-                cbfV = array(pcCU.getCbf(TEXT_CHROMA_V), type='uchar *')
+                cbfY = pointer(pcCU.getCbf(TEXT_LUMA), type='uchar *')
+                cbfU = pointer(pcCU.getCbf(TEXT_CHROMA_U), type='uchar *')
+                cbfV = pointer(pcCU.getCbf(TEXT_CHROMA_V), type='uchar *')
                 cbfY[uiStartAbsPartIdx + ui] |= uiYCbf << uiLumaTrMode
                 cbfU[uiStartAbsPartIdx + ui] |= uiUCbf << uiChromaTrMode
                 cbfV[uiStartAbsPartIdx + ui] |= uiVCbf << uiChromaTrMode
@@ -335,18 +348,18 @@ class TDecEntropy(object):
                 trWidth = uiWidth
                 trHeight = uiHeight
                 self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU,
-                    array(pcCU.getCoeffY(), base=offsetLuma, type='int *').cast(),
+                    pointer(pcCU.getCoeffY(), base=offsetLuma, type='int *').cast(),
                     uiAbsPartIdx, trWidth, trHeight, uiDepth, TEXT_LUMA)
             if uiLog2TrafoSize > 2:
                 trWidth = uiWidth >> 1
                 trHeight = uiHeight >> 1
                 if cbfU:
                     self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU,
-                        array(pcCU.getCoeffCb(), base=offsetChroma, type='int *').cast(),
+                        pointer(pcCU.getCoeffCb(), base=offsetChroma, type='int *').cast(),
                         uiAbsPartIdx, trWidth, trHeight, uiDepth, TEXT_CHROMA_U)
                 if cbfV:
                     self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU,
-                        array(pcCU.getCoeffCr(), base=offsetChroma, type='int *').cast(),
+                        pointer(pcCU.getCoeffCr(), base=offsetChroma, type='int *').cast(),
                         uiAbsPartIdx, trWidth, trHeight, uiDepth, TEXT_CHROMA_V)
             else:
                 partNum = pcCU.getPic().getNumPartInCU() >> ((uiDepth-1) << 1)
@@ -355,32 +368,12 @@ class TDecEntropy(object):
                     trHeight = uiHeight
                     if cbfU:
                         self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU,
-                            array(pcCU.getCoeffCb(), base=self.m_uiBakChromaOffset, type='int *').cast(),
+                            pointer(pcCU.getCoeffCb(), base=self.m_uiBakChromaOffset, type='int *').cast(),
                             self.m_uiBakAbsPartIdx, trWidth, trHeight, uiDepth, TEXT_CHROMA_U)
                     if cbfV:
                         self.m_pcEntropyDecoderIf.parseCoeffNxN(pcCU,
-                            array(pcCU.getCoeffCr(), base=self.m_uiBakChromaOffset, type='int *').cast(),
+                            pointer(pcCU.getCoeffCr(), base=self.m_uiBakChromaOffset, type='int *').cast(),
                             self.m_uiBakAbsPartIdx, trWidth, trHeight, uiDepth, TEXT_CHROMA_V)
             # transform_unit end
 
         return bCodeDQP
-
-    def decodeCoeff(self, pcCU, uiAbsPartIdx, uiDepth, uiWidth, uiHeight, bCodeDQP):
-        uiMinCoeffSize = pcCU.getPic().getMinCUWidth() * pcCU.getPic().getMinCUHeight()
-        uiLumaOffset = uiMinCoeffSize * uiAbsPartIdx
-        uiChromaOffset = uiLumaOffset >> 2
-
-        if not pcCU.isIntra(uiAbsPartIdx):
-            uiQtRootCbf = 1
-            if not (pcCU.getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N and pcCU.getMergeFlag(uiAbsPartIdx)):
-                uiQtRootCbf = self.m_pcEntropyDecoderIf.parseQtRootCbf(pcCU, uiAbsPartIdx, uiDepth, uiQtRootCbf)
-            if not uiQtRootCbf:
-                pcCU.setCbfSubParts(0, 0, 0, uiAbsPartIdx, uiDepth)
-                pcCU.setTrIdxSubParts(0, uiAbsPartIdx, uiDepth)
-                return bCodeDQP
-        bCodeDQP = self._xDecodeTransform(pcCU, uiLumaOffset, uiChromaOffset,
-                                          uiAbsPartIdx, uiAbsPartIdx, uiDepth, uiWidth, uiHeight,
-                                          0, 0, bCodeDQP)
-        return bCodeDQP
-    def decodeFlush(self):
-        self.m_pcEntropyDecoderIf.decodeFlush()

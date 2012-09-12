@@ -10,13 +10,13 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
+else:
+    from . import TComRom as cvar
 
-from .array import array
+from .pointer import pointer
 
-# TypeDef.h
-REF_PIC_LIST_0 = 0
-REF_PIC_LIST_1 = 1
-# TComInterpolationFilter.h
+from .TypeDef import (REF_PIC_LIST_0, REF_PIC_LIST_1)
+
 IF_INTERNAL_PREC = 14
 IF_INTERNAL_OFFS = 1 << (IF_INTERNAL_PREC-1)
 
@@ -107,17 +107,17 @@ class TComWeightPrediction(object):
     def _addWeightBi(self, pcYuvSrc0, pcYuvSrc1, iPartUnitIdx, iWidth, iHeight, wp0, wp1, rpcYuvDst, bRound=True):
         bRound = 1 if bRound else 0
 
-        pSrcY0 = array(pcYuvSrc0.getLumaAddr(iPartUnitIdx), type='short *')
-        pSrcU0 = array(pcYuvSrc0.getCbAddr(iPartUnitIdx), type='short *')
-        pSrcV0 = array(pcYuvSrc0.getCrAddr(iPartUnitIdx), type='short *')
+        pSrcY0 = pointer(pcYuvSrc0.getLumaAddr(iPartUnitIdx), type='short *')
+        pSrcU0 = pointer(pcYuvSrc0.getCbAddr(iPartUnitIdx), type='short *')
+        pSrcV0 = pointer(pcYuvSrc0.getCrAddr(iPartUnitIdx), type='short *')
 
-        pSrcY1 = array(pcYuvSrc1.getLumaAddr(iPartUnitIdx), type='short *')
-        pSrcU1 = array(pcYuvSrc1.getCbAddr(iPartUnitIdx), type='short *')
-        pSrcV1 = array(pcYuvSrc1.getCrAddr(iPartUnitIdx), type='short *')
+        pSrcY1 = pointer(pcYuvSrc1.getLumaAddr(iPartUnitIdx), type='short *')
+        pSrcU1 = pointer(pcYuvSrc1.getCbAddr(iPartUnitIdx), type='short *')
+        pSrcV1 = pointer(pcYuvSrc1.getCrAddr(iPartUnitIdx), type='short *')
 
-        pDstY = array(rpcYuvDst.getLumaAddr(iPartUnitIdx), type='short *')
-        pDstU = array(rpcYuvDst.getCbAddr(iPartUnitIdx), type='short *')
-        pDstV = array(rpcYuvDst.getCrAddr(iPartUnitIdx), type='short *')
+        pDstY = pointer(rpcYuvDst.getLumaAddr(iPartUnitIdx), type='short *')
+        pDstU = pointer(rpcYuvDst.getCbAddr(iPartUnitIdx), type='short *')
+        pDstV = pointer(rpcYuvDst.getCrAddr(iPartUnitIdx), type='short *')
 
         # Luma : --------------------------------------------
         w0 = wp0[0].w
@@ -182,13 +182,13 @@ class TComWeightPrediction(object):
             pDstV += iDstStride
 
     def _addWeightUni(self, pcYuvSrc0, iPartUnitIdx, iWidth, iHeight, wp0, rpcYuvDst):
-        pSrcY0 = array(pcYuvSrc0.getLumaAddr(iPartUnitIdx), type='short *')
-        pSrcU0 = array(pcYuvSrc0.getCbAddr(iPartUnitIdx), type='short *')
-        pSrcV0 = array(pcYuvSrc0.getCrAddr(iPartUnitIdx), type='short *')
+        pSrcY0 = pointer(pcYuvSrc0.getLumaAddr(iPartUnitIdx), type='short *')
+        pSrcU0 = pointer(pcYuvSrc0.getCbAddr(iPartUnitIdx), type='short *')
+        pSrcV0 = pointer(pcYuvSrc0.getCrAddr(iPartUnitIdx), type='short *')
 
-        pDstY = array(rpcYuvDst.getLumaAddr(iPartUnitIdx), type='short *')
-        pDstU = array(rpcYuvDst.getCbAddr(iPartUnitIdx), type='short *')
-        pDstV = array(rpcYuvDst.getCrAddr(iPartUnitIdx), type='short *')
+        pDstY = pointer(rpcYuvDst.getLumaAddr(iPartUnitIdx), type='short *')
+        pDstU = pointer(rpcYuvDst.getCbAddr(iPartUnitIdx), type='short *')
+        pDstV = pointer(rpcYuvDst.getCrAddr(iPartUnitIdx), type='short *')
 
         # Luma : --------------------------------------------
         w0 = wp0[0].w

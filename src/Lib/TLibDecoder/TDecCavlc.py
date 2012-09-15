@@ -6,31 +6,16 @@
 
 import sys
 
-use_swig = True
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-    from swig.hevc import parseSEImessage
-    from swig.hevc import ArrayUInt
-    Char = lambda c: ord(c)
-else:
-    sys.path.insert(0, '../../..')
-    from ..TLibCommon import TComRom as cvar
-    from swig.hevc import parseSEImessage
-    ArrayUInt = lambda size: [0 for i in xrange(size)] # TComPPS
-    Char = lambda c: c
+from ... import pointer
+from ... import trace
+
+from ... import parseSEImessage
+from ... import ArrayUInt
+
+from ... import cvar
+from ... import Char
 
 from .TDecEntropy import TDecEntropy
-
-from ..TLibCommon.pointer import pointer
-
-from ..TLibCommon.trace import (
-    trace, initCavlc,
-    traceSPSHeader, tracePPSHeader, traceSliceHeader,
-    traceReadCode, traceReadUvlc, traceReadSvlc, traceReadFlag
-)
-
-use_trace = False
 
 from ..TLibCommon.TypeDef import (
     MRG_MAX_NUM_CANDS_SIGNALED,
@@ -52,10 +37,8 @@ from ..TLibCommon.CommonDef import (
 from ..TLibCommon.TComRom import (
     SCALING_LIST_START_VALUE, MAX_MATRIX_COEF_NUM,
     SCALING_LIST_8x8, SCALING_LIST_SIZE_NUM,
-    g_auiSigLastScan,
-    g_sigLastScanCG32x32,
-    g_scalingListSize,
-    g_scalingListNum
+    g_auiSigLastScan, g_sigLastScanCG32x32,
+    g_scalingListSize, g_scalingListNum
 )
 
 
@@ -96,7 +79,7 @@ class TDecCavlc(TDecEntropy):
         uiCode = self._xReadFlag('vps_extension_flag')
         assert(not uiCode)
 
-    @trace(use_trace, init=initCavlc, before=lambda self, pcSPS: traceSPSHeader(pcSPS))
+    @trace.trace(trace.use_trace, init=trace.initCavlc, before=lambda self, pcSPS: trace.traceSPSHeader(pcSPS))
     def parseSPS(self, pcSPS):
         uiCode = self._xReadCode(3, 'profile_space')
         pcSPS.setProfileSpace(uiCode)
@@ -252,7 +235,7 @@ class TDecCavlc(TDecEntropy):
             while self._xMoreRbspData():
                 uiCode = self._xReadFlag('sps_extension_data_flag')
 
-    @trace(use_trace, before=lambda self, pcPPS: tracePPSHeader(pcPPS))
+    @trace.trace(trace.use_trace, before=lambda self, pcPPS: trace.tracePPSHeader(pcPPS))
     def parsePPS(self, pcPPS):
         uiCode = self._xReadUvlc('pic_parameter_set_id')
         pcPPS.setPPSId(uiCode)
@@ -389,7 +372,7 @@ class TDecCavlc(TDecEntropy):
                 break
         assert(self.m_pcBitstream.getNumBitsLeft() == 8) # rsbp_trailing_bits
 
-    @trace(use_trace, before=lambda self, pSlice, psm: traceSliceHeader(pSlice))
+    @trace.trace(trace.use_trace, before=lambda self, pSlice, psm: trace.traceSliceHeader(pSlice))
     def parseSliceHeader(self, rpcSlice, parameterSetManager):
         firstSliceInPic = self._xReadFlag('first_slice_in_pic_flag')
 
@@ -840,14 +823,14 @@ class TDecCavlc(TDecEntropy):
     def parseMergeIndex(self, pcCU, ruiMergeIndex, uiAbsPartIdx, uiDepth):
         assert(False)
 
-    @trace(use_trace, wrapper=traceReadCode)
+    @trace.trace(trace.use_trace, wrapper=trace.traceReadCode)
     def _xReadCode(self, uiLength, pSymbolName=''):
         assert(uiLength > 0)
         ruiCode = 0
         ruiCode = self.m_pcBitstream.read(uiLength, ruiCode)
         return ruiCode
 
-    @trace(use_trace, wrapper=traceReadUvlc)
+    @trace.trace(trace.use_trace, wrapper=trace.traceReadUvlc)
     def _xReadUvlc(self, pSymbolName=''):
         ruiVal = 0
         uiCode = 0
@@ -865,7 +848,7 @@ class TDecCavlc(TDecEntropy):
 
         return ruiVal
 
-    @trace(use_trace, wrapper=traceReadSvlc)
+    @trace.trace(trace.use_trace, wrapper=trace.traceReadSvlc)
     def _xReadSvlc(self, pSymbolName=''):
         riVal = 0
         uiBits = 0
@@ -884,7 +867,7 @@ class TDecCavlc(TDecEntropy):
 
         return riVal
 
-    @trace(use_trace, wrapper=traceReadFlag)
+    @trace.trace(trace.use_trace, wrapper=trace.traceReadFlag)
     def _xReadFlag(self, pSymbolName=''):
         ruiCode = 0
         ruiCode = self.m_pcBitstream.read(1, ruiCode)

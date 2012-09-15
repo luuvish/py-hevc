@@ -17,7 +17,8 @@ if use_swig:
                           PxlAdd, PelAdd, TCoeffAdd
     from swig.hevc import ArrayTDecSbac, ArrayTDecBinCABAC, \
                           ArrayTComInputBitstream, ArrayTComDataCU, \
-                          ArrayTComMvField, ArrayTComMv
+                          ArrayTComMvField, ArrayTComMv, \
+                          ArraySaoLcuParamPtr, ArraySaoLcuParam
 
 class pointer(object):
 
@@ -50,12 +51,14 @@ class pointer(object):
     }
 
     _swig = {
-        'TDecSbac *'          : ArrayTDecSbac,
-        'TDecBinCabac *'      : ArrayTDecBinCABAC,
-        'TComInputBitstream *': ArrayTComInputBitstream,
-        'TComDataCU *'        : ArrayTComDataCU,
-        'TComMvField *'       : ArrayTComMvField,
-        'TComMv *'            : ArrayTComMv
+        'TDecSbac *'           : ArrayTDecSbac,
+        'TDecBinCabac *'       : ArrayTDecBinCABAC,
+        'TComInputBitstream **': ArrayTComInputBitstream,
+        'TComDataCU *'         : ArrayTComDataCU,
+        'TComMvField *'        : ArrayTComMvField,
+        'TComMv *'             : ArrayTComMv,
+        'SaoLcuParam **'       : ArraySaoLcuParamPtr,
+        'SaoLcuParam *'        : ArraySaoLcuParam
     }
 
     def __init__(self, *args, **kwargs):

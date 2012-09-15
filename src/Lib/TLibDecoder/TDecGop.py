@@ -5,40 +5,17 @@
 """
 
 import sys
-from time import clock
 
-use_swig = True
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
+from ... import clock, CLOCKS_PER_SEC
+from ... import pointer
 
-    from swig.hevc import TDecSbac
-    from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
-    from swig.hevc import VectorBool, VectorInt
+from ... import calcMD5, calcCRC, calcChecksum, digestToString
+from ... import SEIpictureDigest, digest_get
+from ... import VectorBool, VectorInt
 
-    from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
-    from swig.hevc import SEIpictureDigest, digest_get
-else:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-#   from ..TLibCommon import TComRom as cvar # depend on TDecCavlc
-
-    from .TDecSbac import TDecSbac
-    from .TDecBinCabac import TDecBinCabac
-#   from swig.hevc import TComInputBitstream
-    from swig.hevc import ArrayTComInputBitstream
-#   ArrayTComInputBitstream = lambda size: [TComInputBitstream() for i in xrange(size)]
-    from ..TLibCommon.pointer import pointer
-    ArrayTDecSbac = lambda size: pointer([TDecSbac() for i in xrange(size)])
-    ArrayTDecBinCABAC = lambda size: pointer([TDecBinCabac() for i in xrange(size)])
-    from swig.hevc import VectorBool, VectorInt # depend on TComPic
-
-    from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
-    from swig.hevc import SEIpictureDigest, digest_get
-
-from ..TLibCommon.pointer import pointer
-
-CLOCKS_PER_SEC = 1
+from ... import ArrayTComInputBitstream
+from ... import TDecSbac, ArrayTDecSbac, ArrayTDecBinCABAC
+from ... import cvar
 
 
 def _calcAndPrintHashStatus(pic, seis):

@@ -6,31 +6,23 @@
 
 import sys
 
-use_swig = False
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
+from ... import pointer
+from ... import trace
 
-    from swig.hevc import TComMv
-    from swig.hevc import TComYuv, ArrayTComYuv
-    from swig.hevc import TComDataCU, ArrayTComDataCU
-    from swig.hevc import ArrayTComMvField, ArrayUChar
-    Char = lambda c: ord(c)
-else:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-#   from ..TLibCommon import TComRom as cvar # depend on TDecCavlc
+from ... import TComMv
 
-    from swig.hevc import TComMv
-    from ..TLibCommon.TComYuv import TComYuv
-    ArrayTComYuv = lambda size: [TComYuv() for i in xrange(size)]
-    from swig.hevc import TComDataCU, ArrayTComDataCU
-    from swig.hevc import ArrayTComMvField, ArrayUChar
-#   Char = lambda c: c
-    Char = lambda c: ord(c)
+from ... import TComDataCU, ArrayTComDataCU
+from ... import ArrayTComMvField, ArrayUChar
+from ... import ArrayTComYuv
 
-from ..TLibCommon.pointer import pointer
-from ..TLibCommon.trace import trace, initCU, dumpCU
+from ... import cvar
+from ... import initZscanToRaster
+from ... import initRasterToZscan
+from ... import initRasterToPelXY
+from ... import initMotionReferIdx
+from ... import Char
+
+use_trace = True
 
 from ..TLibCommon.TypeDef import (
     DM_CHROMA_IDX, REG_DCT,
@@ -42,18 +34,9 @@ from ..TLibCommon.TypeDef import (
 from ..TLibCommon.CommonDef import (Clip, MRG_MAX_NUM_CANDS)
 
 from ..TLibCommon.TComRom import (
-    initZscanToRaster,
-    initRasterToZscan,
-    initRasterToPelXY,
-    initMotionReferIdx,
-    g_auiZscanToRaster,
-    g_auiRasterToPelX,
-    g_auiRasterToPelY,
-    g_aucConvertToBit,
-    g_eTTable
+    g_auiZscanToRaster, g_auiRasterToPelX, g_auiRasterToPelY,
+    g_aucConvertToBit, g_eTTable
 )
-
-use_trace = False
 
 
 class TDecCu(object):
@@ -127,7 +110,7 @@ class TDecCu(object):
         ruiIsLast = self._xDecodeCU(pcCU, 0, 0, ruiIsLast)
         return ruiIsLast
 
-    @trace(enable=use_trace, init=initCU, after=lambda self, pcCU: dumpCU(pcCU))
+    @trace.trace(enable=use_trace, init=trace.initCU, after=lambda self, pcCU: trace.dumpCU(pcCU))
     def decompressCU(self, pcCU):
         self._xDecompressCU(pcCU, pcCU, 0, 0)
 

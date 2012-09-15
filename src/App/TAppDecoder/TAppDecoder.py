@@ -5,16 +5,10 @@
 """
 
 import sys
-from time import clock
 
-use_swig = False
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import TAppDecTop
-    from swig.hevc import cvar
-else:
-    from .TAppDecTop import TAppDecTop
-    from ...Lib.TLibCommon import TComRom as cvar
+from ... import clock, CLOCKS_PER_SEC
+from ... import cvar
+from ... import TAppDecTop
 
 from ...Lib.TLibCommon.CommonDef import (
     NV_VERSION,
@@ -22,8 +16,6 @@ from ...Lib.TLibCommon.CommonDef import (
     NVM_ONOS,
     NVM_BITS
 )
-
-CLOCKS_PER_SEC = 1
 
 
 cvar.g_md5_mismatch = False

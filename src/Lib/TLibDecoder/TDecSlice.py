@@ -5,32 +5,15 @@
 """
 
 import sys
-from time import clock
 
-use_swig = True
-if use_swig:
-    sys.path.insert(0, '../../..')
+from ... import clock
+from ... import pointer
+from ... import trace
 
-    from swig.hevc import ArrayTComInputBitstream, ArrayTDecSbac, ArrayTDecBinCABAC
+from ... import ParameterSetManager
+from ... import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
 
-    from swig.hevc import ParameterSetManager
-    from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
-else:
-    sys.path.insert(0, '../../..')
-
-    from .TDecSbac import TDecSbac
-    from .TDecBinCabac import TDecBinCabac
-    from swig.hevc import TComInputBitstream
-    from swig.hevc import ArrayTComInputBitstream
-#   ArrayTComInputBitstream = lambda size: [TComInputBitstream() for i in xrange(size)]
-    from ..TLibCommon.pointer import pointer
-    ArrayTDecSbac = lambda size: pointer([TDecSbac() for i in xrange(size)])
-    ArrayTDecBinCABAC = lambda size: pointer([TDecBinCabac() for i in xrange(size)])
-
-    from swig.hevc import ParameterSetManager
-    from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
-
-from ..TLibCommon.pointer import pointer
+from ... import ArrayTDecSbac, ArrayTDecBinCABAC
 
 from ..TLibCommon.TypeDef import (
     MAX_NUM_SPS, MAX_NUM_PPS, MAX_NUM_VPS,
@@ -72,7 +55,7 @@ class TDecSlice(object):
             self.m_pcBufferLowLatBinCABACs = None
 
     def decompressSlice(self, pcBitstream, ppcSubstreams, rpcPic, pcSbacDecoder, pcSbacDecoders):
-        ppcSubstreams = pointer(ppcSubstreams, type='TComInputBitstream *')
+        ppcSubstreams = pointer(ppcSubstreams, type='TComInputBitstream **')
         pcSbacDecoders = pointer(pcSbacDecoders, type='TDecSbac *')
 
         pcCU = None
@@ -84,6 +67,13 @@ class TDecSlice(object):
         # decoder don't need prediction & residual frame buffer
         rpcPic.setPicYuvPred(None)
         rpcPic.setPicYuvResi(None)
+
+        if trace.use_trace:
+            trace.DTRACE_CABAC_VL(trace.g_nSymbolCounter)
+            trace.g_nSymbolCounter += 1
+            trace.DTRACE_CABAC_T('\tPOC: ')
+            trace.DTRACE_CABAC_V(rpcPic.getPOC())
+            trace.DTRACE_CABAC_T('\n')
 
         uiTilesAcross = rpcPic.getPicSym().getNumColumnsMinus1() + 1
         pcSlice = rpcPic.getSlice(rpcPic.getCurrSliceIdx())
@@ -135,7 +125,7 @@ class TDecSlice(object):
                     self.m_pcBufferSbacDecoders[uiTileCol].loadContexts(
                         rpcPic.getSlice(rpcPic.getCurrSliceIdx()-1).getCTXMem_dec(0)) #2.LCU
                 pcSbacDecoder.loadContexts(rpcPic.getSlice(rpcPic.getCurrSliceIdx()-1).getCTXMem_dec(1)) # end of depSlice-1
-                pcSbacDecoders.get(uiSubStrm).loadContexts(pcSbacDecoder)
+                pcSbacDecoders[uiSubStrm].loadContexts(pcSbacDecoder)
 
         iCUAddr = iStartCUAddr
         while not uiIsLast:
@@ -160,7 +150,7 @@ class TDecSlice(object):
                 iNumSubstreamsPerTile = iNumSubstreams / rpcPic.getPicSym().getNumTiles()
                 uiSubStrm = rpcPic.getPicSym().getTileIdxMap(iCUAddr) * iNumSubstreamsPerTile + \
                             uiLin % iNumSubstreamsPerTile
-                self.m_pcEntropyDecoder.setBitstream(ppcSubstreams.get(uiSubStrm))
+                self.m_pcEntropyDecoder.setBitstream(ppcSubstreams[uiSubStrm])
                 # Synchronize cabac probabilities with upper-right LCU if it's available and we're at the start of a line.
                 if (pcSlice.getPPS().getNumSubstreams() > 1) or \
                    (bAllowDependence and uiCol == uiTileLCUX and

@@ -6,28 +6,8 @@
 
 import sys
 
-use_swig = True
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-    from swig.hevc import initROM as _initROM
-    from swig.hevc import destroyROM as _destroyROM
-    from swig.hevc import initZscanToRaster as _initZscanToRaster_
-    def _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):
-        if uiStartVal == 0:
-            _initZscanToRaster_(iMaxDepth, iDepth, uiStartVal, cvar.g_auiZscanToRaster)
-    from swig.hevc import initRasterToZscan as _initRasterToZscan
-    from swig.hevc import initRasterToPelXY as _initRasterToPelXY
-    from swig.hevc import initMotionReferIdx as _initMotionReferIdx
-else:
-    def _initROM(): pass
-    def _destroyROM(): pass
-    def _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx): pass
-    def _initRasterToZscan(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth): pass
-    def _initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth): pass
-    def _initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth): pass
+from ... import pointer
 
-from .pointer import pointer
 from .TypeDef import NUM_INTRA_MODE, SCAN_DIAG
 
 
@@ -316,8 +296,6 @@ g_eTTable = (0, 3, 1, 2)
 
 
 def initROM():
-    _initROM()
-
     # g_aucConvertToBit[ x ]: log2(x/4), if x=4 -> 0, x=8 -> 1, x=16 -> 2, ...
     for i in xrange(len(g_aucConvertToBit)):
         g_aucConvertToBit[i] = -1
@@ -343,8 +321,6 @@ def initROM():
         c <<= 1
 
 def destroyROM():
-    _destroyROM()
-
     for i in xrange(MAX_CU_DEPTH):
         del g_auiSigLastScan[0][i]
         del g_auiSigLastScan[1][i]
@@ -352,26 +328,22 @@ def destroyROM():
         del g_auiSigLastScan[3][i]
 
 def initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):
-    _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx)
+    def _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):
+        iStride = 1 << (iMaxDepth - 1)
 
-    rpuiCurrIdx = pointer(rpuiCurrIdx)
-    iStride = 1 << (iMaxDepth - 1)
+        if iDepth == iMaxDepth:
+            rpuiCurrIdx[0] = uiStartVal
+            rpuiCurrIdx += 1
+        else:
+            iStep = iStride >> iDepth
+            _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal, rpuiCurrIdx)
+            _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep, rpuiCurrIdx)
+            _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride, rpuiCurrIdx)
+            _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride+iStep, rpuiCurrIdx)
 
-    if iDepth == iMaxDepth:
-        rpuiCurrIdx[0] = uiStartVal
-        rpuiCurrIdx += 1
-    else:
-        iStep = iStride >> iDepth
-        rpuiCurrIdx = initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal, rpuiCurrIdx)
-        rpuiCurrIdx = initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep, rpuiCurrIdx)
-        rpuiCurrIdx = initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride, rpuiCurrIdx)
-        rpuiCurrIdx = initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride+iStep, rpuiCurrIdx)
-
-    return rpuiCurrIdx
+    _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, pointer(rpuiCurrIdx))
 
 def initRasterToZscan(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
-    _initRasterToZscan(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-
     uiMinCUWidth = uiMaxCUWidth  >> (uiMaxDepth - 1)
     uiMinCUHeight = uiMaxCUHeight >> (uiMaxDepth - 1)
   
@@ -382,8 +354,6 @@ def initRasterToZscan(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
         g_auiRasterToZscan[g_auiZscanToRaster[i]] = i
 
 def initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
-    _initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-
     minSUWidth = uiMaxCUWidth >> (uiMaxDepth - 1)
     minSUHeight = uiMaxCUHeight >> (uiMaxDepth - 1)
 
@@ -410,8 +380,6 @@ def initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
             g_motionRefer[g_auiRasterToZscan[i-j]] = g_auiRasterToZscan[i]
 
 def initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
-    _initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-
     uiTempX = pointer(g_auiRasterToPelX)
     uiTempY = pointer(g_auiRasterToPelY)
   
@@ -493,7 +461,7 @@ def initSigLastScan(pBuffZ, pBuffH, pBuffV, pBuffD, iWidth, iHeight, iDepth):
         numBlkSide = iWidth >> 2
         for blkY in xrange(numBlkSide):
             for blkX in xrange(numBlkSide):
-                offset = blkY * 4 * iWidth + blkY * 4
+                offset = blkY * 4 * iWidth + blkX * 4
                 for y in xrange(4):
                     for x in xrange(4):
                         pBuffH[uiCnt] = y * iWidth + x + offset
@@ -502,7 +470,7 @@ def initSigLastScan(pBuffZ, pBuffH, pBuffV, pBuffD, iWidth, iHeight, iDepth):
         uiCnt = 0
         for blkX in xrange(numBlkSide):
             for blkY in xrange(numBlkSide):
-                offset = blkY * 4 * iWidth + blkY * 4
+                offset = blkY * 4 * iWidth + blkX * 4
                 for x in xrange(4):
                     for y in xrange(4):
                         pBuffV[uiCnt] = y * iWidth + x + offset

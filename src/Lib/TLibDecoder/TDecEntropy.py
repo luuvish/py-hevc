@@ -6,13 +6,11 @@
 
 import sys
 
-use_swig = True
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import TComMv
-    from swig.hevc import ArrayTComMvField, ArrayUChar
+from ... import pointer
+from ... import trace
 
-from ..TLibCommon.pointer import pointer
+from ... import TComMv
+from ... import ArrayTComMvField, ArrayUChar
 
 from ..TLibCommon.TypeDef import (
     SIZE_2Nx2N, SIZE_NxN, MODE_INTER, MODE_INTRA,
@@ -315,6 +313,17 @@ class TDecEntropy(object):
         else:
             assert(uiDepth >= pcCU.getDepth(uiAbsPartIdx))
             pcCU.setTrIdxSubParts(uiTrDepth, uiAbsPartIdx, uiDepth)
+
+            if trace.use_trace:
+                trace.DTRACE_CABAC_VL(trace.g_nSymbolCounter)
+                trace.g_nSymbolCounter += 1
+                trace.DTRACE_CABAC_T("\tTrIdx: abspart=")
+                trace.DTRACE_CABAC_V(uiAbsPartIdx)
+                trace.DTRACE_CABAC_T("\tdepth=")
+                trace.DTRACE_CABAC_V(uiDepth)
+                trace.DTRACE_CABAC_T("\ttrdepth=")
+                trace.DTRACE_CABAC_V(uiTrDepth)
+                trace.DTRACE_CABAC_T("\n")
 
             uiLumaTrMode = 0
             uiChromaTrMode = 0

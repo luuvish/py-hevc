@@ -10,11 +10,12 @@ use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-    from swig.hevc import ArrayUInt
 
-from .array import array
+from .pointer import pointer
 
-g_auiRasterToZscan = ArrayUInt.frompointer(cvar.g_auiRasterToZscan)
+from .TComRom import g_auiRasterToZscan
+
+use_trace = False
 
 
 def trace(enable, init=None, wrapper=None, before=None, after=None):
@@ -48,8 +49,9 @@ g_nSymbolCounter = 0
 def initCavlc():
     global g_hTrace
     global g_nSymbolCounter
-    g_hTrace = open('trace_dec.txt', 'wt')
-    g_nSymbolCounter = 0
+    if not g_hTrace:
+        g_hTrace = open('trace_dec.txt', 'wt')
+        g_nSymbolCounter = 0
 
 def traceSPSHeader(pSPS):
     g_hTrace.write("=========== Sequence Parameter Set ID: %d ===========\n" % pSPS.getSPSId())
@@ -107,6 +109,31 @@ def traceReadFlag(func):
             g_nSymbolCounter += 1
         return rValue
     return wrap
+
+COUNTER_START = 1
+COUNTER_END   = 0 #( UInt64(1) << 63 )
+
+def DTRACE_CABAC_F(x):
+    g_hTrace.write("%f" % x)
+    g_hTrace.flush()
+def DTRACE_CABAC_V(x):
+    g_hTrace.write("%d" % x)
+    g_hTrace.flush()
+def DTRACE_CABAC_VL(x):
+    g_hTrace.write("%d" % x)
+    g_hTrace.flush()
+def DTRACE_CABAC_T(x):
+    g_hTrace.write("%s" % x)
+    g_hTrace.flush()
+def DTRACE_CABAC_X(x):
+    g_hTrace.write("%x" % x)
+    g_hTrace.flush()
+def DTRACE_CABAC_R(x, y):
+    g_hTrace.write(x % y)
+    g_hTrace.flush()
+def DTRACE_CABAC_N():
+    g_hTrace.write("\n")
+    g_hTrace.flush()
 
 
 fpCU = None
@@ -216,9 +243,9 @@ def dumpCU(pcCU):
 
     if use_trace_cu_tcoeff:
         fpCU.write('tcoeff\n')
-        tc = (array(pcCU.getCoeffY(), type='int *'),
-              array(pcCU.getCoeffCb(), type='int *'),
-              array(pcCU.getCoeffCr(), type='int *'))
+        tc = (pointer(pcCU.getCoeffY(), type='int *'),
+              pointer(pcCU.getCoeffCb(), type='int *'),
+              pointer(pcCU.getCoeffCr(), type='int *'))
         for y in xrange(height):
             for x in xrange(width):
                 fpCU.write('%-03x ' % tc[0][y * width + x])
@@ -236,9 +263,9 @@ def dumpCU(pcCU):
         fpCU.write('reconst\n')
         zorder = pcCU.getZorderIdxInCU()
         pic = pcCU.getPic().getPicYuvRec()
-        yuv = (array(pic.getLumaAddr(cua, zorder), type='short *'),
-               array(pic.getCbAddr(cua, zorder), type='short *'),
-               array(pic.getCrAddr(cua, zorder), type='short *'))
+        yuv = (pointer(pic.getLumaAddr(cua, zorder), type='short *'),
+               pointer(pic.getCbAddr(cua, zorder), type='short *'),
+               pointer(pic.getCrAddr(cua, zorder), type='short *'))
         stride = (pic.getStride(), pic.getCStride())
         for y in xrange(height):
             for x in xrange(width):

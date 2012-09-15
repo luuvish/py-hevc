@@ -6,14 +6,8 @@
 
 import sys
 
-use_swig = True
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-else:
-    from . import TComRom as cvar
-
-from .pointer import pointer
+from ... import pointer
+from ... import cvar
 
 from .TypeDef import (
     COEF_REMAIN_BIN_REDUCTION, SBH_THRESHOLD, C1FLAG_NUMBER, C2FLAG_NUMBER,
@@ -654,6 +648,8 @@ class TComTrQuant(object):
 
     @staticmethod
     def calcPatternSigCtx(sigCoeffGroupFlag, posXCG, posYCG, width, height):
+        sigCoeffGroupFlag = pointer(sigCoeffGroupFlag, type='uint *')
+
         if width == 4 and height == 4:
             return -1
 
@@ -683,7 +679,8 @@ class TComTrQuant(object):
         if blockType == 2:
             return ctxIndMap[4 * posY + posX]
 
-        offset = (9 if scanIdx == SCAN_DIAG else 15) if blockType == 3 else (21 if textureType == TEXT_LUMA else 12)
+        offset = (9 if scanIdx == SCAN_DIAG else 15) if blockType == 3 else \
+                 (21 if textureType == TEXT_LUMA else 12)
 
         posXinSubset = posX - ((posX>>2) << 2)
         posYinSubset = posY - ((posY>>2) << 2)
@@ -701,6 +698,8 @@ class TComTrQuant(object):
 
     @staticmethod
     def getSigCoeffGroupCtxInc(uiSigCoeffGroupFlag, uiCGPosX, uiCGPosY, scanIdx, width, height):
+        uiSigCoeffGroupFlag = pointer(uiSigCoeffGroupFlag, type='uint *')
+
         uiRight = 0
         uiLower = 0
 
@@ -711,7 +710,7 @@ class TComTrQuant(object):
             uiRight = (1 if uiSigCoeffGroupFlag[uiCGPosY * width + uiCGPosX + 1] != 0 else 0)
         if uiCGPosY < height-1:
             uiLower = (1 if uiSigCoeffGroupFlag[(uiCGPosY+1) * width + uiCGPosX] != 0 else 0)
-        return uiRight or (uiLower)
+        return uiRight or uiLower
 
     def _initScalingList(self):
         for sizeId in xrange(SCALING_LIST_SIZE_NUM):

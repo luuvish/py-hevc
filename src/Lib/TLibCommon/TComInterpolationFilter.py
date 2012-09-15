@@ -6,14 +6,8 @@
 
 import sys
 
-use_swig = True
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-else:
-    from . import TComRom as cvar
-
-from .pointer import pointer
+from ... import pointer
+from ... import cvar
 
 NTAPS_LUMA = 8
 NTAPS_CHROMA = 4

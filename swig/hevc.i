@@ -201,7 +201,8 @@ extern int encmain(int argc, char* argv[]);
 %array_class(Pel, PelArray);
 
 %inline %{
-  typedef TComInputBitstream *PtrTComInputBitstream;
+  typedef TComInputBitstream *TComInputBitstreamPtr;
+  typedef SaoLcuParam *SaoLcuParamPtr;
 %}
 
 %array_class(Bool,   ArrayBool  );
@@ -217,13 +218,15 @@ extern int encmain(int argc, char* argv[]);
 %array_class(Pel,    ArrayPel   );
 %array_class(TCoeff, ArrayTCoeff);
 
-%array_class(PtrTComInputBitstream, ArrayTComInputBitstream);
+%array_class(TComInputBitstreamPtr, ArrayTComInputBitstream);
 %array_value(TDecSbac,              ArrayTDecSbac          );
 %array_value(TDecBinCABAC,          ArrayTDecBinCABAC      );
 %array_value(TComYuv,               ArrayTComYuv           );
 %array_value(TComDataCU,            ArrayTComDataCU        );
 %array_value(TComMvField,           ArrayTComMvField       );
 %array_value(TComMv,                ArrayTComMv            );
+%array_class(SaoLcuParamPtr,        ArraySaoLcuParamPtr    );
+%array_value(SaoLcuParam,           ArraySaoLcuParam       );
 
 namespace std {
   %template(ListTComPic   ) list<TComPic *>;

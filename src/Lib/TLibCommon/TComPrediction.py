@@ -6,20 +6,11 @@
 
 import sys
 
-use_swig = False
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-    from swig.hevc import TComYuv
-    from swig.hevc import ArrayInt
-else:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-#   from . import TComRom as cvar
-    from .TComYuv import TComYuv
-    from swig.hevc import ArrayInt
+from ... import pointer
 
-from .pointer import pointer
+from ... import ArrayInt
+from ... import TComYuv
+from ... import cvar
 
 from .TComWeightPrediction import TComWeightPrediction
 from .TComInterpolationFilter import TComInterpolationFilter

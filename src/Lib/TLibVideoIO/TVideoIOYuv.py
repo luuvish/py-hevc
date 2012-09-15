@@ -7,14 +7,9 @@
 import os
 import sys
 
-use_swig = True
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import TComPicYuv
-else:
-    from ..TLibCommon.TComPicYuv import TComPicYuv
+from ... import pointer
+from ... import TComPicYuv
 
-from ..TLibCommon.pointer import pointer
 from ..TLibCommon.CommonDef import Clip3
 
 

@@ -6,16 +6,9 @@
 
 import sys
 
-use_swig = True
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import cvar
-    Char = lambda c: ord(c)
-else:
-    from . import TComRom as cvar
-    Char = lambda c: c
-
-from .pointer import pointer
+from ... import pointer
+from ... import cvar
+from ... import Char
 
 from .TypeDef import LFCUParam
 from .TypeDef import (

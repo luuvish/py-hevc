@@ -6,59 +6,28 @@
 
 import sys
 
-use_swig = False
-if use_swig:
-    sys.path.insert(0, '../../..')
+from ... import TComPic
+from ... import ParameterSetManagerDecoder
+from ... import TComListTComPic
+from ... import TComSlice
+from ... import SEImessages
+from ... import TComVPS, TComSPS, TComPPS
 
-    from swig.hevc import initROM, destroyROM
-    from swig.hevc import TDecGop
-    from swig.hevc import TDecSlice
-    from swig.hevc import TDecCu
-    from swig.hevc import TDecEntropy
-    from swig.hevc import TDecCavlc
-    from swig.hevc import TDecSbac
-    from swig.hevc import TDecBinCABAC
+from ... import cvar
+from ... import initROM, destroyROM
 
-    from swig.hevc import cvar
-    from swig.hevc import TComPrediction
-    from swig.hevc import TComTrQuant
-    from swig.hevc import TComLoopFilter
-    from swig.hevc import TComSampleAdaptiveOffset
+from ... import TComPrediction
+from ... import TComTrQuant
+from ... import TComLoopFilter
+from ... import TComSampleAdaptiveOffset
 
-    from swig.hevc import TComPic
-    from swig.hevc import ParameterSetManagerDecoder
-    from swig.hevc import TComListTComPic
-    from swig.hevc import TComSlice
-    from swig.hevc import SEImessages
-    from swig.hevc import TComVPS, TComSPS, TComPPS
-else:
-    sys.path.insert(0, '../../..')
-
-    from ..TLibCommon.TComRom import initROM, destroyROM
-    from .TDecGop import TDecGop
-    from .TDecSlice import TDecSlice
-    from .TDecCu import TDecCu
-    from .TDecEntropy import TDecEntropy
-    from .TDecCavlc import TDecCavlc
-#   from .TDecSbac import TDecSbac
-#   from .TDecBinCabac import TDecBinCabac as TDecBinCABAC
-    from swig.hevc import TDecSbac
-    from swig.hevc import TDecBinCABAC
-
-    from swig.hevc import cvar
-#   from ..TLibCommon import TComRom as cvar # depend on TDecCavlc
-    from ..TLibCommon.TComPrediction import TComPrediction
-    from ..TLibCommon.TComTrQuant import TComTrQuant
-    from ..TLibCommon.TComLoopFilter import TComLoopFilter
-#   from ..TLibCommon.TComSampleAdaptiveOffset import TComSampleAdaptiveOffset
-    from swig.hevc import TComSampleAdaptiveOffset
-
-    from swig.hevc import TComPic
-    from swig.hevc import ParameterSetManagerDecoder
-    from swig.hevc import TComListTComPic
-    from swig.hevc import TComSlice
-    from swig.hevc import SEImessages
-    from swig.hevc import TComVPS, TComSPS, TComPPS
+from ... import TDecBinCABAC
+from ... import TDecSbac
+from ... import TDecCavlc
+from ... import TDecEntropy
+from ... import TDecCu
+from ... import TDecSlice
+from ... import TDecGop
 
 from ..TLibCommon.TypeDef import (
     B_SLICE, REF_PIC_LIST_0, REF_PIC_LIST_1

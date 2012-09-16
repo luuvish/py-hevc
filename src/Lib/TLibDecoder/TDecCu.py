@@ -22,7 +22,7 @@ from ... import initRasterToPelXY
 from ... import initMotionReferIdx
 from ... import Char
 
-use_trace = True
+use_trace = False
 
 from ..TLibCommon.TypeDef import (
     DM_CHROMA_IDX, REG_DCT,

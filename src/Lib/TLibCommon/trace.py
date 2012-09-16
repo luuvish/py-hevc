@@ -6,12 +6,12 @@
 
 import sys
 
+from ... import pointer
+
 use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
-
-from .pointer import pointer
 
 from .TComRom import g_auiRasterToZscan
 

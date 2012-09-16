@@ -15,7 +15,7 @@ from src.Lib.TLibCommon.pointer import pointer
 from src.Lib.TLibCommon import trace
 
 
-use_swig = 8
+use_swig = 9
 
 if use_swig == 0:
     from swig.hevc import decmain as TAppDecoder

@@ -2,7 +2,7 @@
 
 from distutils.core import setup, Extension
 
-hm_dir = '/Users/injoh/Documents/workspace/video/hm-8.0'
+hm_dir = '../hm-8.0'
 hm_obj = hm_dir + '/build/linux/app'
 
 include_dirs = [hm_dir+'/source/'+inc for inc in ['Lib', 'App/TAppDecoder', 'App/TAppEncoder']]

@@ -321,11 +321,12 @@ def initROM():
         c <<= 1
 
 def destroyROM():
-    for i in xrange(MAX_CU_DEPTH):
-        del g_auiSigLastScan[0][i]
-        del g_auiSigLastScan[1][i]
-        del g_auiSigLastScan[2][i]
-        del g_auiSigLastScan[3][i]
+    pass
+#   for i in xrange(MAX_CU_DEPTH):
+#       del g_auiSigLastScan[0][i]
+#       del g_auiSigLastScan[1][i]
+#       del g_auiSigLastScan[2][i]
+#       del g_auiSigLastScan[3][i]
 
 def initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):
     def _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):

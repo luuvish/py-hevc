@@ -195,6 +195,10 @@ extern int decmain(int argc, char* argv[]);
 extern int encmain(int argc, char* argv[]);
 
 
+namespace std {
+  %template(VectorNDBFBlockInfo) vector<NDBFBlockInfo>;
+}
+
 %include "carrays.i"
 %include "carray_value.i"
 
@@ -227,6 +231,7 @@ extern int encmain(int argc, char* argv[]);
 %array_value(TComMv,                ArrayTComMv            );
 %array_class(SaoLcuParamPtr,        ArraySaoLcuParamPtr    );
 %array_value(SaoLcuParam,           ArraySaoLcuParam       );
+%array_value(TComCUMvField,         ArrayTComCUMvField     );
 
 namespace std {
   %template(ListTComPic   ) list<TComPic *>;

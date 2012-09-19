@@ -18,7 +18,7 @@ Lib/TLibDecoder/TDecBinCabac.py
 
 Lib/TLibCommon/TComPrediction.py, TComWeightPrediction.py < TDecEntropy.py, TComYuv.py
 Lib/TLibCommon/TComInterpolationFilter.py
-Lib/TLibCommon/TComTrQuant.py
+Lib/TLibCommon/TComTrQuant.py < TComYuv.py
 Lib/TLibCommon/TComLoopFilter.py
 Lib/TLibCommon/TComSampleAdaptiveOffset.py < TComPicSym.py
 

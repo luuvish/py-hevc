@@ -147,7 +147,7 @@ class TComPrediction(TComWeightPrediction):
             pcCU.setMVPNumSubParts(pcAMVPInfo.iN, eRefPicList, uiPartAddr, uiPartIdx, pcCU.getDepth(uiPartAddr))
             return rcMvPred
 
-        assert(pcCU.getMVPIdx(eRefPicList, uiPartAddr) >= 0)
+        assert(pcCU.getMVPIdx(eRefPicList, uiPartAddr) != 255)
         rcMvPred = acMvCand[pcCU.getMVPIdx(eRefPicList, uiPartAddr)]
         return rcMvPred
 

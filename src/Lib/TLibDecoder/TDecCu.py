@@ -20,7 +20,6 @@ from ... import initZscanToRaster
 from ... import initRasterToZscan
 from ... import initRasterToPelXY
 from ... import initMotionReferIdx
-from ... import Char
 
 use_trace = False
 
@@ -458,7 +457,7 @@ class TDecCu(object):
         pResi = self.m_ppcYuvResi[uiDepth].getLumaAddr()
 
         self.m_pcTrQuant.setQPforQuant(
-            Char(pcCU.getQP(uiAbsPartIdx)), TEXT_LUMA,
+            pcCU.getQP(uiAbsPartIdx), TEXT_LUMA,
             pcCU.getSlice().getSPS().getQpBDOffsetY(), 0)
         self.m_pcTrQuant.invRecurTransformNxN(
             pcCU, 0, TEXT_LUMA, pResi,
@@ -468,7 +467,7 @@ class TDecCu(object):
         # Cb and Cr
         curChromaQpOffset = pcCU.getSlice().getPPS().getChromaCbQpOffset() + pcCU.getSlice().getSliceQpDeltaCb()
         self.m_pcTrQuant.setQPforQuant(
-            Char(pcCU.getQP(uiAbsPartIdx)), TEXT_CHROMA,
+            pcCU.getQP(uiAbsPartIdx), TEXT_CHROMA,
             pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
 
         uiWidth >>= 1
@@ -482,7 +481,7 @@ class TDecCu(object):
 
         curChromaQpOffset = pcCU.getSlice().getPPS().getChromaCrQpOffset() + pcCU.getSlice().getSliceQpDeltaCr()
         self.m_pcTrQuant.setQPforQuant(
-            Char(pcCU.getQP(uiAbsPartIdx)), TEXT_CHROMA,
+            pcCU.getQP(uiAbsPartIdx), TEXT_CHROMA,
             pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
 
         piCoeff = pcCU.getCoeffCr()
@@ -592,7 +591,7 @@ class TDecCu(object):
                                              pcCU, bAboveAvail, bLeftAvail)
 
         #===== inverse transform =====
-        self.m_pcTrQuant.setQPforQuant(Char(pcCU.getQP(0)), TEXT_LUMA, pcCU.getSlice().getSPS().getQpBDOffsetY(), 0)
+        self.m_pcTrQuant.setQPforQuant(pcCU.getQP(0), TEXT_LUMA, pcCU.getSlice().getSPS().getQpBDOffsetY(), 0)
 
         scalingListType = (0 if pcCU.isIntra(uiAbsPartIdx) else 3) + g_eTTable[TEXT_LUMA]
         assert(scalingListType < 6)
@@ -679,7 +678,7 @@ class TDecCu(object):
         else:
             curChromaQpOffset = pcCU.getSlice().getPPS().getChromaCrQpOffset() + \
                                 pcCU.getSlice().getSliceQpDeltaCr()
-        self.m_pcTrQuant.setQPforQuant(Char(pcCU.getQP(0)), eText, pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
+        self.m_pcTrQuant.setQPforQuant(pcCU.getQP(0), eText, pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
 
         scalingListType = (0 if pcCU.isIntra(uiAbsPartIdx) else 3) + g_eTTable[eText]
         assert(scalingListType < 6)

@@ -23,3 +23,4 @@ Lib/TLibCommon/TComLoopFilter.py
 Lib/TLibCommon/TComSampleAdaptiveOffset.py < TComPicSym.py
 
 Lib/TLibCommon/TComYuv.py
+Lib/TLibCommon/TComDataCU.py, TComPattern.py

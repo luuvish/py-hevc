@@ -15,7 +15,7 @@ from src.Lib.TLibCommon.pointer import pointer
 from src.Lib.TLibCommon import trace
 
 
-use_swig = 5
+use_swig = 6
 
 if use_swig == 0:
     from swig.hevc import decmain as TAppDecoder
@@ -249,7 +249,6 @@ elif use_swig == 6:
         from swig.hevc import initMotionReferIdx as swig_initMotionReferIdx
         swig_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
         luuvc_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-    Char = lambda c: ord(c)
 
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import TDecSbac, ArrayTDecSbac, ArrayTDecBinCABAC
@@ -327,7 +326,6 @@ elif use_swig == 7:
         from swig.hevc import initMotionReferIdx as swig_initMotionReferIdx
         swig_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
         luuvc_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-    Char = lambda c: ord(c)
 
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import TDecSbac, ArrayTDecSbac, ArrayTDecBinCABAC
@@ -405,7 +403,6 @@ elif use_swig == 8:
         from swig.hevc import initMotionReferIdx as swig_initMotionReferIdx
         swig_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
         luuvc_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-    Char = lambda c: ord(c)
 
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import TDecSbac, ArrayTDecSbac, ArrayTDecBinCABAC
@@ -484,7 +481,6 @@ elif use_swig == 9:
         from swig.hevc import initMotionReferIdx as swig_initMotionReferIdx
         swig_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
         luuvc_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-    Char = lambda c: ord(c)
 
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import TComYuv, ArrayTComYuv
@@ -568,7 +564,6 @@ elif use_swig == 10:
         from swig.hevc import initMotionReferIdx as swig_initMotionReferIdx
         swig_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
         luuvc_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-    Char = lambda c: ord(c)
 
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import TComYuv, ArrayTComYuv
@@ -653,7 +648,6 @@ elif use_swig == 11:
         from swig.hevc import initMotionReferIdx as swig_initMotionReferIdx
         swig_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
         luuvc_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-    Char = lambda c: ord(c)
 
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import TComDataCU, ArrayTComDataCU
@@ -740,7 +734,6 @@ elif use_swig == 12:
         from swig.hevc import initMotionReferIdx as swig_initMotionReferIdx
         swig_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
         luuvc_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-    Char = lambda c: ord(c)
 
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import TComDataCU, ArrayTComDataCU
@@ -796,7 +789,6 @@ elif use_swig == 13:
     from swig.hevc import TComVPS, TComSPS, TComPPS
     from swig.hevc import TComPicYuv
     from swig.hevc import TComMv
-    from swig.hevc import TComPattern
 
     from swig.hevc import cvar
     def initROM():
@@ -829,7 +821,6 @@ elif use_swig == 13:
         from swig.hevc import initMotionReferIdx as swig_initMotionReferIdx
         swig_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
         luuvc_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-    Char = lambda c: ord(c)
 
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import ArrayTComMvField, ArrayUChar
@@ -874,5 +865,4 @@ elif use_swig == 14:
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import VectorBool, VectorInt # depend on TComPic
 
-    Char = lambda c: c # TComDataCU
     ArrayUInt = lambda size: [0 for i in xrange(size)] # TComPPS

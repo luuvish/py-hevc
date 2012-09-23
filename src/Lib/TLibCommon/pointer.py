@@ -119,6 +119,12 @@ class pointer(object):
                 self._base = base + kwargs['base']
                 return self
 
+            if isinstance(this, str):
+                self._this = this
+                self._bias = bias
+                self._base = base + kwargs['base']
+                return self
+
             if type(this) in pointer._prim.values():
                 atype = type(this)
                 this = this.cast()

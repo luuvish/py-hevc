@@ -8,7 +8,6 @@ import sys
 
 from ... import pointer
 from ... import cvar
-from ... import Char
 
 from .TypeDef import LFCUParam
 from .TypeDef import (
@@ -441,7 +440,7 @@ class TComLoopFilter(object):
             uiBsAbsIdx = self._xCalcBsIdx(pcCU, uiAbsZorderIdx, iDir, iEdge, iIdx)
             uiBs = self.m_aapucBS[iDir][uiBsAbsIdx]
             if uiBs:
-                iQP_Q = Char(pcCU.getQP(uiBsAbsIdx))
+                iQP_Q = pcCU.getQP(uiBsAbsIdx)
                 uiPartQIdx = uiBsAbsIdx
                 # Derive neighboring PU index
                 if iDir == EDGE_VER:
@@ -455,7 +454,7 @@ class TComLoopFilter(object):
                         not pcCU.getSlice().getLFCrossSliceBoundaryFlag(),
                         False, False, False, not self.m_bLFCrossTileBoundary)
 
-                iQP_P = Char(pcCUP.getQP(uiPartPIdx))
+                iQP_P = pcCUP.getQP(uiPartPIdx)
                 iQP = (iQP_P + iQP_Q + 1) >> 1
                 iBitdepthScale = 1 << (cvar.g_uiBitIncrement + cvar.g_uiBitDepth - 8)
 
@@ -560,7 +559,7 @@ class TComLoopFilter(object):
             ucBs = self.m_aapucBS[iDir][uiBsAbsIdx]
 
             if ucBs > 1:
-                iQP_Q = Char(pcCU.getQP(uiBsAbsIdx))
+                iQP_Q = pcCU.getQP(uiBsAbsIdx)
                 uiPartQIdx = uiBsAbsIdx
                 # Derive neighboring PU index
                 if iDir == EDGE_VER:
@@ -574,7 +573,7 @@ class TComLoopFilter(object):
                         not pcCU.getSlice().getLFCrossSliceBoundaryFlag(),
                         False, False, False, not self.m_bLFCrossTileBoundary)
 
-                iQP_P = Char(pcCUP.getQP(uiPartPIdx))
+                iQP_P = pcCUP.getQP(uiPartPIdx)
                 iQP = QpUV((iQP_P + iQP_Q + 1) >> 1)
                 iBitdepthScale = 1 << (cvar.g_uiBitIncrement + cvar.g_uiBitDepth - 8)
 

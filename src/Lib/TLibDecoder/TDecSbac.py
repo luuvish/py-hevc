@@ -14,7 +14,6 @@ from ... import ArrayUInt, ArrayInt, ArrayBool
 from ... import ArraySaoLcuParamPtr, ArraySaoLcuParam
 
 from ... import cvar
-from ... import Char
 
 from ... import TComTrQuant
 
@@ -613,11 +612,11 @@ class TDecSbac(TDecEntropy):
             iDQp = uiDQp
             if uiSign:
                 iDQp = -iDQp
-            qp = ((Char(pcCU.getRefQP(uiAbsPartIdx)) + iDQp + 52 + 2 * qpBdOffsetY) %
+            qp = ((pcCU.getRefQP(uiAbsPartIdx) + iDQp + 52 + 2 * qpBdOffsetY) %
                   (52 + qpBdOffsetY)) - qpBdOffsetY
         else:
             iDQp = 0
-            qp = Char(pcCU.getRefQP(uiAbsPartIdx))
+            qp = pcCU.getRefQP(uiAbsPartIdx)
         pcCU.setQPSubParts(qp, uiAbsPartIdx, uiDepth)
         pcCU.setCodedQP(qp)
 

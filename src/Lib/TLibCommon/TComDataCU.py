@@ -10,26 +10,34 @@ from ... import VectorNDBFBlockInfo
 
 from ... import TComMv
 from ... import TComMvField, TComCUMvField, ArrayTComCUMvField
-from ... import TComPattern
 
 from ... import cvar
-def Char(c):
-    if isinstance(c, str):
-        return ord(c)
-    return c
 
-from ..TLibCommon.TypeDef import (
-#    DM_CHROMA_IDX, REG_DCT,
-#    SIZE_2Nx2N, MODE_INTER, MODE_INTRA,
-#   TEXT_LUMA, TEXT_CHROMA, TEXT_CHROMA_U, TEXT_CHROMA_V,
+from .TComPattern import TComPattern
+
+from .TypeDef import (
+    MRG_MAX_NUM_CANDS_SIGNALED, AMVP_DECIMATION_FACTOR,
+    SIZE_2Nx2N, SIZE_2NxN, SIZE_Nx2N, SIZE_NxN,
+    SIZE_2NxnU, SIZE_2NxnD, SIZE_nLx2N, SIZE_nRx2N, SIZE_NONE,
+    MODE_INTER, MODE_INTRA, MODE_NONE,
+    PLANAR_IDX, VER_IDX, HOR_IDX, DC_IDX, NUM_CHROMA_MODE, DM_CHROMA_IDX,
     TEXT_LUMA, TEXT_CHROMA_U, TEXT_CHROMA_V,
-    REF_PIC_LIST_0, REF_PIC_LIST_1
+    REF_PIC_LIST_0, REF_PIC_LIST_1,
+    MD_LEFT, MD_ABOVE, MD_ABOVE_RIGHT, MD_BELOW_LEFT, MD_ABOVE_LEFT,
+    AM_NONE, SCAN_ZIGZAG
+)
+
+from .CommonDef import (
+    MAX_UINT, MAX_DOUBLE, NOT_VALID,
+    Clip3,
+    AMVP_MAX_NUM_CANDS,
+    MRG_MAX_NUM_CANDS
 )
 
 from .TComRom import (
-    g_auiZscanToRaster,
-    g_auiRasterToPelX,
-    g_auiRasterToPelY
+    g_auiZscanToRaster, g_auiRasterToZscan,
+    g_auiRasterToPelX, g_auiRasterToPelY, g_motionRefer,
+    g_aucConvertTxtTypeToIdx, g_aucConvertToBit
 )
 
 
@@ -191,8 +199,8 @@ class TComDataCU(object):
             self.m_puhCbf[1]           = uiNumPartition * [0]
             self.m_puhCbf[2]           = uiNumPartition * [0]
 
-            self.m_apiMVPIdx[0]        = uiNumPartition * [-1]
-            self.m_apiMVPIdx[1]        = uiNumPartition * [-1]
+            self.m_apiMVPIdx[0]        = uiNumPartition * [255]
+            self.m_apiMVPIdx[1]        = uiNumPartition * [255]
             self.m_apiMVPNum[0]        = uiNumPartition * [0]
             self.m_apiMVPNum[1]        = uiNumPartition * [0]
 
@@ -447,10 +455,10 @@ class TComDataCU(object):
                 self.m_puhTransformSkip[2][ui] = 0
                 self.m_puhWidth[ui]            = cvar.g_uiMaxCUWidth
                 self.m_puhHeight[ui]           = cvar.g_uiMaxCUHeight
-                self.m_apiMVPIdx[0][ui]        = -1
-                self.m_apiMVPIdx[1][ui]        = -1
-                self.m_apiMVPNum[0][ui]        = -1
-                self.m_apiMVPNum[1][ui]        = -1
+                self.m_apiMVPIdx[0][ui]        = 255
+                self.m_apiMVPIdx[1][ui]        = 255
+                self.m_apiMVPNum[0][ui]        = 255
+                self.m_apiMVPNum[1][ui]        = 255
                 self.m_phQP[ui]                = self.getSlice().getSliceQp()
                 self.m_lcuAlfEnabled[0]        = False
                 self.m_lcuAlfEnabled[1]        = False
@@ -541,10 +549,10 @@ class TComDataCU(object):
             if self.getPic().getPicSym().getInverseCUOrderMap(self.getAddr()) * \
                self.m_pcPic.getNumPartInCU() + self.m_uiAbsIdxInLCU + ui >= \
                self.getSlice().getDependentSliceCurStartCUAddr():
-                self.m_apiMVPIdx[0][ui]        = -1
-                self.m_apiMVPIdx[1][ui]        = -1
-                self.m_apiMVPNum[0][ui]        = -1
-                self.m_apiMVPNum[1][ui]        = -1
+                self.m_apiMVPIdx[0][ui]        = 255
+                self.m_apiMVPIdx[1][ui]        = 255
+                self.m_apiMVPNum[0][ui]        = 255
+                self.m_apiMVPNum[1][ui]        = 255
                 self.m_puhDepth[ui]            = uiDepth
                 self.m_puhWidth[ui]            = uiWidth
                 self.m_puhHeight[ui]           = uiHeight
@@ -643,10 +651,10 @@ class TComDataCU(object):
             self.m_pePartSize[ui]         = SIZE_NONE
             self.m_pePredMode[ui]         = MODE_NONE
             self.m_CUTransquantBypass[ui] = False
-            self.m_apiMVPIdx[0][ui]       = -1
-            self.m_apiMVPIdx[1][ui]       = -1
-            self.m_apiMVPNum[0][ui]       = -1
-            self.m_apiMVPNum[1][ui]       = -1
+            self.m_apiMVPIdx[0][ui]       = 255
+            self.m_apiMVPIdx[1][ui]       = 255
+            self.m_apiMVPNum[0][ui]       = 255
+            self.m_apiMVPNum[1][ui]       = 255
             if self.m_pcPic.getPicSym().getInverseCUOrderMap(self.getAddr()) * \
                self.m_pcPic.getNumPartInCU() + self.m_uiAbsIdxInLCU + ui < \
                self.getSlice().getDependentSliceCurStartCUAddr():
@@ -756,9 +764,9 @@ class TComDataCU(object):
 
         self.m_skipFlag            = pointer(pcCU.getSkipFlag(), type='bool *') + uiPart
 
-        self.m_phQP                = pointer(pcCU.getQP(), type='char *')                 + uiPart
-        self.m_pePartSize          = pointer(pcCU.getPartitionSize(), type='char *')      + uiPart
-        self.m_pePredMode          = pointer(pcCU.getPredictionMode(), type='char *')     + uiPart
+        self.m_phQP                = pointer(pcCU.getQP(), type='uchar *')                + uiPart
+        self.m_pePartSize          = pointer(pcCU.getPartitionSize(), type='uchar *')     + uiPart
+        self.m_pePredMode          = pointer(pcCU.getPredictionMode(), type='uchar *')    + uiPart
         self.m_CUTransquantBypass  = pointer(pcCU.getCUTransquantBypass(), type='bool *') + uiPart
 
         self.m_pbMergeFlag         = pointer(pcCU.getMergeFlag(), type='bool *')   + uiPart
@@ -780,10 +788,10 @@ class TComDataCU(object):
         self.m_puhWidth            = pointer(pcCU.getWidth(), type='uchar *')  + uiPart
         self.m_puhHeight           = pointer(pcCU.getHeight(), type='uchar *') + uiPart
 
-        self.m_apiMVPIdx[0]        = pointer(pcCU.getMVPIdx(REF_PIC_LIST_0), type='char *') + uiPart
-        self.m_apiMVPIdx[1]        = pointer(pcCU.getMVPIdx(REF_PIC_LIST_1), type='char *') + uiPart
-        self.m_apiMVPNum[0]        = pointer(pcCU.getMVPNum(REF_PIC_LIST_0), type='char *') + uiPart
-        self.m_apiMVPNum[1]        = pointer(pcCU.getMVPNum(REF_PIC_LIST_1), type='char *') + uiPart
+        self.m_apiMVPIdx[0]        = pointer(pcCU.getMVPIdx(REF_PIC_LIST_0), type='uchar *') + uiPart
+        self.m_apiMVPIdx[1]        = pointer(pcCU.getMVPIdx(REF_PIC_LIST_1), type='uchar *') + uiPart
+        self.m_apiMVPNum[0]        = pointer(pcCU.getMVPNum(REF_PIC_LIST_0), type='uchar *') + uiPart
+        self.m_apiMVPNum[1]        = pointer(pcCU.getMVPNum(REF_PIC_LIST_1), type='uchar *') + uiPart
 
         self.m_pbIPCMFlag          = pointer(pcCU.getIPCMFlag(), type='bool *') + uiPart
 
@@ -839,28 +847,28 @@ class TComDataCU(object):
         self.m_apcCUColocated[0]  = pcCU.getCUColocated(REF_PIC_LIST_0)
         self.m_apcCUColocated[1]  = pcCU.getCUColocated(REF_PIC_LIST_1)
 
-        self.m_skipFlag           = pcCU.getSkipFlag()           + uiAbsPartIdx
+        self.m_skipFlag           = pointer(pcCU.getSkipFlag(), type='bool *')           + uiAbsPartIdx
 
-        self.m_pePartSize         = pcCU.getPartitionSize()      + uiAbsPartIdx
-        self.m_pePartSize         = pcCU.getPredictionMode()     + uiAbsPartIdx
-        self.m_CUTransquantBypass = pcCU.getCUTransquantBypass() + uiAbsPartIdx
-        self.m_puhInterDir        = pcCU.getInterDir()           + uiAbsPartIdx
+        self.m_pePartSize         = pointer(pcCU.getPartitionSize(), type='uchar *')     + uiAbsPartIdx
+        self.m_pePredMode         = pointer(pcCU.getPredictionMode(), type='uchar *')    + uiAbsPartIdx
+        self.m_CUTransquantBypass = pointer(pcCU.getCUTransquantBypass(), type='bool *') + uiAbsPartIdx
+        self.m_puhInterDir        = pointer(pcCU.getInterDir(), type='uchar *')          + uiAbsPartIdx
 
-        self.m_puhDepth           = pcCU.getDepth()              + uiAbsPartIdx
-        self.m_puhWidth           = pcCU.getWidth()              + uiAbsPartIdx
-        self.m_puhHeight          = pcCU.getHeight()             + uiAbsPartIdx
+        self.m_puhDepth           = pointer(pcCU.getDepth(), type='uchar *')             + uiAbsPartIdx
+        self.m_puhWidth           = pointer(pcCU.getWidth(), type='uchar *')             + uiAbsPartIdx
+        self.m_puhHeight          = pointer(pcCU.getHeight(), type='uchar *')            + uiAbsPartIdx
 
-        self.m_pbMergeFlag        = pcCU.getMergeFlag()          + uiAbsPartIdx
-        self.m_puhMergeIndex      = pcCU.getMergeIndex()         + uiAbsPartIdx
+        self.m_pbMergeFlag        = pointer(pcCU.getMergeFlag(), type='bool *')          + uiAbsPartIdx
+        self.m_puhMergeIndex      = pointer(pcCU.getMergeIndex(), type='uchar *')        + uiAbsPartIdx
 
-        self.m_apiMVPIdx[eRefPicList] = pcCU.getMVPIdx(eRefPicList) + uiAbsPartIdx
-        self.m_apiMVPNum[eRefPicList] = pcCU.getMVPNum(eRefPicList) + uiAbsPartIdx
+        self.m_apiMVPIdx[eRefPicList] = pointer(pcCU.getMVPIdx(eRefPicList), type='uchar *') + uiAbsPartIdx
+        self.m_apiMVPNum[eRefPicList] = pointer(pcCU.getMVPNum(eRefPicList), type='uchar *') + uiAbsPartIdx
 
-        self.m_acCUMvField[eRefPicList].linkToWidthOffset(pcCU.getCUMvField(eRefPicList), uiAbsPartIdx)
+        self.m_acCUMvField[eRefPicList].linkToWithOffset(pcCU.getCUMvField(eRefPicList), uiAbsPartIdx)
 
         for ui in xrange(self.m_uiNumPartition):
-            self.m_uiSliceStartCU[ui]          = pcCU.m_uiSliceStartCU[uiAbsPartIdx+ui]
-            self.m_uiDependentSliceStartCU[ui] = pcCU.m_uiDependentSliceStartCU[uiAbsPartIdx+ui]
+            self.m_uiSliceStartCU[ui]          = pcCU.getSliceStartCU(uiAbsPartIdx+ui)
+            self.m_uiDependentSliceStartCU[ui] = pcCU.getDependentSliceStartCU(uiAbsPartIdx+ui)
 
     def copyPartFrom(self, pcCU, uiPartUnitIdx, uiDepth):
         assert(uiPartUnitIdx < 4)
@@ -928,12 +936,12 @@ class TComDataCU(object):
         uiTmp >>= 2
         uiTmp2 >>= 2
         for ui in xrange(uiTmp):
-            self.m_pcTrCoeffCb   [uiTmp2+ui] = pcCU.getCoeffCb() + ui
-            self.m_pcTrCoeffCr   [uiTmp2+ui] = pcCU.getCoeffCr() + ui
-            self.m_pcArlCoeffCb  [uiTmp2+ui] = pcCU.getArlCoeffCb() + ui
-            self.m_pcArlCoeffCr  [uiTmp2+ui] = pcCU.getArlCoeffCr() + ui
-            self.m_pcIPCMSampleCb[uiTmp2+ui] = pcCU.getPCMSampleCb() + ui
-            self.m_pcIPCMSampleCr[uiTmp2+ui] = pcCU.getPCMSampleCr() + ui
+            self.m_pcTrCoeffCb   [uiTmp2+ui] = pcCU.getCoeffCb()[ui]
+            self.m_pcTrCoeffCr   [uiTmp2+ui] = pcCU.getCoeffCr()[ui]
+            self.m_pcArlCoeffCb  [uiTmp2+ui] = pcCU.getArlCoeffCb()[ui]
+            self.m_pcArlCoeffCr  [uiTmp2+ui] = pcCU.getArlCoeffCr()[ui]
+            self.m_pcIPCMSampleCb[uiTmp2+ui] = pcCU.getPCMSampleCb()[ui]
+            self.m_pcIPCMSampleCr[uiTmp2+ui] = pcCU.getPCMSampleCr()[ui]
         self.m_uiTotalBins += pcCU.getTotalBins()
 
         for ui in xrange(uiNumPartition):
@@ -1110,11 +1118,10 @@ class TComDataCU(object):
         if uiIdx == None:
             return self.m_pePartSize
         else:
-            return Char(self.m_pePartSize[uiIdx])
+            return self.m_pePartSize[uiIdx]
     def setPartitionSize(self, uiIdx, uh):
         self.m_pePartSize[uiIdx] = uh
     def setPartSizeSubParts(self, eMode, uiAbsPartIdx, uiDepth):
-        assert(self.m_pePartSize[0] == 1)
         for ui in xrange(self.m_pcPic.getNumPartInCU() >> (2*uiDepth)):
             self.m_pePartSize[uiAbsPartIdx+ui] = eMode
 
@@ -1135,7 +1142,6 @@ class TComDataCU(object):
     def setSkipFlag(self, idx, skip):
         self.m_skipFlag[idx] = skip
     def setSkipFlagSubParts(self, skip, absPartIdx, depth):
-        assert(self.m_skipFlag[0] == 1)
         for ui in xrange(self.m_pcPic.getNumPartInCU() >> (2*uiDepth)):
             self.m_skipFlag[absPartIdx+ui] = skip
 
@@ -1143,11 +1149,10 @@ class TComDataCU(object):
         if uiIdx == None:
             return self.m_pePredMode
         else:
-            return Char(self.m_pePredMode[uiIdx])
+            return self.m_pePredMode[uiIdx]
     def setPredictionMode(self, uiIdx, uh):
         self.m_pePredMode[uiIdx] = uh
     def setPredModeSubParts(self, eMode, uiAbsPartIdx, uiDepth):
-        assert(self.m_pePartSize[0] == 1)
         for ui in xrange(self.m_pcPic.getNumPartInCU() >> (2*uiDepth)):
             self.m_pePredMode[uiAbsPartIdx+ui] = eMode
 
@@ -1178,7 +1183,7 @@ class TComDataCU(object):
         if uiIdx == None:
             return self.m_phQP
         else:
-            return Char(self.m_phQP[uiIdx])
+            return self.m_phQP[uiIdx]
     def setQP(self, uiIdx, value):
         self.m_phQP[uiIdx] = value
     def setQPSubParts(self, qp, uiAbsPartIdx, uiDepth):
@@ -1203,6 +1208,8 @@ class TComDataCU(object):
                 else:
                     self.setQPSubParts(qp, absPartIdx, depth)
 
+        return foundNonZeroCbf
+
     def setCodedQP(self, qp):
         self.m_codedQP = qp
     def getCodedQP(self):
@@ -1224,7 +1231,7 @@ class TComDataCU(object):
             self.m_puhTransformSkip[g_aucConvertTxtTypeToIdx[eType]]
         elif len(args) == 2:
             uiIdx, eType = args
-            self.m_puhTransformSkip[g_aucConvertTxtTypeToIdx[eType][uiIdx]]
+            self.m_puhTransformSkip[g_aucConvertTxtTypeToIdx[eType]][uiIdx]
     def setTransformSkipSubParts(self, *args):
         if len(args) == 4:
             useTransformSkip, eType, uiAbsPartIdx, uiDepth = args
@@ -1387,7 +1394,7 @@ class TComDataCU(object):
     def setLastCUSucIPCMFlag(self, flg):
         self.m_lastCUSucIPCMFlag = flg
 
-    def setSubPart(uiParameter, pubBaseLCU, uiCUAddr, uiCUDepth, uiPUIdx):
+    def setSubPart(self, uiParameter, puhBaseLCU, uiCUAddr, uiCUDepth, uiPUIdx):
         uiCurrPartNumQ = (self.m_pcPic.getNumPartInCU() >> (2 * uiCUDepth)) >> 2
         uiPartSize = self.m_pePartSize[uiCUAddr]
         if uiPartSize == SIZE_2Nx2N:
@@ -1405,11 +1412,11 @@ class TComDataCU(object):
                 puhBaseLCU[uiCUAddr+ui] = uiParameter
         elif uiPartSize == SIZE_2NxnU:
             if uiPUIdx == 0:
-                for ui in xrange(uiCurrPartNumQ >> 1):
+                for ui in xrange(uiCurrPartNumQ>>1):
                     puhBaseLCU[uiCUAddr               +ui] = uiParameter
                     puhBaseLCU[uiCUAddr+uiCurrPartNumQ+ui] = uiParameter
             elif uiPUIdx == 1:
-                for ui in xrange(uiCurrPartNumQ >> 1):
+                for ui in xrange(uiCurrPartNumQ>>1):
                     puhBaseLCU[uiCUAddr               +ui] = uiParameter
                     puhBaseLCU[uiCUAddr+uiCurrPartNumQ+ui] = uiParameter
             else:
@@ -1418,27 +1425,27 @@ class TComDataCU(object):
             if uiPUIdx == 0:
                 for ui in xrange((uiCurrPartNumQ<<1) + (uiCurrPartNumQ>>1)):
                     puhBaseLCU[uiCUAddr                                   +ui] = uiParameter
-                for ui in xrange(uiCurrPartNumQ >> 1):
+                for ui in xrange(uiCurrPartNumQ>>1):
                     puhBaseLCU[uiCUAddr+(uiCurrPartNumQ<<1)+uiCurrPartNumQ+ui] = uiParameter
             elif uiPUIdx == 1:
-                for ui in xrange(uiCurrPartNumQ >> 1):
+                for ui in xrange(uiCurrPartNumQ>>1):
                     puhBaseLCU[uiCUAddr               +ui] = uiParameter
                     puhBaseLCU[uiCUAddr+uiCurrPartNumQ+ui] = uiParameter
             else:
                 assert(False)
         elif uiPartSize == SIZE_nLx2N:
             if uiPUIdx == 0:
-                for ui in xrange(uiCurrPartNumQ >> 2):
+                for ui in xrange(uiCurrPartNumQ>>2):
                     puhBaseLCU[uiCUAddr                                        +ui] = uiParameter
                     puhBaseLCU[uiCUAddr                    +(uiCurrPartNumQ>>1)+ui] = uiParameter
                     puhBaseLCU[uiCUAddr+(uiCurrPartNumQ<<1)                    +ui] = uiParameter
                     puhBaseLCU[uiCUAddr+(uiCurrPartNumQ<<1)+(uiCurrPartNumQ>>1)+ui] = uiParameter
             elif uiPUIdx == 1:
-                for ui in xrange(uiCurrPartNumQ >> 2):
+                for ui in xrange(uiCurrPartNumQ>>2):
                     puhBaseLCU[uiCUAddr                                        +ui] = uiParameter
                 for ui in xrange(uiCurrPartNumQ + (uiCurrPartNumQ>>2)):
                     puhBaseLCU[uiCUAddr                    +(uiCurrPartNumQ>>1)+ui] = uiParameter
-                for ui in xrange(uiCurrPartNumQ >> 2):
+                for ui in xrange(uiCurrPartNumQ>>2):
                     puhBaseLCU[uiCUAddr+(uiCurrPartNumQ<<1)                    +ui] = uiParameter
                 for ui in xrange(uiCurrPartNumQ + (uiCurrPartNumQ>>2)):
                     puhBaseLCU[uiCUAddr+(uiCurrPartNumQ<<1)+(uiCurrPartNumQ>>1)+ui] = uiParameter
@@ -1448,14 +1455,14 @@ class TComDataCU(object):
             if uiPUIdx == 0:
                 for ui in xrange(uiCurrPartNumQ + (uiCurrPartNumQ>>2)):
                     puhBaseLCU[uiCUAddr                                                       +ui] = uiParameter
-                for ui in xrange(uiCurrPartNumQ >> 2):
+                for ui in xrange(uiCurrPartNumQ>>2):
                     puhBaseLCU[uiCUAddr+                    uiCurrPartNumQ+(uiCurrPartNumQ>>1)+ui] = uiParameter
                 for ui in xrange(uiCurrPartNumQ + (uiCurrPartNumQ>>2)):
                     puhBaseLCU[uiCUAddr+(uiCurrPartNumQ<<1)                                   +ui] = uiParameter
-                for ui in xrange(uiCurrPartNumQ >> 2):
+                for ui in xrange(uiCurrPartNumQ>>2):
                     puhBaseLCU[uiCUAddr+(uiCurrPartNumQ<<1)+uiCurrPartNumQ+(uiCurrPartNumQ>>1)+ui] = uiParameter
             elif uiPUIdx == 1:
-                for ui in xrange(uiCurrPartNumQ >> 2):
+                for ui in xrange(uiCurrPartNumQ>>2):
                     puhBaseLCU[uiCUAddr                                        +ui] = uiParameter
                     puhBaseLCU[uiCUAddr                    +(uiCurrPartNumQ>>1)+ui] = uiParameter
                     puhBaseLCU[uiCUAddr+(uiCurrPartNumQ<<1)                    +ui] = uiParameter
@@ -1475,10 +1482,10 @@ class TComDataCU(object):
     def getNDBFilterBlocks(self):
         return self.m_vNDFBlock
     def setNDBFilterBlockBorderAvailability(self,
-        numLCUInPicWidth, numLCUInPicHeight, numSUInLCUWidth, numSUInLCUHeight,
-        picWidth, picHeight, LFCrossSliceBoundary,
-        bTopTileBoundary, bDownTileBoundary, bLeftTileBoundary, bRightTileBoundary,
-        bIndependentTileBoundaryEnabled):
+                numLCUInPicWidth, numLCUInPicHeight, numSUInLCUWidth, numSUInLCUHeight,
+                picWidth, picHeight, LFCrossSliceBoundary,
+                bTopTileBoundary, bDownTileBoundary, bLeftTileBoundary, bRightTileBoundary,
+                bIndependentTileBoundaryEnabled):
         numSUInLCU = numSUInLCUWidth * numSUInLCUHeight
         pSliceIDMapLCU = self.m_piSliceSUMap
         onlyOneSliceInPic = LFCrossSliceBoundary.size() == 1
@@ -1491,6 +1498,7 @@ class TComDataCU(object):
         rTLSU = rBRSU = widthSU = heightSU = 0
         zRefSU = 0
         pRefID = None
+        pRefMapLCU = None
         rTRefSU = rBRefSU = rLRefSU = rRRefSU = 0
         pRRefMapLCU = None
         pLRefMapLCU = None
@@ -1842,6 +1850,7 @@ class TComDataCU(object):
             xP = col if partIdx == 0 else col + self.getWidth(0) - nPSW
             yP = row
         else:
+            assert(self.m_pePartSize[0] == SIZE_2Nx2N)
             nPSW = self.getWidth(0)
             nPSH = self.getHeight(0)
             xP = col
@@ -1909,7 +1918,8 @@ class TComDataCU(object):
             return
 
         if pInfo.iN == 2:
-            if pInfo.m_acMvCand[0] == pInfo.m_acMvCand[1]:
+            acMvCand = pointer(pInfo.m_acMvCand, type='TComMv *')
+            if acMvCand[0] == acMvCand[1]:
                 pInfo.iN = 1
 
         if self.getSlice().getEnableTMVPFlag():
@@ -1946,24 +1956,27 @@ class TComDataCU(object):
                     uiLCUIdx = -1
             ret = 0
             if uiLCUIdx >= 0:
-                ret, cColMv = self.xGetColMVP(eRefPicList, uiLCUIdx, uiAbsPartAddr, cColMv, iRefIdx_Col)
-            if ret:
-                pInfo.m_acMvCand[pInfo.iN] = cColMv
+                ret, cColMv, iRefIdx_Col = self.xGetColMVP(eRefPicList, uiLCUIdx, uiAbsPartAddr, cColMv, iRefIdx_Col)
+            if uiLCUIdx >= 0 and ret:
+                acMvCand = pointer(pInfo.m_acMvCand, type='TComMv *')
+                acMvCand[pInfo.iN].set(cColMv.getHor(), cColMv.getVer())
                 pInfo.iN += 1
             else:
                 uiPartIdxCenter = 0
                 uiCurLCUIdx = self.getAddr()
                 uiPartIdxCenter = self.xDeriveCenterIdx(eCUMode, uiPartIdx, uiPartIdxCenter)
-                ret, cColMv = self.xGetColMVP(eRefPicList, uiCurLCUIdx, uiPartIdxCenter, cColMv, iRefIdx_Col)
+                ret, cColMv, iRefIdx_Col = self.xGetColMVP(eRefPicList, uiCurLCUIdx, uiPartIdxCenter, cColMv, iRefIdx_Col)
                 if ret:
-                    pInfo.m_acMvCand[pInfo.iN] = cColMv
+                    acMvCand = pointer(pInfo.m_acMvCand, type='TComMv *')
+                    acMvCand[pInfo.iN].set(cColMv.getHor(), cColMv.getVer())
                     pInfo.iN += 1
             #---- co-located RightBottom Temporal Predictor ---
 
         if pInfo.iN > AMVP_MAX_NUM_CANDS:
             pInfo.iN = AMVP_MAX_NUM_CANDS
         while pInfo.iN < AMVP_MAX_NUM_CANDS:
-            pInfo.m_acMvCand[pInfo.iN].set(0, 0)
+            acMvCand = pointer(pInfo.m_acMvCand, type='TComMv *')
+            acMvCand[pInfo.iN].set(0, 0)
             pInfo.iN += 1
 
     def setMVPIdx(self, eRefPicList, uiIdx, iMVPIdx):
@@ -2012,8 +2025,8 @@ class TComDataCU(object):
     def compressMV(self):
         scaleFactor = 4 * AMVP_DECIMATION_FACTOR / self.m_unitSize
         if scaleFactor > 0:
-            self.m_acCUMvField[0].compress(self.m_pePredMode, scaleFactor)
-            self.m_acCUMvField[1].compress(self.m_pePredMode, scaleFactor)
+            self.m_acCUMvField[0].compress(self.m_pePredMode.cast(), scaleFactor)
+            self.m_acCUMvField[1].compress(self.m_pePredMode.cast(), scaleFactor)
 
     def getCULeft(self):
         return self.m_pcCULeft
@@ -2208,7 +2221,7 @@ class TComDataCU(object):
             uiARPartUnitIdx = MAX_UINT
             return None, uiARPartUnitIdx
 
-        uiARPartUnitIdx = g_auiRasterToZscan[self.m_pcPic.getNumPartInCU()]
+        uiARPartUnitIdx = g_auiRasterToZscan[self.m_pcPic.getNumPartInCU() - uiNumPartInCUWidth]
         if MotionDataCompression:
             uiARPartUnitIdx = g_motionRefer[uiARPartUnitIdx]
         if (bEnforceSliceRestriction and
@@ -2244,7 +2257,7 @@ class TComDataCU(object):
         if RasterAddress.lessThanRow(uiAbsPartIdxLB, self.m_pcPic.getNumPartInHeight() - 1, uiNumPartInCUWidth):
             if not RasterAddress.isZeroCol(uiAbsPartIdxLB, uiNumPartInCUWidth):
                 if uiCurrPartUnitIdx > g_auiRasterToZscan[uiAbsPartIdxLB + uiNumPartInCUWidth - 1]:
-                    uiBLPartUnitIdx = g_auiRasterToZscan[uiAbsPartIdxLB - uiNumPartInCUWidth - 1]
+                    uiBLPartUnitIdx = g_auiRasterToZscan[uiAbsPartIdxLB + uiNumPartInCUWidth - 1]
                     if RasterAddress.isEqualRowOrCol(uiAbsPartIdxLB, uiAbsZorderCUIdxLB, uiNumPartInCUWidth):
                         return self.m_pcPic.getCU(self.getAddr()), uiBLPartUnitIdx
                     else:
@@ -2389,10 +2402,10 @@ class TComDataCU(object):
             return None, uiLPartUnitIdx
 
         # get index of left-CU relative to top-left corner of current quantization group
-        uiPartUnitIdx = g_auiRasterToZscan[absRorderQpMinCUIdx - 1]
+        uiLPartUnitIdx = g_auiRasterToZscan[absRorderQpMinCUIdx - 1]
 
         # return pointer to current LCU
-        return self.m_pcPic.getCU(self.getAddr())
+        return self.m_pcPic.getCU(self.getAddr()), uiLPartUnitIdx
 
     def getQpMinCuAbove(self, aPartUnitIdx, currAbsIdxInLCU,
                         enforceSliceRestriction=True,
@@ -2429,7 +2442,7 @@ class TComDataCU(object):
         return iLastValidPartIdx
 
     def getLastCodedQP(self, uiAbsPartIdx):
-        uiQUPartIdxMask = ~((1 << ((cvar.g_uiMaxCUDepth - self.getSlice().getMaxCuDQPDepth()) << 1)) - 1)
+        uiQUPartIdxMask = ~((1 << ((cvar.g_uiMaxCUDepth - self.getSlice().getPPS().getMaxCuDQPDepth()) << 1)) - 1)
         iLastValidPartIdx = self.getLastValidPartIdx(uiAbsPartIdx & uiQUPartIdxMask)
         if uiAbsPartIdx < self.m_uiNumPartition and \
            (self.getSCUAddr() + iLastValidPartIdx < self.getSliceStartCU(self.m_uiAbsIdxInLCU + iAbsPartIdx) or
@@ -2448,7 +2461,7 @@ class TComDataCU(object):
             else:
                 return self.getSlice().getSliceQp()
 
-    def isLosslessCoded(absPartIdx):
+    def isLosslessCoded(self, absPartIdx):
         return self.getSlice().getPPS().getTransquantBypassEnableFlag() and \
                self.getCUTransquantBypass(absPartIdx)
 
@@ -2538,7 +2551,7 @@ class TComDataCU(object):
         interSplitFlag = 1 if quadtreeTUMaxDepth == 1 and self.getPredictionMode(absPartIdx) == MODE_INTER and partSize != SIZE_2Nx2N else 0
 
         log2MinTUSizeInCU = 0
-        if log2CbSize < self.m_pcSlice.getSPS().getSPS().getQuadtreeTULog2MinSize() + quadtreeTUMaxDepth - 1 + interSplitFlag + intraSplitFlag:
+        if log2CbSize < self.m_pcSlice.getSPS().getQuadtreeTULog2MinSize() + quadtreeTUMaxDepth - 1 + interSplitFlag + intraSplitFlag:
             # when fully making use of signaled TUMaxDepth + inter/intraSplitFlag, resulting luma TB size is < QuadtreeTULog2MinSize
             log2MinTUSizeInCU = self.m_pcSlice.getSPS().getQuadtreeTULog2MinSize()
         else:
@@ -2590,12 +2603,12 @@ class TComDataCU(object):
             if uiPartIdx == 0:
                 uiPuWidth = self.m_puhWidth[uiAbsPartIdx] >> 2
             elif uiPartIdx == 1:
-                uiPuWidth = (self.m_puhWidth[uiAbsPartIdx] >> 1) + (self.m_puhWidth[uiAbsPartIdx] >> 2)
+                uiPuWidth = (self.m_puhWidth[uiAbsPartIdx]>>1) + (self.m_puhWidth[uiAbsPartIdx]>>2)
             else:
                 assert(False)
         elif self.m_pePartSize[uiAbsPartIdx] == SIZE_nRx2N:
             if uiPartIdx == 0:
-                uiPuWidth = (self.m_puhWidth[uiAbsPartIdx] >> 1) + (self.m_puhWidth[uiAbsPartIdx] >> 2)
+                uiPuWidth = (self.m_puhWidth[uiAbsPartIdx]>>1) + (self.m_puhWidth[uiAbsPartIdx]>>2)
             elif uiPartIdx == 1:
                 uiPuWidth = self.m_puhWidth[uiAbsPartIdx] >> 2
             else:
@@ -2631,9 +2644,9 @@ class TComDataCU(object):
                 uiPUHeight = self.m_puhHeight[uiAbsPartIdx] >> 2
             else:
                 assert(False)
-        elif self.m_pePartSize[uiAbsPartIdx] == SIZE_nLxN:
+        elif self.m_pePartSize[uiAbsPartIdx] == SIZE_nLx2N:
             uiPUHeight = self.m_puhHeight[uiAbsPartIdx]
-        elif self.m_pePartSize[uiAbsPartIdx] == SIZE_nRxN:
+        elif self.m_pePartSize[uiAbsPartIdx] == SIZE_nRx2N:
             uiPUHeight = self.m_puhHeight[uiAbsPartIdx]
         else:
             assert(False)
@@ -2750,8 +2763,11 @@ class TComDataCU(object):
         return True
 
     def getInterMergeCandidates(self, uiAbsPartIdx, uiPUIdx, uiDepth,
-                                pcMFieldNeighbours, puhInterDirNeighbours,
+                                pcMvFieldNeighbours, puhInterDirNeighbours,
                                 numValidMergeCand, mrgCandIdx=-1):
+        pcMvFieldNeighbours = pointer(pcMvFieldNeighbours, type='TComMvField *')
+        puhInterDirNeighbours = pointer(puhInterDirNeighbours, type='uchar *')
+
         uiAbsPartAddr = self.m_uiAbsIdxInLCU + uiAbsPartIdx
         uiIdx = 1
         abCandIsInter = MRG_MAX_NUM_CANDS * [False]
@@ -2879,7 +2895,7 @@ class TComDataCU(object):
             if self.m_pcPic.getCU(self.m_uiCUAddr).getCUPelX() + g_auiRasterToPelX[uiAbsPartIdxTmp] + self.m_pcPic.getMinCUWidth() >= \
                self.m_pcSlice.getSPS().getPicWidthInLumaSamples(): # image boundary check
                 uiLCUIdx = -1
-            elif self.m_pcPic.getCU(self.m_uiCUAddr).getCUPelY() + g_auiRasterToZscan[uiAbsPartIdxTmp] + self.m_pcPic.getMinCUHeight() >= \
+            elif self.m_pcPic.getCU(self.m_uiCUAddr).getCUPelY() + g_auiRasterToPelY[uiAbsPartIdxTmp] + self.m_pcPic.getMinCUHeight() >= \
                  self.m_pcSlice.getSPS().getPicHeightInLumaSamples():
                 uiLCUIdx = -1
             else:
@@ -2907,9 +2923,12 @@ class TComDataCU(object):
             uiPartIdxCenter = 0
             uiCurLCUIdx = self.getAddr()
             uiPartIdxCenter = self.xDeriveCenterIdx(eCUMode, uiPUIdx, uiPartIdxCenter)
-            bExistMV = uiLCUIdx >= 0 and self.xGetColMVP(REF_PIC_LIST_0, uiLCUIdx, uiAbsPartAddr, cColMv, iRefIdx)
+            if uiLCUIdx >= 0:
+                ret, cColMv, iRefIdx = self.xGetColMVP(REF_PIC_LIST_0, uiLCUIdx, uiAbsPartAddr, cColMv, iRefIdx)
+                bExistMV = uiLCUIdx >= 0 and ret
             if bExistMV == False:
-                bExistMV = self.xGetColMVP(REF_PIC_LIST_0, uiCurLCUIdx, uiPartIdxCenter, cColMv, iRefIdx)
+                ret, cColMv, iRefIdx = self.xGetColMVP(REF_PIC_LIST_0, uiCurLCUIdx, uiPartIdxCenter, cColMv, iRefIdx)
+                bExistMV = ret
             if bExistMV:
                 uiArrayAddr = iCount
                 abCandIsInter[uiArrayAddr] = True
@@ -2917,9 +2936,12 @@ class TComDataCU(object):
 
                 if self.getSlice().isInterB():
                     iRefIdx = 0
-                    bExistMV = uiLCUIdx >= 0 and self.xGetColMVP(REF_PIC_LIST_1, uiLCUIdx, uiAbsPartAddr, cColMv, iRefIdx)
+                    if uiLCUIdx >= 0:
+                        ret, cColMv, iRefIdx = self.xGetColMVP(REF_PIC_LIST_1, uiLCUIdx, uiAbsPartAddr, cColMv, iRefIdx)
+                        bExistMV = uiLCUIdx >= 0 and ret
                     if bExistMV == False:
-                        bExistMV = self.xGetColMVP(REF_PIC_LIST_1, uiCurLCUIdx, uiPartIdxCenter, cColMv, iRefIdx)
+                        ret, cColMv, iRefIdx = self.xGetColMVP(REF_PIC_LIST_1, uiCurLCUIdx, uiPartIdxCenter, cColMv, iRefIdx)
+                        bExistMV = ret
                     if bExistMV:
                         pcMvFieldNeighbours[(uiArrayAddr<<1)+1].setMvField(cColMv, iRefIdx)
                         puhInterDirNeighbours[uiArrayAddr] = 3
@@ -3032,7 +3054,7 @@ class TComDataCU(object):
         return self.m_uiTotalDistortion
     def getTotalBits(self):
         return self.m_uiTotalBits
-    def getTtoalNumPart(self):
+    def getTotalNumPart(self):
         return self.m_uiNumPartition
 
     def getCoefScanIdx(self, uiAbsPartIdx, uiWidth, bIsLuma, bIsIntra):
@@ -3165,8 +3187,9 @@ class TComDataCU(object):
 
         if pcTmpCU != None and self.m_pcSlice.isEqualRef(eRefPicList, pcTmpCU.getCUMvField(eRefPicList).getRefIdx(uiIdx), iRefIdx):
             cMvPred = pcTmpCU.getCUMvField(eRefPicList).getMv(uiIdx)
-
-            pInfo.m_acMvCand[pInfo.iN] = cMvPred
+            acMvCand = pointer(pInfo.m_acMvCand, type='TComMv *')
+            acMvCand[pInfo.iN].setHor(cMvPred.getHor())
+            acMvCand[pInfo.iN].setVer(cMvPred.getVer())
             pInfo.iN += 1
             return True
 
@@ -3186,7 +3209,9 @@ class TComDataCU(object):
             iNeibRefPOC = pcTmpCU.getSlice().getRefPOC(eRefPicList2nd, pcTmpCU.getCUMvField(eRefPicList2nd).getRefIdx(uiIdx))
             if iNeibRefPOC == iCurrRefPOC: # Same Reference Frame But Diff List
                 cMvPred = pcTmpCU.getCUMvField(eRefPicList2nd).getMv(uiIdx)
-                pInfo.m_acMvCand[pInfo.iN] = cMvPred
+                acMvCand = pointer(pInfo.m_acMvCand, type='TComMv *')
+                acMvCand[pInfo.iN].setHor(cMvPred.getHor())
+                acMvCand[pInfo.iN].setVer(cMvPred.getVer())
                 pInfo.iN += 1
                 return True
         return False
@@ -3236,7 +3261,9 @@ class TComDataCU(object):
                     rcMv = cMvPred
                 else:
                     rcMv = cMvPred.scaleMv(iScale)
-            pInfo.m_acMvCand[pInfo.iN] = rcMv
+            acMvCand = pointer(pInfo.m_acMvCand, type='TComMv *')
+            acMvCand[pInfo.iN].setHor(rcMv.getHor())
+            acMvCand[pInfo.iN].setVer(rcMv.getVer())
             pInfo.iN += 1
             return True
         #---------------  V2 (END) ------------------
@@ -3254,7 +3281,9 @@ class TComDataCU(object):
                     rcMv = cMvPred
                 else:
                     rcMv = cMvPred.scaleMv(iScale)
-            pInfo.m_acMvCand[pInfo.iN] = rcMv
+            acMvCand = pointer(pInfo.m_acMvCand, type='TComMv *')
+            acMvCand[pInfo.iN].setHor(rcMv.getHor())
+            acMvCand[pInfo.iN].setVer(rcMv.getVer())
             pInfo.iN += 1
             return True
         #---------------  V3 (END) ------------------
@@ -3268,7 +3297,7 @@ class TComDataCU(object):
             self.getSlice().getColDir() if self.getSlice().isInterB() else 0,
             self.getSlice().getColRefIdx())
         pColCU = pColPic.getCU(uiCUAddr)
-        if pColCU.getPic() == 0 or pColCU.getPartitionSize(uiPartUnitIdx) == SIZE_NONE:
+        if pColCU.getPic() == None or pColCU.getPartitionSize(uiPartUnitIdx) == SIZE_NONE:
             return False, rcMv, riRefIdx
         iCurrPOC = self.m_pcSlice.getPOC()
         iCurrRefPOC = self.m_pcSlice.getRefPic(eRefPicList, riRefIdx).getPOC()
@@ -3334,13 +3363,14 @@ class TComDataCU(object):
             return iScale
 
     def xDeriveCenterIdx(self, eCUMode, uiPartIdx, ruiPartIdxCenter):
+        uiPartAddr = iPartWidth = iPartHeight = 0
         uiPartAddr, iPartWidth, iPartHeight = self.getPartIndexAndSize(uiPartIdx, uiPartAddr, iPartWidth, iPartHeight)
 
         ruiPartIdxCenter = self.m_uiAbsIdxInLCU + uiPartAddr # partition origin.
         ruiPartIdxCenter = g_auiRasterToZscan[
             g_auiZscanToRaster[ruiPartIdxCenter] +
-            iPartHeight/self.m_pcPic.getMinCUHeight()/2*self.m_pcPic.getNumPartInWidth() +
-            iPartWidth/self.m_pcPic.getMinCUWidth()/2]
+            iPartHeight / self.m_pcPic.getMinCUHeight() / 2 * self.m_pcPic.getNumPartInWidth() +
+            iPartWidth / self.m_pcPic.getMinCUWidth() / 2]
         return ruiPartIdxCenter
 
     def xGetCenterCol(self, uiPartIdx, eRefPicList, iRefIdx, pcMv):

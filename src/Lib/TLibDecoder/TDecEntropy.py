@@ -122,7 +122,7 @@ class TDecEntropy(object):
             self.m_pcEntropyDecoderIf.parseMvd(pcCU, uiAbsPartIdx, uiPartIdx, uiDepth, eRefList)
 
     def decodeMVPIdxPU(self, pcSubCU, uiPartAddr, uiDepth, uiPartIdx, eRefList):
-        iMVPIdx = -1
+        iMVPIdx = 255
 
         cZeroMv = TComMv(0, 0)
         cMv = cZeroMv

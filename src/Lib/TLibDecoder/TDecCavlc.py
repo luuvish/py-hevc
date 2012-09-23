@@ -13,7 +13,6 @@ from ... import parseSEImessage
 from ... import ArrayUInt
 
 from ... import cvar
-from ... import Char
 
 from .TDecEntropy import TDecEntropy
 
@@ -800,7 +799,7 @@ class TDecCavlc(TDecEntropy):
         iDQp = self._xReadSvlc()
 
         qpBdOffsetY = pcCU.getSlice().getSPS().getQpBDOffsetY()
-        qp = ((Char(pcCU.getRefQP(uiAbsPartIdx)) + iDQp + 52 + 2*qpBdOffsetY) % (52 + qpBdOffsetY)) - qpBdOffsetY
+        qp = ((pcCU.getRefQP(uiAbsPartIdx) + iDQp + 52 + 2*qpBdOffsetY) % (52 + qpBdOffsetY)) - qpBdOffsetY
 
         uiAbsQpCUPartIdx = (uiAbsPartIdx >> ((cvar.g_uiMaxCUDepth - pcCU.getSlice().getPPS().getMaxCUDQPDepth()) << 1)) << \
                                             ((cvar.g_uiMaxCUDepth - pcCU.getSlice().getPPS().getMaxCUDQPDepth()) << 1)

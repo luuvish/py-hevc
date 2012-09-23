@@ -1,22 +1,45 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    module : src/Lib/TLibCommon/TComPicYuv.py
+    HM 8.0 Python Implementation
+"""
 
-from .TComRom import g_uiBitIncrement,
-                     g_uiBitDepth,
-                     g_uiMaxCUWidth,
-                     g_uiMaxCUHeight,
-                     g_auiZscanToRaster
+import sys
+
+from ... import cvar
+
+from ... import NDBFBlockInfo
+
+from .CommonDef import Clip3
+
+from .TComRom import g_auiZscanToRaster
 
 
-class TComPicYuv:
+class TComPicYuv(object):
 
     def __init__(self):
-        self.m_apiPicBufY = []
-        self.m_apiPicBufU = []
-        self.m_apiPicBufV = []
+        self.m_apiPicBufY = None
+        self.m_apiPicBufU = None
+        self.m_apiPicBufV = None
 
-        self.m_piPicOrgY = []
-        self.m_piPicOrgU = []
-        self.m_piPicOrgV = []
+        self.m_piPicOrgY = None
+        self.m_piPicOrgU = None
+        self.m_piPicOrgV = None
+
+        self.m_iPicWidth = 0
+        self.m_iPicHeight = 0
+
+        self.m_iCuWidth = 0
+        self.m_iCuHeight = 0
+        self.m_cuOffsetY = None
+        self.m_cuOffsetC = None
+        self.m_buOffsetY = None
+        self.m_buOffsetC = None
+
+        self.m_iLumaMarginX = 0
+        self.m_iLumaMarginY = 0
+        self.m_iChromaMarginX = 0
+        self.m_iChromaMarginY = 0
 
         self.m_bIsBorderExtended = False
 
@@ -24,91 +47,101 @@ class TComPicYuv:
         self.m_iPicWidth = iPicWidth
         self.m_iPicHeight = iPicHeight
 
+        # --> After config finished!
         self.m_iCuWidth = uiMaxCUWidth
         self.m_iCuHeight = uiMaxCUHeight
 
         numCuInWidth = self.m_iPicWidth / self.m_iCuWidth + (self.m_iPicWidth % self.m_iCuWidth != 0)
         numCuInHeight = self.m_iPicHeight / self.m_iCuHeight + (self.m_iPicHeight % self.m_iCuHeight != 0)
 
-        self.m_iLumaMarginX = g_uiMaxCUWidth + 16
-        self.m_iLumaMarginY = g_uiMaxCUHeight + 16
+        self.m_iLumaMarginX = cvar.g_uiMaxCUWidth + 16 # for 16-byte alignment
+        self.m_iLumaMarginY = cvar.g_uiMaxCUHeight + 16 # margin for 8-tap filter and infinite padding
 
         self.m_iChromaMarginX = self.m_iLumaMarginX >> 1
         self.m_iChromaMarginY = self.m_iLumaMarginY >> 1
 
-        self.m_apiPicBufY = [] # array('h') (self.m_iPicWidth + (self.m_iLumaMarginX << 1)) * (self.m_iPicHeight + (self.m_iLumaMarginY << 1))
-        self.m_apiPicBufU = [] # array('h') (self.m_iPicWidth >> 1) + (self.m_iChromaMarginX << 1)) * ((self.m_iPicHeight >> 1) + (self.m_iChromaMarginY << 1))
-        self.m_apiPicBufV = [] # array('h') (self.m_iPicWidth >> 1) + (self.m_iChromaMarginX << 1)) * ((self.m_iPicHeight >> 1) + (self.m_iChromaMarginY << 1))
+        self.m_apiPicBufY = ArrayPel(( self.m_iPicWidth     + (self.m_iLumaMarginX  <<1)) * ( self.m_iPicHeight     + (self.m_iLumaMarginY  <<1)))
+        self.m_apiPicBufU = ArrayPel(((self.m_iPicWidth>>1) + (self.m_iChromaMarginX<<1)) * ((self.m_iPicHeight>>1) + (self.m_iChromaMarginY<<1)))
+        self.m_apiPicBufV = ArrayPel(((self.m_iPicWidth>>1) + (self.m_iChromaMarginX<<1)) * ((self.m_iPicHeight>>1) + (self.m_iChromaMarginY<<1)))
 
-        self.m_piPicOrgY = self.m_iLumaMarginY * self.getStride() + self.m_iLumaMarginX
-        self.m_piPicOrgU = self.m_iChromaMarginY * self.getCStride() + self.m_iChromaMarginX
-        self.m_piPicOrgV = self.m_iChromaMarginY * self.getCStride() + self.m_iChromaMarginX
+        self.m_piPicOrgY = self.m_apiPicBufY + self.m_iLumaMarginY * self.getStride() + self.m_iLumaMarginX
+        self.m_piPicOrgU = self.m_apiPicBufU + self.m_iChromaMarginY * self.getCStride() + self.m_iChromaMarginX
+        self.m_piPicOrgV = self.m_apiPicBufV + self.m_iChromaMarginY * self.getCStride() + self.m_iChromaMarginX
 
         self.m_bIsBorderExtended = False
 
-        self.m_cuOffsetY = [] # array('l') (numCuInWidth * numCuInHeight)
-        self.m_cuOffsetC = [] # array('l') (numCuInWidth * numCuInHeight)
-        for cuRow in range(0, numCuInHeight):
-            for cuCol in range(0, numCuInWidth):
+        self.m_cuOffsetY = ArrayInt(numCuInWidth * numCuInHeight)
+        self.m_cuOffsetC = ArrayInt(numCuInWidth * numCuInHeight)
+        for cuRow in xrange(numCuInHeight):
+            for cuCol in xrange(numCuInWidth):
                 self.m_cuOffsetY[cuRow * numCuInWidth + cuCol] = self.getStride() * cuRow * self.m_iCuHeight + cuCol * self.m_iCuWidth
-                self.m_cuOffsetC[cuRow * numCuInWidth + cuCol] = self.getCStride() * cuRow * (self.m_iCuHeight / 2) + cuCol * (self.m_iCuWidth / 2)
+                self.m_cuOffsetC[cuRow * numCuInWidth + cuCol] = self.getCStride() * cuRow * (self.m_iCuHeight/2) + cuCol * (self.m_iCuWidth/2)
 
-        self.m_buOffsetY = [] # array('l') (1 << (2 * uiMaxCUDepth))
-        self.m_buOffsetC = [] # array('l') (1 << (2 * uiMaxCUDepth))
-        for buRow in range(0, 1 << uiMaxCUDepth):
-            for buCol in range(0, 1 << uiMaxCUDepth):
+        self.m_buOffsetY = ArrayInt(1 << (2 * uiMaxCUDepth))
+        self.m_buOffsetC = ArrayInt(1 << (2 * uiMaxCUDepth))
+        for buRow in xrange(1 << uiMaxCUDepth):
+            for buCol in xrange(1 << uiMaxCUDepth):
                 self.m_buOffsetY[(buRow << uiMaxCUDepth) + buCol] = self.getStride() * buRow * (uiMaxCUHeight >> uiMaxCUDepth) + buCol * (uiMaxCUWidth >> uiMaxCUDepth)
-                self.m_buOffsetC[(buRow << uiMaxCUDepth) + buCol] = self.getCStride() * buRow * (uiMaxCUHeight / 2 >> uiMaxCUDepth) + buCol * (uiMaxCUWidth / 2 >> uiMaxCUDepth)
+                self.m_buOffsetC[(buRow << uiMaxCUDepth) + buCol] = self.getCStride() * buRow * (uiMaxCUHeight/2 >> uiMaxCUDepth) + buCol * (uiMaxCUWidth/2 >> uiMaxCUDepth)
 
     def destroy(self):
-        self.m_piPicOrgY = 0
-        self.m_piPicOrgU = 0
-        self.m_piPicOrgV = 0
+        self.m_piPicOrgY = None
+        self.m_piPicOrgU = None
+        self.m_piPicOrgV = None
 
-        self.m_apiPicBufY = []
-        self.m_apiPicBufU = []
-        self.m_apiPicBufV = []
+        if self.m_apiPicBufY:
+            del self.m_apiPicBufY
+            self.m_apiPicBufY = None
+        if self.m_apiPicBufU:
+            del self.m_apiPicBufU
+            self.m_apiPicBufU = None
+        if self.m_apiPicBufV:
+            del self.m_apiPicBufV
+            self.m_apiPicBufV = None
 
-        self.m_cuOffsetY = []
-        self.m_cuOffsetC = []
-        self.m_buOffsetY = []
-        self.m_buOffsetC = []
+        del self.m_cuOffsetY
+        del self.m_cuOffsetC
+        del self.m_buOffsetY
+        del self.m_buOffsetC
 
     def createLuma(self, iPicWidth, iPicHeight, uiMaxCUWidth, uiMaxCUHeight, uiMaxCUDepth):
         self.m_iPicWidth = iPicWidth
         self.m_iPicHeight = iPicHeight
 
+        # --> After config finished!
         self.m_iCuWidth = uiMaxCUWidth
         self.m_iCuHeight = uiMaxCUHeight
 
         numCuInWidth = self.m_iPicWidth / self.m_iCuWidth + (self.m_iPicWidth % self.m_iCuWidth != 0)
         numCuInHeight = self.m_iPicHeight / self.m_iCuHeight + (self.m_iPicHeight % self.m_iCuHeight != 0)
 
-        self.m_iLumaMarginX = g_uiMaxCUWidth + 16
-        self.m_iLumaMarginY = g_uiMaxCUHeight + 16
+        self.m_iLumaMarginX = cvar.g_uiMaxCUWidth + 16 # for 16-byte alignment
+        self.m_iLumaMarginY = cvar.g_uiMaxCUHeight + 16 # margin for 8-tap filter and infinite padding
 
-        self.m_apiPicBufY = [] # array('h') (self.m_iPicWidth + (self.m_iLumaMarginX << 1)) * (self.m_iPicHeight + (self.m_iLumaMarginY << 1))
-        self.m_piPicOrgY = self.m_iLumaMarginY * self.getStride() + self.m_iLumaMarginX
+        self.m_apiPicBufY = ArrayPel((self.m_iPicWidth + (self.m_iLumaMarginX<<1)) * (self.m_iPicHeight + (self.m_iLumaMarginY<<1)))
+        self.m_piPicOrgY = self.apiPicBufY + self.m_iLumaMarginY * self.getStride() + self.m_iLumaMarginX
 
-        self.m_cuOffsetY = [] # array('l') (numCuInWidth * numCuInHeight)
-        self.m_cuOffsetC = []
-        for cuRow in range(0, numCuInHeight):
-            for cuCol in range(0, numCuInWidth):
+        self.m_cuOffsetY = ArrayInt(numCuInWidth * numCuInHeight)
+        self.m_cuOffsetC = None
+        for cuRow in xrange(numCuInHeight):
+            for cuCol in xrange(numCuInWidth):
                 self.m_cuOffsetY[cuRow * numCuInWidth + cuCol] = self.getStride() * cuRow * self.m_iCuHeight + cuCol * self.m_iCuWidth
 
-        self.m_buOffsetY = [] # array('l') (1 << (2 * uiMaxCUDepth))
-        self.m_buOffsetC = []
-        for buRow in range(0, 1 << uiMaxCUDepth):
-            for buCol in range(0, 1 << uiMaxCUDepth):
+        self.m_buOffsetY = ArrayInt(1 << (2 * uiMaxCUDepth))
+        self.m_buOffsetC = None
+        for buRow in xrange(1 << uiMaxCUDepth):
+            for buCol in xrange(1 << uiMaxCUDepth):
                 self.m_buOffsetY[(buRow << uiMaxCUDepth) + buCol] = self.getStride() * buRow * (uiMaxCUHeight >> uiMaxCUDepth) + buCol * (uiMaxCUWidth >> uiMaxCUDepth)
 
     def destroyLuma(self):
-        self.m_piPicOrgY = 0
+        self.m_piPicOrgY = None
 
-        self.m_apiPicBufY = []
+        if self.m_apiPicBufY:
+            del self.m_apiPicBufY
+            self.m_apiPicBufY = None
 
-        self.m_cuOffsetY = []
-        self.m_buOffsetY = []
+        del self.m_cuOffsetY
+        del self.m_buOffsetY
 
     def getWidth(self):
         return self.m_iPicWidth
@@ -126,22 +159,20 @@ class TComPicYuv:
         return self.m_iChromaMarginX
 
     def getLumaMinMax(self, pMin, pMax):
-        apiY = self.getBufY()
         piY = self.getLumaAddr()
-        iMin = (1 << g_uiBitDepth) - 1
+        iMin = (1 << cvar.g_uiBitDepth) - 1
         iMax = 0
 
-        for y in range(0, self.m_iPicHeight):
-            for x in range(0, self.m_iPicWidth):
-                if apiY[piY + x] < iMin:
-                    iMin = apiY[piY + x]
-                if apiY[piY + x] > iMax:
-                    iMax = apiY[piY + x]
+        for y in xrange(self.m_iPicHeight):
+            for x in xrange(self.m_iPicWidth):
+                if piY[x] < iMin:
+                    iMin = piY[x]
+                if piY[x] > iMax:
+                    iMax = piY[x]
             piY += self.getStride()
 
-        pMin = iMin
-        pMax = iMax
-        return pMin, pMax
+        pMin[0] = iMin
+        pMax[0] = iMax
 
     def getBufY(self):
         return self.m_apiPicBufY
@@ -150,128 +181,116 @@ class TComPicYuv:
     def getBufV(self):
         return self.m_apiPicBufV
 
-    def getLumaAddr(self):
-        return self.m_piPicOrgY
-    def getCbAddr(self):
-        return self.m_piPicOrgU
-    def getCrAddr(self):
-        return self.m_piPicOrgV
-
-    def getLumaAddr(self, iCuAddr):
-        return self.m_piPicOrgY + self.m_cuOffsetY[iCuAddr]
-    def getCrAddr(self, iCuAddr):
-        return self.m_piPicOrgU + self.m_cuOffsetC[iCuAddr]
-    def getCrAddr(self, iCuAddr):
-        return self.m_piPicOrgV + self.m_cuOffsetC[iCuAddr]
-    def getLumaAddr(self, iCuAddr, uiAbsZorderIdx):
+    def getLumaAddr(self, iCuAddr=None, uiAbsZorderIdx=None):
+        if iCuAddr == None and uiAbsZorderIdx == None:
+            return self.m_piPicOrgY
+        if uiAbsZorderIdx == None:
+            return self.m_piPicOrgY + self.m_cuOffsetY[iCuAddr]
         return self.m_piPicOrgY + self.m_cuOffsetY[iCuAddr] + self.m_buOffsetY[g_auiZscanToRaster[uiAbsZorderIdx]]
-    def getCrAddr(self, iCuAddr, uiAbsZorderIdx):
+    def getCrAddr(self, iCuAddr=None, uiAbsZorderIdx=None):
+        if iCuAddr == None and uiAbsZorderIdx == None:
+            return self.m_piPicOrgU
+        if uiAbsZorderIdx == None:
+            return self.m_piPicOrgU + self.m_cuOffsetC[iCuAddr]
         return self.m_piPicOrgU + self.m_cuOffsetC[iCuAddr] + self.m_buOffsetC[g_auiZscanToRaster[uiAbsZorderIdx]]
-    def getCrAddr(self, iCuAddr, uiAbsZorderIdx):
+    def getCrAddr(self, iCuAddr=None, uiAbsZorderIdx=None):
+        if iCuAddr == None and uiAbsZorderIdx == None:
+            return self.m_piPicOrgV
+        if uiAbsZorderIdx == None:
+            return self.m_piPicOrgV + self.m_cuOffsetC[iCuAddr]
         return self.m_piPicOrgV + self.m_cuOffsetC[iCuAddr] + self.m_buOffsetC[g_auiZscanToRaster[uiAbsZorderIdx]]
 
     def copyToPic(self, pcPicYuvDst):
         assert(self.m_iPicWidth == pcPicYuvDst.getWidth())
         assert(self.m_iPicHeight == pcPicYuvDst.getHeight())
 
-        dst, src = pcPicYuvDst.getBufY(), self.m_apiPicBufY
-        for i in range(0, self.m_iPicWidth + (self.m_iLumaMarginX << 1) * (self.m_iPicHeight + (self.m_iLumaMarginY << 1))):
-            dst[i] = src[i]
-        dst, src = pcPicYuvDst.getBufU(), self.m_apiPicBufU
-        for i in range(0, (self.m_iPicWidth >> 1) + (self.m_iChromaMarginX << 1) * ((self.m_iPicHeight >> 1) + (self.m_iChromaMarginY << 1))):
-            dst[i] = src[i]
-        dst, src = pcPicYuvDst.getBufV(), self.m_apiPicBufV
-        for i in range(0, (self.m_iPicWidth >> 1) + (self.m_iChromaMarginX << 1) * ((self.m_iPicHeight >> 1) + (self.m_iChromaMarginY << 1))):
-            dst[i] = src[i]
+        for i in xrange((self.m_iPicWidth + (self.m_iLumaMarginX<<1)) * (self.m_iPicHeight + (self.m_iLumaMarginY<<1))):
+            pcPicYuvDst.getBufY()[i] = self.m_apiPicBufY[i]
+        for i in xrange(((self.m_iPicWidth>>1) + (self.m_iChromaMarginX<<1)) * ((self.m_iPicHeight>>1) + (self.m_iChromaMarginY<<1))):
+            pcPicYuvDst.getBufU()[i] = self.m_apiPicBufU[i]
+        for i in xrange(((self.m_iPicWidth>>1) + (self.m_iChromaMarginX<<1)) * ((self.m_iPicHeight>>1) + (self.m_iChromaMarginY<<1))):
+            pcPicYuvDst.getBufV()[i] = self.m_apiPicBufV[i]
 
     def copyToPicLuma(self, pcPicYuvDst):
         assert(self.m_iPicWidth == pcPicYuvDst.getWidth())
         assert(self.m_iPicHeight == pcPicYuvDst.getHeight())
 
-        dst, src = pcPicYuvDst.getBufY(), self.m_apiPicBufY
-        for i in range(0, self.m_iPicWidth + (self.m_iLumaMarginX << 1) * (self.m_iPicHeight + (self.m_iLumaMarginY << 1))):
-            dst[i] = src[i]
+        for i in xrange((self.m_iPicWidth + (self.m_iLumaMarginX<<1)) * (self.m_iPicHeight + (self.m_iLumaMarginY<<1))):
+            pcPicYuvDst.getBufY()[i] = self.m_apiPicBufY[i]
 
     def copyToPicCb(self, pcPicYuvDst):
         assert(self.m_iPicWidth == pcPicYuvDst.getWidth())
         assert(self.m_iPicHeight == pcPicYuvDst.getHeight())
 
-        dst, src = pcPicYuvDst.getBufU(), self.m_apiPicBufU
-        for i in range(0, (self.m_iPicWidth >> 1) + (self.m_iChromaMarginX << 1) * ((self.m_iPicHeight >> 1) + (self.m_iChromaMarginY << 1))):
-            dst[i] = src[i]
+        for i in xrange(((self.m_iPicWidth>>1) + (self.m_iChromaMarginX<<1)) * ((self.m_iPicHeight>>1) + (self.m_iChromaMarginY<<1))):
+            pcPicYuvDst.getBufU()[i] = self.m_apiPicBufU[i]
 
     def copyToPicCr(self, pcPicYuvDst):
         assert(self.m_iPicWidth == pcPicYuvDst.getWidth())
         assert(self.m_iPicHeight == pcPicYuvDst.getHeight())
 
-        dst, src = pcPicYuvDst.getBufV(), self.m_apiPicBufV
-        for i in range(0, (self.m_iPicWidth >> 1) + (self.m_iChromaMarginX << 1) * ((self.m_iPicHeight >> 1) + (self.m_iChromaMarginY << 1))):
-            dst[i] = src[i]
+        for i in xrange(((self.m_iPicWidth>>1) + (self.m_iChromaMarginX<<1)) * ((self.m_iPicHeight>>1) + (self.m_iChromaMarginY<<1))):
+            pcPicYuvDst.getBufV()[i] = self.m_apiPicBufV[i]
 
     def extendPicBorder(self):
         if self.m_bIsBorderExtended:
             return
 
-        self.xExtendPicCompBorder(self.getBufY(), self.getLumaAddr(), self.getStride(), self.getWidth(), self.getHeight(), self.m_iLumaMarginX, self.m_iLumaMarginY)
-        self.xExtendPicCompBorder(self.getBufU(), self.getCbAddr(), self.getCStride(), self.getWidth() >> 1, self.getHeight() >> 1, self.m_iChromaMarginX, self.m_iChromaMarginY)
-        self.xExtendPicCompBorder(self.getBufV(), self.getCrAddr(), self.getCStride(), self.getWidth() >> 1, self.getHeight() >> 1, self.m_iChromaMarginX, self.m_iChromaMarginY)
+        self.xExtendPicCompBorder(self.getLumaAddr(), self.getStride(), self.getWidth(), self.getHeight(), self.m_iLumaMarginX, self.m_iLumaMarginY)
+        self.xExtendPicCompBorder(self.getCbAddr(), self.getCStride(), self.getWidth() >> 1, self.getHeight() >> 1, self.m_iChromaMarginX, self.m_iChromaMarginY)
+        self.xExtendPicCompBorder(self.getCrAddr(), self.getCStride(), self.getWidth() >> 1, self.getHeight() >> 1, self.m_iChromaMarginX, self.m_iChromaMarginY)
 
         self.m_bIsBorderExtended = True
 
-    def xExtendPicCompBorder(self, apiTxt, piTxt, iStride, iWidth, iHeight, iMarginX, iMarginY):
-        api = apiTxt
+    def xExtendPicCompBorder(self, piTxt, iStride, iWidth, iHeight, iMarginX, iMarginY):
         pi = piTxt
-        for y in range(0, iHeight):
-            for x in range(0, iMarginX):
-                api[pi - iMarginX + x] = api[pi + 0]
-                api[pi + iWidth + x] = api[pi + iWidth - 1]
+        for y in xrange(iHeight):
+            for x in xrange(iMarginX):
+                pi[-iMarginX + x] = pi[0]
+                pi[   iWidth + x] = pi[iWidth - 1]
             pi += iStride
 
         pi -= iStride + iMarginX
-        for y in range(0, iMarginY):
-            for x in range(0, iWidth + (iMarginX << 1)):
-                api[pi + (y + 1) * iStride + x] = api[pi + x]
+        for y in xrange(iMarginY):
+            for x in xrange(iWidth + (iMarginX<<1)):
+                pi[(y+1) * iStride + x] = pi[x]
 
-        pi -= (iHeight - 1) * iStride
-        for y in range(0, iMarginY):
-            for x in range(0, iWidth + (iMarginX << 1)):
-                api[pi - (y + 1) * iStride + x] = api[pi + x]
+        pi -= (iHeight-1) * iStride
+        for y in xrange(iMarginY):
+            for x in xrange(iWidth + (iMarginX<<1)):
+                pi[-(y+1) * iStride + x] = pi[x]
 
     def dump(self, pFileName, bAdd=False):
+        pFile = None
         if not bAdd:
             pFile = open(pFileName, "wb")
         else:
-            pFile = open(pFileName, "ab+")
+            pFile = open(pFileName, "ab")
 
-        shift = g_uiBitIncrement
-        offset = 1 << (shift - 1) if shift > 0 else 0
+        shift = cvar.g_uiBitIncrement
+        offset = 1 << (shift-1) if shift > 0 else 0
 
-        apiY = self.getBufY()
-        apiU = self.getBufU()
-        apiV = self.getBufV()
         piY = self.getLumaAddr()
         piCb = self.getCbAddr()
         piCr = self.getCrAddr()
 
-        iMax = (1 << g_uiBitDepth) - 1
+        iMax = (1 << cvar.g_uiBitDepth) - 1
 
-        Clip3 = lambda min, max, i: min if i < min else max if i > max else i
-
-        for y in range(0, self.m_iPicHeight):
-            for x in range(0, self.m_iPicWidth):
-                uc = Clip3(0, iMax, (apiY[piY + x] + offset) >> shift)
+        for y in xrange(self.m_iPicHeight):
+            for x in xrange(self.m_iPicWidth):
+                uc = Clip3(0, iMax, (piY[x] + offset) >> shift)
                 pFile.write(uc)
             piY += self.getStride()
 
-        for y in range(0, self.m_iPicHeight >> 1):
-            for x in range(0, self.m_iPicWidth >> 1):
-                uc = Clip3(0, iMax, (apiU[piCb + x] + offset) >> shift)
+        for y in xrange(self.m_iPicHeight >> 1):
+            for x in xrange(self.m_iPicWidth >> 1):
+                uc = Clip3(0, iMax, (piCb[x] + offset) >> shift)
                 pFile.write(uc)
             piCb += self.getCStride()
 
-        for y in range(0, self.m_iPicHeight >> 1):
-            for x in range(0, self.m_iPicWidth >> 1):
-                uc = Clip3(0, iMax, (apiV[piCr + x] + offset) >> shift)
+        for y in xrange(self.m_iPicHeight >> 1):
+            for x in xrange(self.m_iPicWidth >> 1):
+                uc = Clip3(0, iMax, (piCr[x] + offset) >> shift)
                 pFile.write(uc)
             piCr += self.getCStride()
 

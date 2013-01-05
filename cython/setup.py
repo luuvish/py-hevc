@@ -36,8 +36,8 @@ setup(
     cmdclass={'build_ext': build_ext},
     ext_modules=cythonize([
         Extension(
-            'decmain',
-            sources=['decmain.pyx'],
+            'App/TAppDecoder/decmain',
+            sources=['App/TAppDecoder/decmain.pyx'],
             include_dirs=include_dirs,
             define_macros=define_macros,
             library_dirs=library_dirs,
@@ -48,8 +48,8 @@ setup(
             language='c++'
         ),
         Extension(
-            'encmain',
-            sources=['encmain.pyx'],
+            'App/TAppEncoder/encmain',
+            sources=['App/TAppEncoder/encmain.pyx'],
             include_dirs=include_dirs,
             define_macros=define_macros,
             library_dirs=library_dirs,

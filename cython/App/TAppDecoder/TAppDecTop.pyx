@@ -96,26 +96,23 @@ cdef extern from "TComPic.h":
         TComPic() except +
 
 
-cdef class TAppDecTop(TAppDecCfg):
+cdef cppclass TAppDecTop(TAppDecCfg):
     # class interface
-    cdef TDecTop m_cTDecTop
-    cdef TVideoIOYuv m_cTVideoIOYuvReconFile
+    TDecTop m_cTDecTop
+    TVideoIOYuv m_cTVideoIOYuvReconFile
 
     # for output control
-    cdef bint m_abDecFlag
-    cdef int m_iPOCLastDisplay
+    bint m_abDecFlag
+    int m_iPOCLastDisplay
 
-    def __cinit__(self): pass
-    def __init__(self): pass
+    create(self): pass
+    destroy(self): pass
+    decode(self): pass
 
-    cpdef create(self): pass
-    cpdef destroy(self): pass
-    cpdef decode(self): pass
+    void xCreateDecLib(self): pass
+    void xDestroyDecLib(self): pass
+    void xInitDecLib(self): pass
 
-    cdef void xCreateDecLib(self): pass
-    cdef void xDestroyDecLib(self): pass
-    cdef void xInitDecLib(self): pass
-
-    cdef void xWriteOutput(self, TComList[TComPic*]* pcListPic, unsigned int iId): pass
-    cdef void xFlushOutput(self, TComList[TComPic*]* pcListPic): pass
-    cdef bint isNaluWithinTargetDecLayerIdSet(self, InputNALUnit* nalu): pass
+    void xWriteOutput(self, TComList[TComPic*]* pcListPic, unsigned int iId): pass
+    void xFlushOutput(self, TComList[TComPic*]* pcListPic): pass
+    bint isNaluWithinTargetDecLayerIdSet(self, InputNALUnit* nalu): pass

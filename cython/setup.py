@@ -36,6 +36,30 @@ setup(
     cmdclass={'build_ext': build_ext},
     ext_modules=cythonize([
         Extension(
+            'App/TAppDecoder/TAppDecCfg',
+            sources=['App/TAppDecoder/TAppDecCfg.pyx'],
+            include_dirs=include_dirs,
+            define_macros=define_macros,
+            library_dirs=library_dirs,
+            libraries=libraries,
+            extra_objects=extra_objects,
+            extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args,
+            language='c++'
+        ),
+        Extension(
+            'App/TAppDecoder/TAppDecTop',
+            sources=['App/TAppDecoder/TAppDecTop.pyx'],
+            include_dirs=include_dirs,
+            define_macros=define_macros,
+            library_dirs=library_dirs,
+            libraries=libraries,
+            extra_objects=extra_objects,
+            extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args,
+            language='c++'
+        ),
+        Extension(
             'App/TAppDecoder/decmain',
             sources=['App/TAppDecoder/decmain.pyx'],
             include_dirs=include_dirs,

@@ -24,10 +24,6 @@ cdef extern from "TLibVideoIO/TVideoIOYuv.h":
         bint isEof()
         bint isFail()
 
-cdef extern from "<list>" namespace "std":
-    cdef cppclass list[T]:
-        list()
-
 cdef extern from "TLibCommon/TComList.h":
     cdef cppclass TComList[C]:
         #ctypedef list[C].iterator TComIterator
@@ -82,37 +78,62 @@ cdef extern from "TLibDecoder/TDecTop.h":
         void deletePicBuffer()
         void executeLoopFilters(int& poc, TComList[TComPic*]*& rpcListPic, int& iSkipFrame, int& iPocLastDisplay)
 
-cdef extern from "TAppDecCfg.h":
-    cdef cppclass TAppDecCfg:
-        TAppDecCfg() except +
-        bint parseCfg(int argc, char *argv[])
-
-cdef extern from "NALread.h":
+cdef extern from "TLibDecoder/NALread.h":
     cdef cppclass InputNALUnit:
         InputNALUnit() except +
 
-cdef extern from "TComPic.h":
+cdef extern from "TLibCommon/TComPic.h":
     cdef cppclass TComPic:
         TComPic() except +
 
+from TAppDecCfg cimport TAppDecCfg
 
-cdef cppclass TAppDecTop(TAppDecCfg):
+cdef class TAppDecTop(TAppDecCfg):
     # class interface
-    TDecTop m_cTDecTop
-    TVideoIOYuv m_cTVideoIOYuvReconFile
+    cdef TDecTop m_cTDecTop
+    cdef TVideoIOYuv m_cTVideoIOYuvReconFile
 
     # for output control
-    bint m_abDecFlag
-    int m_iPOCLastDisplay
+    cdef bint m_abDecFlag[MAX_GOP]
+    cdef int m_iPOCLastDisplay
 
-    create(self): pass
-    destroy(self): pass
-    decode(self): pass
+    def __cinit__(self):
+        self.m_iPOCLastDisplay = -MAX_INT
+        for i in xrange(MAX_GOP):
+            self.m_abDecFlag[i] = 0
 
-    void xCreateDecLib(self): pass
-    void xDestroyDecLib(self): pass
-    void xInitDecLib(self): pass
+    def __dealloc__(self):
+        pass
 
-    void xWriteOutput(self, TComList[TComPic*]* pcListPic, unsigned int iId): pass
-    void xFlushOutput(self, TComList[TComPic*]* pcListPic): pass
-    bint isNaluWithinTargetDecLayerIdSet(self, InputNALUnit* nalu): pass
+    def __init__(self):
+        pass
+
+    cdef void create(self):
+        pass
+
+    cdef void destroy(self):
+        if self.m_pchBitstreamFile:
+            self.m_pchBitstreamFile = NULL
+        if self.m_pchReconFile:
+            self.m_pchReconFile = NULL
+
+    cdef void decode(self):
+        cdef int poc
+        cdef TComList[TComPic*]* pcListPic = NULL
+
+    cdef void xCreateDecLib(self):
+        self.m_cTDecTop.create()
+
+    cdef void xDestroyDecLib(self):
+        if self.m_pchReconFile:
+            self.m_cTVideoIOYuvReconFile.close()
+
+        self.m_cTDecTop.destroy()
+
+    cdef void xInitDecLib(self):
+        self.m_cTDecTop.init()
+        self.m_cTDecTop.setDecodedPictureHashSEIEnabled(self.m_decodedPictureHashSEIEnabled)
+
+    cdef void xWriteOutput(self, TComList[TComPic*]* pcListPic, uint iId): pass
+    cdef void xFlushOutput(self, TComList[TComPic*]* pcListPic): pass
+    cdef bint isNaluWithinTargetDecLayerIdSet(self, InputNALUnit* nalu): pass

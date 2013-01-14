@@ -1,4 +1,4 @@
-/* hevc.i : HM 8.0 Python Swig Wrapper */
+/* hevc.i : HM 9.1 Python Swig Wrapper */
 
 %module hevc
 
@@ -54,9 +54,9 @@ namespace std {
   #include "TLibCommon/TComRdCostWeightPrediction.h"
   #include "TLibCommon/TComRdCost.h"
   #include "TLibCommon/TComLoopFilter.h"
-  #include "TLibCommon/TComAdaptiveLoopFilter.h"
   #include "TLibCommon/TComSampleAdaptiveOffset.h"
 
+  #include "TLibDecoder/SyntaxElementParser.h"
   #include "TLibDecoder/AnnexBread.h"
   #include "TLibDecoder/NALread.h"
   #include "TLibDecoder/SEIread.h"
@@ -70,6 +70,7 @@ namespace std {
   #include "TLibDecoder/TDecGop.h"
   #include "TLibDecoder/TDecTop.h"
 
+  #include "TLibEncoder/SyntaxElementWriter.h"
   #include "TLibEncoder/AnnexBwrite.h"
   #include "TLibEncoder/NALwrite.h"
   #include "TLibEncoder/SEIwrite.h"
@@ -86,7 +87,6 @@ namespace std {
   #include "TLibEncoder/TEncAnalyze.h"
   #include "TLibEncoder/TEncRateCtrl.h"
   #include "TLibEncoder/TEncSearch.h"
-  #include "TLibEncoder/TEncAdaptiveLoopFilter.h"
   #include "TLibEncoder/TEncSampleAdaptiveOffset.h"
   #include "TLibEncoder/TEncCu.h"
   #include "TLibEncoder/TEncSlice.h"
@@ -142,9 +142,9 @@ namespace std {
 %include "TLibCommon/TComRdCostWeightPrediction.h"
 %include "TLibCommon/TComRdCost.h"
 %include "TLibCommon/TComLoopFilter.h"
-%include "TLibCommon/TComAdaptiveLoopFilter.h"
 %include "TLibCommon/TComSampleAdaptiveOffset.h"
 
+%include "TLibDecoder/SyntaxElementParser.h"
 %include "TLibDecoder/AnnexBread.h"
 %include "TLibDecoder/NALread.h"
 %include "TLibDecoder/SEIread.h"
@@ -158,6 +158,7 @@ namespace std {
 %include "TLibDecoder/TDecGop.h"
 %include "TLibDecoder/TDecTop.h"
 
+%include "TLibEncoder/SyntaxElementWriter.h"
 %include "TLibEncoder/AnnexBwrite.h"
 %include "TLibEncoder/NALwrite.h"
 %include "TLibEncoder/SEIwrite.h"
@@ -174,7 +175,6 @@ namespace std {
 %include "TLibEncoder/TEncAnalyze.h"
 %include "TLibEncoder/TEncRateCtrl.h"
 %include "TLibEncoder/TEncSearch.h"
-%include "TLibEncoder/TEncAdaptiveLoopFilter.h"
 %include "TLibEncoder/TEncSampleAdaptiveOffset.h"
 %include "TLibEncoder/TEncCu.h"
 %include "TLibEncoder/TEncSlice.h"
@@ -264,7 +264,7 @@ namespace std {
   digest_get(unsigned char digest[3][16], int i, int j) { return digest[i][j]; }
 
   Bool   *BoolAdd  (Bool   *base, Int offset) { return base + offset; }
-  Char   *CharAdd   (Char   *base, Int offset) { return base + offset; }
+  Char   *CharAdd  (Char   *base, Int offset) { return base + offset; }
   UChar  *UCharAdd (UChar  *base, Int offset) { return base + offset; }
   Short  *ShortAdd (Short  *base, Int offset) { return base + offset; }
   UShort *UShortAdd(UShort *base, Int offset) { return base + offset; }

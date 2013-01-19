@@ -1,13 +1,13 @@
 Index: source/App/TAppEncoder/TAppEncCfg.cpp
 ===================================================================
---- source/App/TAppEncoder/TAppEncCfg.cpp	(revision 3208)
+--- source/App/TAppEncoder/TAppEncCfg.cpp	(revision 3278)
 +++ source/App/TAppEncoder/TAppEncCfg.cpp	(working copy)
 @@ -167,7 +167,7 @@
    const Char* str;
    Level::Tier value;
  } strToTier[] = {
 -  {"main", Level::MAIN},
-+  {"main", Level::MAIN_LEVEL},
++  {"main", Level::MAIN_},
    {"high", Level::HIGH},
  };
  
@@ -16,7 +16,7 @@ Index: source/App/TAppEncoder/TAppEncCfg.cpp
    Level::Name value;
  } strToLevel[] = {
 -  {"none",Level::NONE},
-+  {"none",Level::NONE_LEVEL},
++  {"none",Level::NONE_},
    {"1",   Level::LEVEL1},
    {"2",   Level::LEVEL2},
    {"2.1", Level::LEVEL2_1},
@@ -26,14 +26,29 @@ Index: source/App/TAppEncoder/TAppEncCfg.cpp
    ("Profile", m_profile,   Profile::NONE, "Profile to be used when encoding (Incomplete)")
 -  ("Level",   m_level,     Level::NONE,   "Level limit to be used, eg 5.1 (Incomplete)")
 -  ("Tier",    m_levelTier, Level::MAIN,   "Tier to use for interpretation of --Level")
-+  ("Level",   m_level,     Level::NONE_LEVEL,   "Level limit to be used, eg 5.1 (Incomplete)")
-+  ("Tier",    m_levelTier, Level::MAIN_LEVEL,   "Tier to use for interpretation of --Level")
++  ("Level",   m_level,     Level::NONE_,   "Level limit to be used, eg 5.1 (Incomplete)")
++  ("Tier",    m_levelTier, Level::MAIN_,   "Tier to use for interpretation of --Level")
  
    // Unit definition parameters
    ("MaxCUWidth",              m_uiMaxCUWidth,             64u)
+Index: source/App/TAppDecoder/TAppDecTop.cpp
+===================================================================
+--- source/App/TAppDecoder/TAppDecTop.cpp	(revision 3278)
++++ source/App/TAppDecoder/TAppDecTop.cpp	(working copy)
+@@ -168,7 +168,9 @@
+     }
+     if (bNewPicture || !bitstreamFile)
+     {
+-      m_cTDecTop.executeLoopFilters(poc, pcListPic, m_iSkipFrame, m_iPOCLastDisplay);
++      TComList<TComPic*> *rpcListPic = m_cTDecTop.executeLoopFilters(poc, m_iSkipFrame, m_iPOCLastDisplay);
++      if (rpcListPic)
++        pcListPic = rpcListPic;
+     }
+ 
+     if( pcListPic )
 Index: source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp
 ===================================================================
---- source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp	(revision 3208)
+--- source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp	(revision 3278)
 +++ source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp	(working copy)
 @@ -105,7 +105,7 @@
  Void
@@ -53,9 +68,54 @@ Index: source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp
      m_uiValue   = ( m_uiValue - scaledRange ) << numBits;
      m_uiRange   = uiLPS << numBits;
      ruiBin      = 1 - rcCtxModel.getMps();
+Index: source/Lib/TLibDecoder/TDecTop.cpp
+===================================================================
+--- source/Lib/TLibDecoder/TDecTop.cpp	(revision 3278)
++++ source/Lib/TLibDecoder/TDecTop.cpp	(working copy)
+@@ -188,14 +188,15 @@
+   rpcPic->getPicSym()->allocSaoParam(&m_cSAO);
+ }
+ 
+-Void TDecTop::executeLoopFilters(Int& poc, TComList<TComPic*>*& rpcListPic, Int& iSkipFrame, Int& iPOCLastDisplay)
++TComList<TComPic*> *TDecTop::executeLoopFilters(Int& poc, Int& iSkipFrame, Int& iPOCLastDisplay)
+ {
+   if (!m_pcPic)
+   {
+     /* nothing to deblock */
+-    return;
++    return NULL;
+   }
+-  
++
++  TComList<TComPic*>* rpcListPic =  NULL;
+   TComPic*&   pcPic         = m_pcPic;
+ 
+   // Execute Deblock + Cleanup
+@@ -208,7 +209,7 @@
+   m_cCuDecoder.destroy();        
+   m_bFirstSliceInPicture  = true;
+ 
+-  return;
++  return rpcListPic;
+ }
+ 
+ Void TDecTop::xCreateLostPicture(Int iLostPoc) 
+Index: source/Lib/TLibDecoder/TDecTop.h
+===================================================================
+--- source/Lib/TLibDecoder/TDecTop.h	(revision 3278)
++++ source/Lib/TLibDecoder/TDecTop.h	(working copy)
+@@ -115,7 +115,7 @@
+   
+   Void  deletePicBuffer();
+ 
+-  Void executeLoopFilters(Int& poc, TComList<TComPic*>*& rpcListPic, Int& iSkipFrame,  Int& iPOCLastDisplay);
++  TComList<TComPic*> *executeLoopFilters(Int& poc, Int& iSkipFrame,  Int& iPOCLastDisplay);
+ 
+ protected:
+   Void  xGetNewPicBuffer  (TComSlice* pcSlice, TComPic*& rpcPic);
 Index: source/Lib/TLibDecoder/SEIread.cpp
 ===================================================================
---- source/Lib/TLibDecoder/SEIread.cpp	(revision 3208)
+--- source/Lib/TLibDecoder/SEIread.cpp	(revision 3278)
 +++ source/Lib/TLibDecoder/SEIread.cpp	(working copy)
 @@ -71,7 +71,7 @@
      break;
@@ -84,7 +144,7 @@ Index: source/Lib/TLibDecoder/SEIread.cpp
      break;
 Index: source/Lib/TLibDecoder/TDecCAVLC.h
 ===================================================================
---- source/Lib/TLibDecoder/TDecCAVLC.h	(revision 3208)
+--- source/Lib/TLibDecoder/TDecCAVLC.h	(revision 3278)
 +++ source/Lib/TLibDecoder/TDecCAVLC.h	(working copy)
 @@ -85,7 +85,7 @@
    Void  parseSPS            ( TComSPS* pcSPS );
@@ -97,7 +157,7 @@ Index: source/Lib/TLibDecoder/TDecCAVLC.h
  #if SIGNAL_BITRATE_PICRATE_IN_VPS
 Index: source/Lib/TLibCommon/TComCABACTables.h
 ===================================================================
---- source/Lib/TLibCommon/TComCABACTables.h	(revision 3208)
+--- source/Lib/TLibCommon/TComCABACTables.h	(revision 3278)
 +++ source/Lib/TLibCommon/TComCABACTables.h	(working copy)
 @@ -47,14 +47,9 @@
   * \brief static class for CABAC tables
@@ -118,7 +178,7 @@ Index: source/Lib/TLibCommon/TComCABACTables.h
  #endif
 Index: source/Lib/TLibCommon/NAL.h
 ===================================================================
---- source/Lib/TLibCommon/NAL.h	(revision 3208)
+--- source/Lib/TLibCommon/NAL.h	(revision 3278)
 +++ source/Lib/TLibCommon/NAL.h	(working copy)
 @@ -88,7 +88,8 @@
   */
@@ -140,7 +200,7 @@ Index: source/Lib/TLibCommon/NAL.h
  //! \}
 Index: source/Lib/TLibCommon/SEI.h
 ===================================================================
---- source/Lib/TLibCommon/SEI.h	(revision 3208)
+--- source/Lib/TLibCommon/SEI.h	(revision 3278)
 +++ source/Lib/TLibCommon/SEI.h	(working copy)
 @@ -50,11 +50,11 @@
      USER_DATA_UNREGISTERED = 5,
@@ -176,7 +236,7 @@ Index: source/Lib/TLibCommon/SEI.h
      : tl0Idx(0)
 Index: source/Lib/TLibCommon/TComRom.h
 ===================================================================
---- source/Lib/TLibCommon/TComRom.h	(revision 3208)
+--- source/Lib/TLibCommon/TComRom.h	(revision 3278)
 +++ source/Lib/TLibCommon/TComRom.h	(working copy)
 @@ -51,9 +51,9 @@
  // ====================================================================================================================
@@ -235,7 +295,7 @@ Index: source/Lib/TLibCommon/TComRom.h
  extern UInt g_scalingListSizeX[SCALING_LIST_SIZE_NUM];
 Index: source/Lib/TLibCommon/TComSlice.h
 ===================================================================
---- source/Lib/TLibCommon/TComSlice.h	(revision 3208)
+--- source/Lib/TLibCommon/TComSlice.h	(revision 3278)
 +++ source/Lib/TLibCommon/TComSlice.h	(working copy)
 @@ -862,7 +862,7 @@
    Void setScalingListFlag       ( Bool b ) { m_scalingListEnabledFlag  = b;       }
@@ -277,7 +337,7 @@ Index: source/Lib/TLibCommon/TComSlice.h
    Bool isStepwiseTemporalLayerSwitchingPointCandidate( TComList<TComPic*>& rcListPic, TComReferencePictureSet *RPSList);
 Index: source/Lib/TLibCommon/TComList.h
 ===================================================================
---- source/Lib/TLibCommon/TComList.h	(revision 3208)
+--- source/Lib/TLibCommon/TComList.h	(revision 3278)
 +++ source/Lib/TLibCommon/TComList.h	(working copy)
 @@ -67,7 +67,7 @@
    {
@@ -305,27 +365,27 @@ Index: source/Lib/TLibCommon/TComList.h
  //! \}
 Index: source/Lib/TLibCommon/TypeDef.h
 ===================================================================
---- source/Lib/TLibCommon/TypeDef.h	(revision 3208)
+--- source/Lib/TLibCommon/TypeDef.h	(revision 3278)
 +++ source/Lib/TLibCommon/TypeDef.h	(working copy)
 @@ -530,13 +530,13 @@
  {
    enum Tier
    {
 -    MAIN = 0,
-+    MAIN_LEVEL = 0,
++    MAIN_ = 0,
      HIGH = 1,
    };
  
    enum Name
    {
 -    NONE     = 0,
-+    NONE_LEVEL = 0,
++    NONE_ = 0,
      LEVEL1   = 30,
      LEVEL2   = 60,
      LEVEL2_1 = 63,
 Index: source/Lib/TLibCommon/TComCABACTables.cpp
 ===================================================================
---- source/Lib/TLibCommon/TComCABACTables.cpp	(revision 3208)
+--- source/Lib/TLibCommon/TComCABACTables.cpp	(revision 3278)
 +++ source/Lib/TLibCommon/TComCABACTables.cpp	(working copy)
 @@ -40,7 +40,7 @@
  //! \ingroup TLibCommon
@@ -347,7 +407,7 @@ Index: source/Lib/TLibCommon/TComCABACTables.cpp
    3,  3,  3,  3,
 Index: source/Lib/TLibEncoder/TEncCavlc.h
 ===================================================================
---- source/Lib/TLibEncoder/TEncCavlc.h	(revision 3208)
+--- source/Lib/TLibEncoder/TEncCavlc.h	(revision 3278)
 +++ source/Lib/TLibEncoder/TEncCavlc.h	(working copy)
 @@ -150,7 +150,7 @@
    
@@ -360,7 +420,7 @@ Index: source/Lib/TLibEncoder/TEncCavlc.h
    Void xCodeScalingList ( TComScalingList* scalingList, UInt sizeId, UInt listId);
 Index: source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp
 ===================================================================
---- source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp	(revision 3208)
+--- source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp	(revision 3278)
 +++ source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp	(working copy)
 @@ -2142,7 +2142,7 @@
   * \param yCbCr color component index
@@ -387,7 +447,7 @@ Index: source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp
    Int64 iterOffset, tempOffset;
 Index: source/Lib/TLibEncoder/NALwrite.h
 ===================================================================
---- source/Lib/TLibEncoder/NALwrite.h	(revision 3208)
+--- source/Lib/TLibEncoder/NALwrite.h	(revision 3278)
 +++ source/Lib/TLibEncoder/NALwrite.h	(working copy)
 @@ -77,8 +77,13 @@
  inline NALUnitEBSP::NALUnitEBSP(OutputNALUnit& nalu)
@@ -406,7 +466,7 @@ Index: source/Lib/TLibEncoder/NALwrite.h
  
 Index: source/Lib/TLibEncoder/AnnexBwrite.h
 ===================================================================
---- source/Lib/TLibEncoder/AnnexBwrite.h	(revision 3208)
+--- source/Lib/TLibEncoder/AnnexBwrite.h	(revision 3278)
 +++ source/Lib/TLibEncoder/AnnexBwrite.h	(working copy)
 @@ -75,8 +75,8 @@
        out.write(start_code_prefix+1, 3);
@@ -421,7 +481,7 @@ Index: source/Lib/TLibEncoder/AnnexBwrite.h
    }
 Index: source/Lib/TLibEncoder/TEncGOP.cpp
 ===================================================================
---- source/Lib/TLibEncoder/TEncGOP.cpp	(revision 3208)
+--- source/Lib/TLibEncoder/TEncGOP.cpp	(revision 3278)
 +++ source/Lib/TLibEncoder/TEncGOP.cpp	(working copy)
 @@ -779,7 +779,7 @@
        writeRBSPTrailingBits(nalu.m_Bitstream);
@@ -479,7 +539,7 @@ Index: source/Lib/TLibEncoder/TEncGOP.cpp
  #endif
 Index: source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp
 ===================================================================
---- source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp	(revision 3208)
+--- source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp	(revision 3278)
 +++ source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp	(working copy)
 @@ -224,12 +224,12 @@
    m_uiBinsCoded += m_binCountIncrement;
@@ -498,7 +558,7 @@ Index: source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp
      rcCtxModel.updateLPS();
 Index: source/Lib/TLibEncoder/TEncEntropy.h
 ===================================================================
---- source/Lib/TLibEncoder/TEncEntropy.h	(revision 3208)
+--- source/Lib/TLibEncoder/TEncEntropy.h	(revision 3278)
 +++ source/Lib/TLibEncoder/TEncEntropy.h	(working copy)
 @@ -116,8 +116,8 @@
    virtual Void codeSaoUflc         ( UInt uiLength, UInt   uiCode ) = 0;
@@ -524,7 +584,7 @@ Index: source/Lib/TLibEncoder/TEncEntropy.h
  
 Index: source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h
 ===================================================================
---- source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h	(revision 3208)
+--- source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h	(revision 3278)
 +++ source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h	(working copy)
 @@ -127,9 +127,9 @@
  #endif
@@ -541,7 +601,7 @@ Index: source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h
  };
 Index: source/Lib/TLibEncoder/TEncSbac.h
 ===================================================================
---- source/Lib/TLibEncoder/TEncSbac.h	(revision 3208)
+--- source/Lib/TLibEncoder/TEncSbac.h	(revision 3278)
 +++ source/Lib/TLibEncoder/TEncSbac.h	(working copy)
 @@ -170,7 +170,7 @@
    Void estSignificantCoefficientsBit ( estBitsSbacStruct* pcEstBitsSbac, UInt uiCTXIdx, TextType eTType );
@@ -554,7 +614,7 @@ Index: source/Lib/TLibEncoder/TEncSbac.h
  private:
 Index: source/Lib/TLibEncoder/SEIwrite.cpp
 ===================================================================
---- source/Lib/TLibEncoder/SEIwrite.cpp	(revision 3208)
+--- source/Lib/TLibEncoder/SEIwrite.cpp	(revision 3278)
 +++ source/Lib/TLibEncoder/SEIwrite.cpp	(working copy)
 @@ -65,7 +65,7 @@
      break;

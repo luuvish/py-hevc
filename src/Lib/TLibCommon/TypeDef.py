@@ -1,211 +1,198 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/TypeDef.py
-    HM 8.0 Python Implementation
+    HM 9.1 Python Implementation
 """
 
-SAO_LUM_CHROMA_ONOFF_FLAGS       = 1  # J0087: slice-level independent luma/chroma SAO on/off flag 
-LTRP_IN_SPS                      = 1  # J0116: Include support for signalling LTRP LSBs in the SPS, and index them in the slice header.
-CHROMA_QP_EXTENSION              = 1  # J0342: Extend mapping table from luma QP to chroma QP, introduce slice-level chroma offsets, apply limits on offset values
-SIMPLE_LUMA_CBF_CTX_DERIVATION   = 1  # J0303: simplified luma_CBF context derivation
+SUFFIX_SEI_NUT_DECODED_HASH_SEI              = 1  # K0120: Use the suffix SEI NUT for the decoded hash SEI message
+HLS_SEI_GENERIC_EXTENSION                    = 1  # K0371: generic SEI payload extension mechanism
+HLS_REMOVE_ACTIVE_PARAM_SET_SEI_EXT_FLAG     = 1  # K0371: remove active_parameter_set_sei_extension_flag
+HLS_ADD_SUBLAYER_ORDERING_INFO_PRESENT_FLAG  = 1  # K0330: Use sub_layer_ordering_info_present_flag in VPS and SPS as a shortcut to signal only one set of values
+HLS_GROUP_SPS_PCM_FLAGS                      = 1  # K0217: Group together syntax elements for PCM in SPS
+HLS_EXTRA_SLICE_HEADER_BITS                  = 1  # K0210: signal num_extra_slice_header_bits in PPS
+HLS_MOVE_SPS_PICLIST_FLAGS                   = 1  # K0170: move restricted_ref_pic_lists_flag and lists_modification_present_flag
+HLS_ADD_VUI_PICSTRUCT_PRESENT_FLAG           = 1  # add pic_struct_present_flag to VUI
+HLS_DISPLAY_WINDOW_PLACEHOLDER               = 1  # K0382: add display window flag placeholder
 
-COEF_REMAIN_BIN_REDUCTION        = 3  # J0142: Maximum codeword length of coeff_abs_level_remaining reduced to 32.
-                                      # COEF_REMAIN_BIN_REDUCTION is also used to indicate the level at which the VLC 
-                                      # transitions from Golomb-Rice to TU+EG(k)
+VARYING_DBL_PARAMS                           = 1  # K0289: Specifying varying deblocking parameters in GOP
 
-CU_DQP_TU_EG                     = 1  # J0089: Bin reduction for delta QP coding
-if CU_DQP_TU_EG:
-	CU_DQP_TU_CMAX               = 5  #max number bins for truncated unary
-	CU_DQP_EG_k                  = 0  #expgolomb order
+DISALLOW_LTRP_REPETITIONS                    = 1  # K0123: Disallow duplicate LTRP entries in RPS
+REMOVE_LTRP_LSB_RESTRICTIONS                 = 1  # K0123: Remove restrictions that LTRP LSBs have to be increasing/decreasing
+POC_TEMPORAL_RELATIONSHIP                    = 1  # K0120: Add syntax in SPS/VUI to indicate POC temporal relationship
+SIGNAL_BITRATE_PICRATE_IN_VPS                = 1  # K0125: Signal bit_rate and pic_rate in VPS
+MOVE_SPS_TEMPORAL_ID_NESTING_FLAG            = 1  # K0120: Move sps_temporal_id_nesting_flag and replace sps_reserved_zero_bit
+CONDITION_SUBLAYERPROFILEPRESENTFLAG         = 1  # K0125: Condition signalling of sub_layer_profile_present_flag
 
-NAL_UNIT_HEADER                  = 1  # J0550: Define nal_unit_header() method
-REMOVE_NAL_REF_FLAG              = 1  # J0550: Remove nal_ref_flag, and allocate extra bit to reserved bits, and re-order syntax to put reserved bits after nal_unit_type
-TEMPORAL_ID_PLUS1                = 1  # J0550: Signal temporal_id_plus1 instead of temporal_id in NAL unit, and change reserved_one_5bits
-                                      #        value to zero
-REFERENCE_PICTURE_DEFN           = 1  # J0118: Reflect change of defn. of referece picture in semantics of delta_poc_msb_present_flag
-MOVE_LOOP_FILTER_SLICES_FLAG     = 1  # J0288: Move seq_loop_filter_across_slices_enabled_flag from SPS to PPS
-SPLICING_FRIENDLY_PARAMS         = 1  # J0108: Remove rap_pic_id and move no_output_prior_pic_flag
+VPS_OPERATING_POINT                          = 1  # K0204 - Operation point added to VPS
+if VPS_OPERATING_POINT:
+    MAX_VPS_NUM_HRD_PARAMETERS               = 1
+    MAX_VPS_NUM_HRD_PARAMETERS_ALLOWED_PLUS1 = 1024
+    MAX_VPS_NUH_RESERVED_ZERO_LAYER_ID_PLUS1 = 1
+SEI_DISPLAY_ORIENTATION                      = 1  # Display orientation SEI message
+SEI_TEMPORAL_LEVEL0_INDEX                    = 1  # K0205 - Temporal level zero index SEI message
 
-SKIP_FLAG                        = 1  # J0336: store skip flag
+RATE_CONTROL_LAMBDA_DOMAIN                   = 1  # JCTVC-K0103, rate control by R-lambda model
 
-PPS_TS_FLAG                      = 1  # J0184: move transform_skip_enabled_flag from SPS to PPS
-if PPS_TS_FLAG:
-	TS_FLAT_QUANTIZATION_MATRIX  = 1  # I0408: set default quantization matrix to be flat if TS is enabled in PPS
-INTER_TRANSFORMSKIP              = 1  # J0237: inter transform skipping (inter-TS)
-INTRA_TRANSFORMSKIP_FAST         = 1  # J0572: fast encoding for intra transform skipping
+MIN_SPATIAL_SEGMENTATION                     = 1  # JCTVC-K0236
+SAVE_BITS_REFPICLIST_MOD_FLAG                = 1  # K0224 Proposal#1: Send ref_pic_list_modification_flag_lX only when NumPocTotalCurr is greater than 1.
 
-REMOVAL_8x2_2x8_CG               = 1  # J0256: removal of 8x2 / 2x8 coefficient groups
-REF_IDX_BYPASS                   = 1  # J0098: bypass coding starting from the second bin for reference index
+VPS_REARRANGE                                = 1  # JCTVC-K0254
+HRD_BUFFER                                   = 1  # JCTVC-K0221
 
-RECALCULATE_QP_ACCORDING_LAMBDA  = 1  # J0242: recalculate QP value according to lambda value
-TU_ZERO_CBF_RDO                  = 1  # J0241: take the bits to represent zero cbf into consideration when doing TU RDO
-REMOVE_NUM_GREATER1              = 1  # J0408: numGreater1 removal and ctxset decision with c1 
+USE_PIC_CHROMA_QP_OFFSETS_IN_DEBLOCKING      = 1  # K0220: Use picture-based chroma QP offsets in deblocking filter.
 
-INTRA_TRANS_SIMP                 = 1  # J0035: Use DST for 4x4 luma intra TU's (regardless of the intra prediction direction)
+REMOVE_BURST_IPCM                            = 1  # Ticket763
+REMOVE_ENTROPY_SLICES                        = 1
 
-J0234_INTER_RPS_SIMPL            = 1  # J0234: Do not signal delta_idx_minus1 when building the RPS-list in SPS
-NUM_WP_LIMIT                     = 1  # J0571: number of total signalled weight flags <=24
-DISALLOW_BIPRED_IN_8x4_4x8PUS    = 1  # J0086: disallow bi-pred for 8x4 and 4x8 inter PUs
-SAO_SINGLE_MERGE                 = 1  # J0355: Single SAO merge flag for all color components (per Left and Up merge)
-SAO_TYPE_SHARING                 = 1  # J0045: SAO types, merge left/up flags are shared between Cr and Cb
-SAO_TYPE_CODING                  = 1  # J0268: SAO type signalling using 1 ctx on/off flag + 1 bp BO/EO flag + 2 bp bins for EO class
-SAO_MERGE_ONE_CTX                = 1  # J0041: SAO merge left/up flags share the same ctx
-SAO_ABS_BY_PASS                  = 1  # J0043: by pass coding for SAO magnitudes 
-SAO_LCU_BOUNDARY                 = 1  # J0139: SAO parameter estimation using non-deblocked pixels for LCU bottom and right boundary areas
-MODIFIED_CROSS_SLICE             = 1  # J0266: SAO slice boundary control for GDR
-CU_DQP_ENABLE_FLAG               = 1  # J0220: cu_qp_delta_enabled_flag in PPS
-REMOVE_ZIGZAG_SCAN               = 1  # J0150: removal of zigzag scan
+DEPENDENT_SLICE_SEGMENT_FLAGS                = 1  # K0184: Move dependent_slice_enabled_flag after seq_parameter_set_id in PPS.
+                                                  # Move dependent_slice_flag between pic_parameter_set_id and slice_address.
+SPS_INTER_REF_SET_PRED                       = 1  # K0136: Not send inter_ref_pic_set_prediction_flag for index 0
+HM9_NALU_TYPES                               = 1
 
-TRANS_SPLIT_FLAG_CTX_REDUCTION   = 1  # J0133: Reduce the context number of transform split flag to 3
+STRONG_INTRA_SMOOTHING                       = 1  # Enables Bilinear interploation of reference samples instead of 121 filter in intra prediction when reference samples are flat.
 
-WP_PARAM_RANGE_LIMIT             = 1  # J0221: Range limit of delta_weight and delta_offset for chroma.
-J0260                            = 1  # Fix in rate control equations
+RESTRICT_INTRA_BOUNDARY_SMOOTHING            = 1  # K0380, K0186 
+LINEBUF_CLEANUP                              = 1  # K0101
+MERGE_CLEANUP_AND_K0197                      = 1  #Code cleanup and K0197: removal of indirect use of A1 and B1 in merging candidate list construction.
+RPL_INIT_FIX                                 = 1  # K0255 2nd part (editorial)
 
-SLICE_HEADER_EXTENSION           = 1  # II0235: Slice header extension mechanism
+MAX_CPB_CNT                                  = 32 # Upper bound of (cpb_cnt_minus1 + 1)
+MAX_NUM_LAYER_IDS                            = 64
 
-REMOVE_NSQT                      = 1  # Disable NSQT-related code
-REMOVE_LM_CHROMA                 = 1  # Disable LM_Chroma-related code
-REMOVE_FGS                       = 1  # Disable fine-granularity slices code
-REMOVE_ALF                       = 1  # Disable ALF-related code
-REMOVE_APS                       = 1  # Disable APS-related code
+FLAT_4x4_DSL                                 = 1  # Use flat 4x4 default scaling list (see notes on K0203)
 
-PREVREFPIC_DEFN                  = 0  # J0248: Shall be set equal to 0! (prevRefPic definition reverted to CD definition)
-BYTE_ALIGNMENT                   = 1  # I0330: Add byte_alignment() procedure to end of slice header
+RDOQ_TRANSFORMSKIP                           = 1  # Enable RDOQ for transform skip (see noted on K0245)
 
-SBH_THRESHOLD                    = 4  # I0156: value of the fixed SBH controlling threshold
-  
-SEQUENCE_LEVEL_LOSSLESS          = 0  # H0530: used only for sequence or frame-level lossless coding
+COEF_REMAIN_BIN_REDUCTION                    = 3  # indicates the level at which the VLC 
+                                                  # transitions from Golomb-Rice to TU+EG(k)
 
-DISABLING_CLIP_FOR_BIPREDME      = 1  # Ticket #175
-  
-C1FLAG_NUMBER                    = 8  # maximum number of largerThan1 flag coded in one chunk :  16 in HM5
-C2FLAG_NUMBER                    = 1  # maximum number of largerThan2 flag coded in one chunk:  16 in HM5 
+CU_DQP_TU_CMAX                               = 5  #max number bins for truncated unary
+CU_DQP_EG_k                                  = 0  #expgolomb order
 
-REMOVE_SAO_LCU_ENC_CONSTRAINTS_3 = 1  # disable the encoder constraint that conditionally disable SAO for chroma for entire slice in interleaved mode
+SBH_THRESHOLD                                = 4  # I0156: value of the fixed SBH controlling threshold
 
-SAO_SKIP_RIGHT                   = 1  # H1101: disallow using unavailable pixel during RDO
+SEQUENCE_LEVEL_LOSSLESS                      = 0  # H0530: used only for sequence or frame-level lossless coding
 
-SAO_ENCODING_CHOICE              = 1  # I0184: picture early termination
-PICTURE_SAO_RDO_FIX              = 0  # J0097: picture-based SAO optimization fix
+DISABLING_CLIP_FOR_BIPREDME                  = 1  # Ticket #175
+
+C1FLAG_NUMBER                                = 8  # maximum number of largerThan1 flag coded in one chunk :  16 in HM5
+C2FLAG_NUMBER                                = 1  # maximum number of largerThan2 flag coded in one chunk:  16 in HM5 
+
+REMOVE_SAO_LCU_ENC_CONSTRAINTS_3             = 1  # disable the encoder constraint that conditionally disable SAO for chroma for entire slice in interleaved mode
+
+SAO_SKIP_RIGHT                               = 1  # H1101: disallow using unavailable pixel during RDO
+
+SAO_ENCODING_CHOICE                          = 1  # I0184: picture early termination
 if SAO_ENCODING_CHOICE:
-	SAO_ENCODING_RATE            = 0.75
-	SAO_ENCODING_CHOICE_CHROMA   = 1  # J0044: picture early termination Luma and Chroma are handled separatenly
-	if SAO_ENCODING_CHOICE_CHROMA:
-		SAO_ENCODING_RATE_CHROMA = 0.5
+    SAO_ENCODING_RATE                        = 0.75
+    SAO_ENCODING_CHOICE_CHROMA               = 1  # J0044: picture early termination Luma and Chroma are handled separatenly
+    if SAO_ENCODING_CHOICE_CHROMA:
+        SAO_ENCODING_RATE_CHROMA             = 0.5
+        SAO_ENCODING_CHOICE_CHROMA_BF        = 1  # K0156: Bug fix for SAO selection consistency
 
-MAX_NUM_SPS                      = 32
-MAX_NUM_PPS                      = 256
-MAX_NUM_APS                      = 32 # !!!KS: number not defined in WD yet
+MAX_NUM_VPS                                  = 16
+MAX_NUM_SPS                                  = 16
+MAX_NUM_PPS                                  = 64
 
-MRG_MAX_NUM_CANDS_SIGNALED       = 5  # G091: value of maxNumMergeCand signaled in slice header 
 
-WEIGHTED_CHROMA_DISTORTION       = 1  # F386: weighting of chroma for RDO
-RDOQ_CHROMA_LAMBDA               = 1  # F386: weighting of chroma for RDOQ
-ALF_CHROMA_LAMBDA                = 1  # F386: weighting of chroma for ALF
-SAO_CHROMA_LAMBDA                = 1  # F386: weighting of chroma for SAO
+WEIGHTED_CHROMA_DISTORTION                   = 1  # F386: weighting of chroma for RDO
+RDOQ_CHROMA_LAMBDA                           = 1  # F386: weighting of chroma for RDOQ
+SAO_CHROMA_LAMBDA                            = 1  # F386: weighting of chroma for SAO
 
-MIN_SCAN_POS_CROSS               = 4
+MIN_SCAN_POS_CROSS                           = 4
 
-FAST_BIT_EST                     = 1  # G763: Table-based bit estimation for CABAC
+FAST_BIT_EST                                 = 1  # G763: Table-based bit estimation for CABAC
 
-MLS_GRP_NUM                      = 64 # G644 : Max number of coefficient groups, max(16, 64)
-MLS_CG_SIZE                      = 4  # G644 : Coefficient group size of 4x4
+MLS_GRP_NUM                                  = 64 # G644 : Max number of coefficient groups, max(16, 64)
+MLS_CG_SIZE                                  = 4  # G644 : Coefficient group size of 4x4
 
-ADAPTIVE_QP_SELECTION            = 1  # G382: Adaptive reconstruction levels, non-normative part for adaptive QP selection
+ADAPTIVE_QP_SELECTION                        = 1  # G382: Adaptive reconstruction levels, non-normative part for adaptive QP selection
 if ADAPTIVE_QP_SELECTION:
-	ARL_C_PRECISION              = 7  # G382: 7-bit arithmetic precision
-	LEVEL_RANGE                  = 30 # G382: max coefficient level in statistics collection
+    ARL_C_PRECISION                          = 7  # G382: 7-bit arithmetic precision
+    LEVEL_RANGE                              = 30 # G382: max coefficient level in statistics collection
 
-if REMOVE_NSQT:
-	NS_HAD                       = 0
-else:
-	NS_HAD                       = 1
+NS_HAD                                       = 0
 
-APS_BITS_FOR_SAO_BYTE_LENGTH     = 12           
-APS_BITS_FOR_ALF_BYTE_LENGTH     = 8
+K0251                                        = 1  # explicitly signal slice_temporal_mvp_enable_flag in non-IDR I Slices
 
-HHI_RQT_INTRA_SPEEDUP            = 1  # tests one best mode with full rqt
-HHI_RQT_INTRA_SPEEDUP_MOD        = 0  # tests two best modes with full rqt
+HHI_RQT_INTRA_SPEEDUP                        = 1  # tests one best mode with full rqt
+HHI_RQT_INTRA_SPEEDUP_MOD                    = 0  # tests two best modes with full rqt
 
 if HHI_RQT_INTRA_SPEEDUP_MOD and not HHI_RQT_INTRA_SPEEDUP:
-	assert(False)
+    assert(False)
 
-VERBOSE_RATE                     = 0  # Print additional rate information in encoder
+VERBOSE_RATE                                 = 0  # Print additional rate information in encoder
 
-AMVP_DECIMATION_FACTOR           = 4
+AMVP_DECIMATION_FACTOR                       = 4
 
-SCAN_SET_SIZE                    = 16
-LOG2_SCAN_SET_SIZE               = 4
+SCAN_SET_SIZE                                = 16
+LOG2_SCAN_SET_SIZE                           = 4
 
-FAST_UDI_MAX_RDMODE_NUM          = 35 # maximum number of RD comparison in fast-UDI estimation loop 
+FAST_UDI_MAX_RDMODE_NUM                      = 35 # maximum number of RD comparison in fast-UDI estimation loop 
 
-ZERO_MVD_EST                     = 0  # Zero Mvd Estimation in normal mode
+ZERO_MVD_EST                                 = 0  # Zero Mvd Estimation in normal mode
 
-NUM_INTRA_MODE                   = 36
-if not REMOVE_LM_CHROMA:
-	LM_CHROMA_IDX                = 35
+NUM_INTRA_MODE                               = 36
 
-IBDI_DISTORTION                  = 0  # enable/disable SSE modification when IBDI is used (JCTVC-D152)
-FIXED_ROUNDING_FRAME_MEMORY      = 0  # enable/disable fixed rounding to 8-bitdepth of frame memory when IBDI is used  
+WRITE_BACK                                   = 1  # Enable/disable the encoder to replace the deltaPOC and Used by current from the config file with the values derived by the refIdc parameter.
+AUTO_INTER_RPS                               = 1  # Enable/disable the automatic generation of refIdc from the deltaPOC and Used by current from the config file.
+PRINT_RPS_INFO                               = 0  # Enable/disable the printing of bits used to send the RPS.
+                                                  # using one nearest frame as reference frame, and the other frames are high quality (POC%4==0) frames (1+X)
+                                                  # this should be done with encoder only decision
+                                                  # but because of the absence of reference frame management, the related code was hard coded currently
 
-WRITE_BACK                       = 1  # Enable/disable the encoder to replace the deltaPOC and Used by current from the config file with the values derived by the refIdc parameter.
-AUTO_INTER_RPS                   = 1  # Enable/disable the automatic generation of refIdc from the deltaPOC and Used by current from the config file.
-PRINT_RPS_INFO                   = 0  # Enable/disable the printing of bits used to send the RPS.
-                                      # using one nearest frame as reference frame, and the other frames are high quality (POC%4==0) frames (1+X)
-                                      # this should be done with encoder only decision
-                                      # but because of the absence of reference frame management, the related code was hard coded currently
+RVM_VCEGAM10_M                               = 4
 
-RVM_VCEGAM10_M                   = 4
+PLANAR_IDX                                   = 0
+VER_IDX                                      = 26 # index for intra VERTICAL   mode
+HOR_IDX                                      = 10 # index for intra HORIZONTAL mode
+DC_IDX                                       = 1  # index for intra DC mode
+NUM_CHROMA_MODE                              = 5  # total number of chroma modes
+DM_CHROMA_IDX                                = 36 # chroma mode index for derived from luma intra mode
 
-PLANAR_IDX                       = 0
-VER_IDX                          = 26 # index for intra VERTICAL   mode
-HOR_IDX                          = 10 # index for intra HORIZONTAL mode
-DC_IDX                           = 1  # index for intra DC mode
-if REMOVE_LM_CHROMA:
-	NUM_CHROMA_MODE              = 5  # total number of chroma modes
+
+FAST_UDI_USE_MPM                             = 1
+
+RDO_WITHOUT_DQP_BITS                         = 0  # Disable counting dQP bits in RDO-based mode decision
+
+FULL_NBIT                                    = 0  # When enabled, compute costs using full sample bitdepth.  When disabled, compute costs as if it is 8-bit source video.
+if FULL_NBIT:
+    DISTORTION_PRECISION_ADJUSTMENT = lambda x: 0
 else:
-	NUM_CHROMA_MODE              = 6  # total number of chroma modes
-DM_CHROMA_IDX                    = 36 # chroma mode index for derived from luma intra mode
+    DISTORTION_PRECISION_ADJUSTMENT = lambda x: x
 
-
-FAST_UDI_USE_MPM                 = 1
-
-RDO_WITHOUT_DQP_BITS             = 0  # Disable counting dQP bits in RDO-based mode decision
-
-FULL_NBIT                        = 0  # When enabled, does not use g_uiBitIncrement anymore to support > 8 bit data
 
 AD_HOC_SLICES_FIXED_NUMBER_OF_LCU_IN_SLICE   = 1  # OPTION IDENTIFIER. mode==1 -> Limit maximum number of largest coding tree blocks in a slice
 AD_HOC_SLICES_FIXED_NUMBER_OF_BYTES_IN_SLICE = 2  # OPTION IDENTIFIER. mode==2 -> Limit maximum number of bins/bits in a slice
 AD_HOC_SLICES_FIXED_NUMBER_OF_TILES_IN_SLICE = 3
 
-DEPENDENT_SLICES                 = 1  # JCTVC-I0229
+DEPENDENT_SLICES                             = 1  # JCTVC-I0229
 # Dependent slice options
 SHARP_FIXED_NUMBER_OF_LCU_IN_DEPENDENT_SLICE    = 1  # OPTION IDENTIFIER. Limit maximum number of largest coding tree blocks in an dependent slice
 SHARP_MULTIPLE_CONSTRAINT_BASED_DEPENDENT_SLICE = 2  # OPTION IDENTIFIER. Limit maximum number of bins/bits in an dependent slice
 if DEPENDENT_SLICES:
-	FIXED_NUMBER_OF_TILES_IN_DEPENDENT_SLICE    = 3  # JCTVC-I0229
+    FIXED_NUMBER_OF_TILES_IN_DEPENDENT_SLICE    = 3  # JCTVC-I0229
 
-LOG2_MAX_NUM_COLUMNS_MINUS1      = 7
-LOG2_MAX_NUM_ROWS_MINUS1         = 7
-LOG2_MAX_COLUMN_WIDTH            = 13
-LOG2_MAX_ROW_HEIGHT              = 13
+LOG2_MAX_NUM_COLUMNS_MINUS1                  = 7
+LOG2_MAX_NUM_ROWS_MINUS1                     = 7
+LOG2_MAX_COLUMN_WIDTH                        = 13
+LOG2_MAX_ROW_HEIGHT                          = 13
 
-MATRIX_MULT                      = 0  # Brute force matrix multiplication instead of partial butterfly
+MATRIX_MULT                                  = 0  # Brute force matrix multiplication instead of partial butterfly
 
-REG_DCT                          = 65535
+REG_DCT                                      = 65535
 
-AMP_SAD                          = 1  # dedicated SAD functions for AMP
-AMP_ENC_SPEEDUP                  = 1  # encoder only speed-up by AMP mode skipping
+AMP_SAD                                      = 1  # dedicated SAD functions for AMP
+AMP_ENC_SPEEDUP                              = 1  # encoder only speed-up by AMP mode skipping
 if AMP_ENC_SPEEDUP:
-	AMP_MRG                      = 1  # encoder only force merge for AMP partition (no motion search for AMP)
+    AMP_MRG                                  = 1  # encoder only force merge for AMP partition (no motion search for AMP)
 
-SCALING_LIST_OUTPUT_RESULT       = 0  # JCTVC-G880/JCTVC-G1016 quantization matrices
+SCALING_LIST_OUTPUT_RESULT                   = 0  # JCTVC-G880/JCTVC-G1016 quantization matrices
 
-CABAC_INIT_PRESENT_FLAG          = 1
+CABAC_INIT_PRESENT_FLAG                      = 1
 
 
-MAX_LAYER_NUM                    = 10
-MAX_NUM_VPS                      = 16
+MAX_LAYER_NUM                                = 10
 
 
 NUM_DOWN_PART = 4
@@ -226,68 +213,62 @@ MAX_NUM_SAO_TYPE = 5
 
 class SaoQTPart(object):
 
-	def __init__(self):
-		self.iBestType = 0
-		self.iLength = 0
+    def __init__(self):
+        self.iBestType = 0
+        self.iLength = 0
+        self.subTypeIdx = 0
+        self.iOffset = 4 * [0]
+        self.StartCUX = 0
+        self.StartCUY = 0
+        self.EndCUX = 0
+        self.EndCUY = 0
 
-		self.subTypeIdx = 0
+        self.PartIdx = 0
+        self.PartLevel = 0
+        self.PartCol = 0
+        self.PartRow = 0
 
-		self.iOffset = 4 * [0]
-		self.StartCUX = 0
-		self.StartCUY = 0
-		self.EndCUX = 0
-		self.EndCUY = 0
+        self.DownPartsIdx = NUM_DOWN_PART * [0]
+        self.UpPartIdx = 0
 
-		self.PartIdx = 0
-		self.PartLevel = 0
-		self.PartCol = 0
-		self.PartRow = 0
+        self.bSplit = False
 
-		self.DownPartsIdx = NUM_DOWN_PART * [0]
-		self.UpPartIdx = 0
-
-		self.bSplit = False
-
-		#---- encoder only start -----
-		self.bProcessed = False
-		self.dMinCost = 0.0
-		self.iMinDist = 0
-		self.iMinRate = 0
-		#---- encoder only start -----
+        #---- encoder only start -----
+        self.bProcessed = False
+        self.dMinCost = 0.0
+        self.iMinDist = 0
+        self.iMinRate = 0
+        #---- encoder only start -----
 
 class SaoLcuParam(object):
 
-	def __init__(self):
-		self.mergeUpFlag = False
-		self.mergeLeftFlag = False
-		self.typeIdx = 0
-
-		self.subTypeIdx = 0
-
-		self.offset = 4 * [0]
-		self.partIdx = 0
-		self.partIdxTmp = 0
-		self.legnth = 0
+    def __init__(self):
+        self.mergeUpFlag = False
+        self.mergeLeftFlag = False
+        self.typeIdx = 0
+        self.subTypeIdx = 0
+        self.offset = 4 * [0]
+        self.partIdx = 0
+        self.partIdxTmp = 0
+        self.legnth = 0
 
 class SaoParam(object):
 
-	def __init__(self):
-		self.bSaoFlag = 2 * [False]
-
-		self.psSaoPart = 3 * [None]
-		self.iMaxSplitLevel = 0
-		self.iNumClass = MAX_NUM_SAO_TYPE * [0]
-		self.oneUnitFlag = 3 * [False]
-		self.saoLcuParam = 3 * [None]
-		self.numCuInHeight = 0
-		self.numCuInWidth = 0
+    def __init__(self):
+        self.bSaoFlag = 2 * [False]
+        self.psSaoPart = 3 * [None]
+        self.iMaxSplitLevel = 0
+        self.oneUnitFlag = 3 * [False]
+        self.saoLcuParam = 3 * [None]
+        self.numCuInHeight = 0
+        self.numCuInWidth = 0
 
 class LFCUParam(object):
 
-	def __init__(self):
-		self.bInternalEdge = False
-		self.bLeftEdge = False
-		self.bTopEdge = False
+    def __init__(self):
+        self.bInternalEdge = False
+        self.bLeftEdge = False
+        self.bTopEdge = False
 
 
 # supported slice type
@@ -371,16 +352,19 @@ DF_HADS16    = 25 #  16xM HAD with step
 DF_HADS32    = 26 #  32xM HAD with step
 DF_HADS64    = 27 #  64xM HAD with step
 DF_HADS16N   = 28 # 16NxM HAD with step
-  
-DF_SAD12     = 43
-DF_SAD24     = 44
-DF_SAD48     = 45
 
-DF_SADS12    = 46
-DF_SADS24    = 47
-DF_SADS48    = 48
+if AMP_SAD:
+    DF_SAD12     = 43
+    DF_SAD24     = 44
+    DF_SAD48     = 45
 
-DF_SSE_FRAME = 50 # Frame-based SSE
+    DF_SADS12    = 46
+    DF_SADS24    = 47
+    DF_SADS48    = 48
+
+    DF_SSE_FRAME = 50 # Frame-based SSE
+else:
+    DF_SSE_FRAME = 33 # Frame-based SSE
 
 # index for SBAC based RD optimization
 # CI_IDX
@@ -400,14 +384,37 @@ MD_ABOVE_RIGHT = 2  # MVP of above right block
 MD_BELOW_LEFT  = 3  # MVP of below left block
 MD_ABOVE_LEFT  = 4  # MVP of above left block
 
-# motion vector prediction mode used in AMVP
-# AMVP_MODE
-AM_NONE = 0 # no AMVP mode
-AM_EXPL = 1 # explicit signalling of motion vector index
-
 # coefficient scanning type used in ACS
 # COEFF_SCAN_TYPE
-SCAN_ZIGZAG = 0 # typical zigzag scan
+SCAN_DIAG   = 0 # up-right diagonal scan
 SCAN_HOR    = 1 # horizontal first scan
 SCAN_VER    = 2 # vertical first scan
-SCAN_DIAG   = 3 # up-right diagonal scan
+
+# Profile::Name
+class Profile(object):
+    NONE             = 0
+    MAIN             = 1
+    MAIN10           = 2
+    MAINSTILLPICTURE = 3
+
+# Level::Tier
+class Level(object):
+    MAIN_    =   0
+    MAIN     =   0
+    HIGH     =   1
+
+    NONE_    =   0
+    NONE     =   0
+    LEVEL1   =  30
+    LEVEL2   =  60
+    LEVEL2_1 =  63
+    LEVEL3   =  90
+    LEVEL3_1 =  93
+    LEVEL4   = 120
+    LEVEL4_1 = 123
+    LEVEL5   = 150
+    LEVEL5_1 = 153
+    LEVEL5_2 = 156
+    LEVEL6   = 180
+    LEVEL6_1 = 183
+    LEVEL6_2 = 186

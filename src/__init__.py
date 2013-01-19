@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 	module : src
-    HM 8.0 Python Implementation
+    HM 9.1 Python Implementation
 """
 
 import sys
@@ -15,7 +15,7 @@ from src.Lib.TLibCommon.pointer import pointer
 from src.Lib.TLibCommon import trace
 
 
-use_swig = 6
+use_swig = 2
 
 if use_swig == 0:
     from swig.hevc import decmain as TAppDecoder

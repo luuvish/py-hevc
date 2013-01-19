@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/CommonDef.py
-    HM 8.0 Python Implementation
+    HM 9.1 Python Implementation
 """
 
 from .TComRom import g_uiIBDI_MAX
 
 
-NV_VERSION                  = "8.0" # Current software version
+NV_VERSION                  = "9.1" # Current software version
 
 __GNUC__                    = 4
 __GNUC_MINOR__              = 2
@@ -68,7 +68,7 @@ HB_LAMBDA_FOR_LDC           = 1    # use of B-style lambda for non-key pictures 
 # Fast estimation of generalized B in low-delay mode
 GPB_SIMPLE                  = 1    # Simple GPB mode
 if GPB_SIMPLE:
-	GPB_SIMPLE_UNI          = 1    # Simple mode for uni-direction
+    GPB_SIMPLE_UNI          = 1    # Simple mode for uni-direction
 
 # Fast ME using smoother MV assumption
 FASTME_SMOOTHER_MV          = 1    # reduce ME time using faster option
@@ -78,59 +78,54 @@ ADAPT_SR_SCALE              = 1    # division factor for adaptive search range
 
 CLIP_TO_709_RANGE           = 0
 
-# IBDI range restriction for skipping clip
-IBDI_NOCLIP_RANGE           = 0    # restrict max. value after IBDI to skip clip
-
 # Early-skip threshold (encoder)
 EARLY_SKIP_THRES            = 1.50 # if RD < thres*avg[BestSkipRD]
-
-MAX_NUM_REF_PICS            = 16
 
 MAX_CHROMA_FORMAT_IDC       = 3
 
 
 #NalUnitType
-NAL_UNIT_UNSPECIFIED_0         = 0
-NAL_UNIT_CODED_SLICE           = 1
-NAL_UNIT_CODED_SLICE_TFD       = 2
-NAL_UNIT_CODED_SLICE_TLA       = 3
-NAL_UNIT_CODED_SLICE_CRA       = 4
-NAL_UNIT_CODED_SLICE_CRANT     = 5
-NAL_UNIT_CODED_SLICE_BLA       = 6
-NAL_UNIT_CODED_SLICE_BLANT     = 7
-NAL_UNIT_CODED_SLICE_IDR       = 8
-NAL_UNIT_RESERVED_9            = 9
+NAL_UNIT_CODED_SLICE_TRAIL_N   =  0
+NAL_UNIT_CODED_SLICE_TRAIL_R   =  1
+NAL_UNIT_CODED_SLICE_TSA_N     =  2
+NAL_UNIT_CODED_SLICE_TLA       =  3 # Current name in the spec: TSA_R
+NAL_UNIT_CODED_SLICE_STSA_N    =  4
+NAL_UNIT_CODED_SLICE_STSA_R    =  5
+NAL_UNIT_CODED_SLICE_RADL_N    =  6
+NAL_UNIT_CODED_SLICE_DLP       =  7 # Current name in the spec: RADL_R
+NAL_UNIT_CODED_SLICE_RASL_N    =  8
+NAL_UNIT_CODED_SLICE_TFD       =  9 # Current name in the spec: RASL_R
 NAL_UNIT_RESERVED_10           = 10
 NAL_UNIT_RESERVED_11           = 11
 NAL_UNIT_RESERVED_12           = 12
 NAL_UNIT_RESERVED_13           = 13
 NAL_UNIT_RESERVED_14           = 14
 NAL_UNIT_RESERVED_15           = 15
-NAL_UNIT_RESERVED_16           = 16
-NAL_UNIT_RESERVED_17           = 17
-NAL_UNIT_RESERVED_18           = 18
-NAL_UNIT_RESERVED_19           = 19
-NAL_UNIT_RESERVED_20           = 20
-NAL_UNIT_RESERVED_21           = 21
+NAL_UNIT_CODED_SLICE_BLA       = 16 # Current name in the spec: BLA_W_LP
+NAL_UNIT_CODED_SLICE_BLANT     = 17 # Current name in the spec: BLA_W_DLP
+NAL_UNIT_CODED_SLICE_BLA_N_LP  = 18
+NAL_UNIT_CODED_SLICE_IDR       = 19 # Current name in the spec: IDR_W_DLP
+NAL_UNIT_CODED_SLICE_IDR_N_LP  = 20
+NAL_UNIT_CODED_SLICE_CRA       = 21
 NAL_UNIT_RESERVED_22           = 22
 NAL_UNIT_RESERVED_23           = 23
 NAL_UNIT_RESERVED_24           = 24
-NAL_UNIT_VPS                   = 25
-NAL_UNIT_SPS                   = 26
-NAL_UNIT_PPS                   = 27
+NAL_UNIT_RESERVED_25           = 25
+NAL_UNIT_RESERVED_26           = 26
+NAL_UNIT_RESERVED_27           = 27
 NAL_UNIT_RESERVED_28           = 28
-NAL_UNIT_ACCESS_UNIT_DELIMITER = 29
-NAL_UNIT_FILLER_DATA           = 30
-NAL_UNIT_SEI                   = 31
-NAL_UNIT_RESERVED_32           = 32
-NAL_UNIT_RESERVED_33           = 33
-NAL_UNIT_RESERVED_34           = 34
-NAL_UNIT_RESERVED_35           = 35
-NAL_UNIT_RESERVED_36           = 36
-NAL_UNIT_RESERVED_37           = 37
-NAL_UNIT_RESERVED_38           = 38
-NAL_UNIT_RESERVED_39           = 39
-NAL_UNIT_RESERVED_40           = 40
+NAL_UNIT_RESERVED_29           = 29
+NAL_UNIT_RESERVED_30           = 30
+NAL_UNIT_RESERVED_31           = 31
+NAL_UNIT_VPS                   = 32
+NAL_UNIT_SPS                   = 33
+NAL_UNIT_PPS                   = 34
+NAL_UNIT_ACCESS_UNIT_DELIMITER = 35
+NAL_UNIT_EOS                   = 36
+NAL_UNIT_EOB                   = 37
+NAL_UNIT_FILLER_DATA           = 38
+NAL_UNIT_SEI                   = 39 # Prefix SEI
+NAL_UNIT_SEI_SUFFIX            = 40 # Suffix SEI
 NAL_UNIT_RESERVED_41           = 41
 NAL_UNIT_RESERVED_42           = 42
 NAL_UNIT_RESERVED_43           = 43

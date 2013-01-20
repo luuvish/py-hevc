@@ -15,7 +15,7 @@ from src.Lib.TLibCommon.pointer import pointer
 from src.Lib.TLibCommon import trace
 
 
-use_swig = 2
+use_swig = 3
 
 if use_swig == 0:
     from swig.hevc import decmain as TAppDecoder
@@ -44,6 +44,7 @@ elif use_swig == 3:
     from swig.hevc import InputNALUnit, read
     from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
     from swig.hevc import VectorUint8
+    from swig.hevc import ArrayInt
 
     from swig.hevc import TComPic
     from swig.hevc import ParameterSetManagerDecoder
@@ -61,6 +62,7 @@ elif use_swig == 3:
     from swig.hevc import TComTrQuant
     from swig.hevc import TComPrediction
 
+    from swig.hevc import SEIReader
     from swig.hevc import TDecBinCABAC
     from swig.hevc import TDecSbac
     from swig.hevc import TDecCavlc

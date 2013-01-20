@@ -1,6 +1,6 @@
 Index: source/App/TAppEncoder/TAppEncCfg.cpp
 ===================================================================
---- source/App/TAppEncoder/TAppEncCfg.cpp	(revision 3278)
+--- source/App/TAppEncoder/TAppEncCfg.cpp	(revision 3281)
 +++ source/App/TAppEncoder/TAppEncCfg.cpp	(working copy)
 @@ -167,7 +167,7 @@
    const Char* str;
@@ -33,7 +33,7 @@ Index: source/App/TAppEncoder/TAppEncCfg.cpp
    ("MaxCUWidth",              m_uiMaxCUWidth,             64u)
 Index: source/App/TAppDecoder/TAppDecTop.cpp
 ===================================================================
---- source/App/TAppDecoder/TAppDecTop.cpp	(revision 3278)
+--- source/App/TAppDecoder/TAppDecTop.cpp	(revision 3281)
 +++ source/App/TAppDecoder/TAppDecTop.cpp	(working copy)
 @@ -168,7 +168,9 @@
      }
@@ -46,9 +46,22 @@ Index: source/App/TAppDecoder/TAppDecTop.cpp
      }
  
      if( pcListPic )
+Index: source/Lib/TLibDecoder/TDecSlice.cpp
+===================================================================
+--- source/Lib/TLibDecoder/TDecSlice.cpp	(revision 3281)
++++ source/Lib/TLibDecoder/TDecSlice.cpp	(working copy)
+@@ -109,7 +109,7 @@
+   m_pcCuDecoder       = pcCuDecoder;
+ }
+ 
+-Void TDecSlice::decompressSlice(TComInputBitstream* pcBitstream, TComInputBitstream** ppcSubstreams, TComPic*& rpcPic, TDecSbac* pcSbacDecoder, TDecSbac* pcSbacDecoders)
++Void TDecSlice::decompressSlice(TComInputBitstream* pcBitstream, TComInputBitstream** ppcSubstreams, TComPic* rpcPic, TDecSbac* pcSbacDecoder, TDecSbac* pcSbacDecoders)
+ {
+   TComDataCU* pcCU;
+   UInt        uiIsLast = 0;
 Index: source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp
 ===================================================================
---- source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp	(revision 3278)
+--- source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp	(revision 3281)
 +++ source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp	(working copy)
 @@ -105,7 +105,7 @@
  Void
@@ -68,9 +81,31 @@ Index: source/Lib/TLibDecoder/TDecBinCoderCABAC.cpp
      m_uiValue   = ( m_uiValue - scaledRange ) << numBits;
      m_uiRange   = uiLPS << numBits;
      ruiBin      = 1 - rcCtxModel.getMps();
+Index: source/Lib/TLibDecoder/TDecEntropy.cpp
+===================================================================
+--- source/Lib/TLibDecoder/TDecEntropy.cpp	(revision 3281)
++++ source/Lib/TLibDecoder/TDecEntropy.cpp	(working copy)
+@@ -289,7 +289,7 @@
+ 
+ Void TDecEntropy::decodeMVPIdxPU( TComDataCU* pcSubCU, UInt uiPartAddr, UInt uiDepth, UInt uiPartIdx, RefPicList eRefList )
+ {
+-  Int iMVPIdx = -1;
++  Int iMVPIdx = 255;
+ 
+   TComMv cZeroMv( 0, 0 );
+   TComMv cMv     = cZeroMv;
+@@ -310,7 +310,7 @@
+   pcSubCU->setMVPIdxSubParts( iMVPIdx, eRefList, uiPartAddr, uiPartIdx, uiDepth );
+   if ( iRefIdx >= 0 )
+   {
+-    m_pcPrediction->getMvPredAMVP( pcSubCU, uiPartIdx, uiPartAddr, eRefList, iRefIdx, cMv);
++    cMv = m_pcPrediction->getMvPredAMVP( pcSubCU, uiPartIdx, uiPartAddr, eRefList, iRefIdx);
+     cMv += pcSubCUMvField->getMvd( uiPartAddr );
+   }
+ 
 Index: source/Lib/TLibDecoder/TDecTop.cpp
 ===================================================================
---- source/Lib/TLibDecoder/TDecTop.cpp	(revision 3278)
+--- source/Lib/TLibDecoder/TDecTop.cpp	(revision 3281)
 +++ source/Lib/TLibDecoder/TDecTop.cpp	(working copy)
 @@ -188,14 +188,15 @@
    rpcPic->getPicSym()->allocSaoParam(&m_cSAO);
@@ -100,9 +135,44 @@ Index: source/Lib/TLibDecoder/TDecTop.cpp
  }
  
  Void TDecTop::xCreateLostPicture(Int iLostPoc) 
+Index: source/Lib/TLibDecoder/TDecSlice.h
+===================================================================
+--- source/Lib/TLibDecoder/TDecSlice.h	(revision 3281)
++++ source/Lib/TLibDecoder/TDecSlice.h	(working copy)
+@@ -82,7 +82,7 @@
+   Void  create            ( TComSlice* pcSlice, Int iWidth, Int iHeight, UInt uiMaxWidth, UInt uiMaxHeight, UInt uiMaxDepth );
+   Void  destroy           ();
+   
+-  Void  decompressSlice   ( TComInputBitstream* pcBitstream, TComInputBitstream** ppcSubstreams,   TComPic*& rpcPic, TDecSbac* pcSbacDecoder, TDecSbac* pcSbacDecoders );
++  Void  decompressSlice   ( TComInputBitstream* pcBitstream, TComInputBitstream** ppcSubstreams,   TComPic* rpcPic, TDecSbac* pcSbacDecoder, TDecSbac* pcSbacDecoders );
+ #if DEPENDENT_SLICES
+   Void      initCtxMem(  UInt i );
+   Void      setCtxMem( TDecSbac* sb, Int b )   { CTXMem[b] = sb; }
+Index: source/Lib/TLibDecoder/TDecEntropy.h
+===================================================================
+--- source/Lib/TLibDecoder/TDecEntropy.h	(revision 3281)
++++ source/Lib/TLibDecoder/TDecEntropy.h	(working copy)
+@@ -69,7 +69,7 @@
+   virtual Void  parseSPS                  ( TComSPS* pcSPS )                                      = 0;
+   virtual Void  parsePPS                  ( TComPPS* pcPPS )                                      = 0;
+ 
+-  virtual Void parseSliceHeader          ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager)       = 0;
++  virtual Void parseSliceHeader          ( TComSlice* rpcSlice, ParameterSetManagerDecoder *parameterSetManager)       = 0;
+ 
+   virtual Void  parseTerminatingBit       ( UInt& ruilsLast )                                     = 0;
+   
+@@ -131,7 +131,7 @@
+   Void    decodeVPS                   ( TComVPS* pcVPS ) { m_pcEntropyDecoderIf->parseVPS(pcVPS); }
+   Void    decodeSPS                   ( TComSPS* pcSPS     )    { m_pcEntropyDecoderIf->parseSPS(pcSPS);                    }
+   Void    decodePPS                   ( TComPPS* pcPPS, ParameterSetManagerDecoder *parameterSet    )    { m_pcEntropyDecoderIf->parsePPS(pcPPS);                    }
+-  Void    decodeSliceHeader           ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager)  { m_pcEntropyDecoderIf->parseSliceHeader(rpcSlice, parameterSetManager);         }
++  Void    decodeSliceHeader           ( TComSlice* rpcSlice, ParameterSetManagerDecoder *parameterSetManager)  { m_pcEntropyDecoderIf->parseSliceHeader(rpcSlice, parameterSetManager);         }
+ 
+   Void    decodeTerminatingBit        ( UInt& ruiIsLast )       { m_pcEntropyDecoderIf->parseTerminatingBit(ruiIsLast);     }
+   
 Index: source/Lib/TLibDecoder/TDecTop.h
 ===================================================================
---- source/Lib/TLibDecoder/TDecTop.h	(revision 3278)
+--- source/Lib/TLibDecoder/TDecTop.h	(revision 3281)
 +++ source/Lib/TLibDecoder/TDecTop.h	(working copy)
 @@ -115,7 +115,7 @@
    
@@ -115,7 +185,7 @@ Index: source/Lib/TLibDecoder/TDecTop.h
    Void  xGetNewPicBuffer  (TComSlice* pcSlice, TComPic*& rpcPic);
 Index: source/Lib/TLibDecoder/SEIread.cpp
 ===================================================================
---- source/Lib/TLibDecoder/SEIread.cpp	(revision 3278)
+--- source/Lib/TLibDecoder/SEIread.cpp	(revision 3281)
 +++ source/Lib/TLibDecoder/SEIread.cpp	(working copy)
 @@ -71,7 +71,7 @@
      break;
@@ -142,11 +212,110 @@ Index: source/Lib/TLibDecoder/SEIread.cpp
      seis.temporal_level0_index = new SEITemporalLevel0Index;
      xParseSEITemporalLevel0Index(*seis.temporal_level0_index, payloadSize);
      break;
+Index: source/Lib/TLibDecoder/TDecSbac.h
+===================================================================
+--- source/Lib/TLibDecoder/TDecSbac.h	(revision 3281)
++++ source/Lib/TLibDecoder/TDecSbac.h	(working copy)
+@@ -80,7 +80,7 @@
+   Void  parseSPS                  ( TComSPS* pcSPS         ) {}
+   Void  parsePPS                  ( TComPPS* pcPPS         ) {}
+ 
+-  Void  parseSliceHeader          ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager) {}
++  Void  parseSliceHeader          ( TComSlice* rpcSlice, ParameterSetManagerDecoder *parameterSetManager) {}
+   Void  parseTerminatingBit       ( UInt& ruiBit );
+   Void  parseMVPIdx               ( Int& riMVPIdx          );
+   Void  parseSaoMaxUvlc           ( UInt& val, UInt maxSymbol );
+Index: source/Lib/TLibDecoder/TDecGop.cpp
+===================================================================
+--- source/Lib/TLibDecoder/TDecGop.cpp	(revision 3281)
++++ source/Lib/TLibDecoder/TDecGop.cpp	(working copy)
+@@ -103,7 +103,7 @@
+ // Public member functions
+ // ====================================================================================================================
+ 
+-Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic)
++Void TDecGop::decompressSlice(TComInputBitstream* pcBitstream, TComPic* rpcPic)
+ {
+   TComSlice*  pcSlice = rpcPic->getSlice(rpcPic->getCurrSliceIdx());
+   // Table of extracted substreams.
+@@ -168,7 +168,7 @@
+   m_dDecTime += (Double)(clock()-iBeforeTime) / CLOCKS_PER_SEC;
+ }
+ 
+-Void TDecGop::filterPicture(TComPic*& rpcPic)
++Void TDecGop::filterPicture(TComPic* rpcPic)
+ {
+   TComSlice*  pcSlice = rpcPic->getSlice(rpcPic->getCurrSliceIdx());
+ 
+Index: source/Lib/TLibDecoder/TDecCAVLC.cpp
+===================================================================
+--- source/Lib/TLibDecoder/TDecCAVLC.cpp	(revision 3281)
++++ source/Lib/TLibDecoder/TDecCAVLC.cpp	(working copy)
+@@ -780,7 +780,7 @@
+   return;
+ }
+ 
+-Void TDecCavlc::parseSliceHeader (TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager)
++Void TDecCavlc::parseSliceHeader (TComSlice* rpcSlice, ParameterSetManagerDecoder *parameterSetManager)
+ {
+   UInt  uiCode;
+   Int   iCode;
+@@ -1754,7 +1754,7 @@
+       RefPicList  eRefPicList = ( iNumRef ? REF_PIC_LIST_1 : REF_PIC_LIST_0 );
+       for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+       {
+-        pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++        wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+ 
+         wp[0].uiLog2WeightDenom = uiLog2WeightDenomLuma;
+         wp[1].uiLog2WeightDenom = uiLog2WeightDenomChroma;
+@@ -1770,7 +1770,7 @@
+         UInt  uiCode;
+         for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+         {
+-          pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++          wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+           READ_FLAG( uiCode, "chroma_weight_lX_flag" );      // u(1): chroma_weight_l0_flag
+           wp[1].bPresentFlag = ( uiCode == 1 );
+           wp[2].bPresentFlag = ( uiCode == 1 );
+@@ -1779,7 +1779,7 @@
+       }
+       for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+       {
+-        pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++        wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+         if ( wp[0].bPresentFlag ) 
+         {
+           Int iDeltaWeight;
+@@ -1821,7 +1821,7 @@
+ 
+       for ( Int iRefIdx=pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx<MAX_NUM_REF ; iRefIdx++ ) 
+       {
+-        pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++        wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+ 
+         wp[0].bPresentFlag = false;
+         wp[1].bPresentFlag = false;
+Index: source/Lib/TLibDecoder/TDecGop.h
+===================================================================
+--- source/Lib/TLibDecoder/TDecGop.h	(revision 3281)
++++ source/Lib/TLibDecoder/TDecGop.h	(working copy)
+@@ -101,8 +101,8 @@
+                  );
+   Void  create  ();
+   Void  destroy ();
+-  Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic*& rpcPic );
+-  Void  filterPicture  (TComPic*& rpcPic );
++  Void  decompressSlice(TComInputBitstream* pcBitstream, TComPic* rpcPic );
++  Void  filterPicture  (TComPic* rpcPic );
+   Void  setGopSize( Int i) { m_iGopSize = i; }
+ 
+   void setDecodedPictureHashSEIEnabled(Int enabled) { m_decodedPictureHashSEIEnabled = enabled; }
 Index: source/Lib/TLibDecoder/TDecCAVLC.h
 ===================================================================
---- source/Lib/TLibDecoder/TDecCAVLC.h	(revision 3278)
+--- source/Lib/TLibDecoder/TDecCAVLC.h	(revision 3281)
 +++ source/Lib/TLibDecoder/TDecCAVLC.h	(working copy)
-@@ -85,7 +85,7 @@
+@@ -85,13 +85,13 @@
    Void  parseSPS            ( TComSPS* pcSPS );
    Void  parsePPS            ( TComPPS* pcPPS);
    Void  parseVUI            ( TComVUI* pcVUI, TComSPS* pcSPS );
@@ -155,9 +324,51 @@ Index: source/Lib/TLibDecoder/TDecCAVLC.h
    Void  parsePTL            ( TComPTL *rpcPTL, Bool profilePresentFlag, Int maxNumSubLayersMinus1 );
    Void  parseProfileTier    (ProfileTierLevel *ptl);
  #if SIGNAL_BITRATE_PICRATE_IN_VPS
+   Void  parseBitratePicRateInfo(TComBitRatePicRateInfo *info, Int tempLevelLow, Int tempLevelHigh);
+ #endif
+-  Void  parseSliceHeader    ( TComSlice*& rpcSlice, ParameterSetManagerDecoder *parameterSetManager);
++  Void  parseSliceHeader    ( TComSlice* rpcSlice, ParameterSetManagerDecoder *parameterSetManager);
+   Void  parseTerminatingBit ( UInt& ruiBit );
+   
+   Void  parseMVPIdx         ( Int& riMVPIdx );
+Index: source/Lib/TLibCommon/TComPic.h
+===================================================================
+--- source/Lib/TLibCommon/TComPic.h	(revision 3281)
++++ source/Lib/TLibCommon/TComPic.h	(working copy)
+@@ -109,7 +109,7 @@
+   TComPicSym*   getPicSym()           { return  m_apcPicSym;    }
+   TComSlice*    getSlice(Int i)       { return  m_apcPicSym->getSlice(i);  }
+   Int           getPOC()              { return  m_apcPicSym->getSlice(m_uiCurrSliceIdx)->getPOC();  }
+-  TComDataCU*&  getCU( UInt uiCUAddr )  { return  m_apcPicSym->getCU( uiCUAddr ); }
++  TComDataCU*   getCU( UInt uiCUAddr )  { return  m_apcPicSym->getCU( uiCUAddr ); }
+   
+   TComPicYuv*   getPicYuvOrg()        { return  m_apcPicYuv[0]; }
+   TComPicYuv*   getPicYuvRec()        { return  m_apcPicYuv[1]; }
+Index: source/Lib/TLibCommon/TComMotionInfo.h
+===================================================================
+--- source/Lib/TLibCommon/TComMotionInfo.h	(revision 3281)
++++ source/Lib/TLibCommon/TComMotionInfo.h	(working copy)
+@@ -93,7 +93,7 @@
+ private:
+   TComMv*   m_pcMv;
+   TComMv*   m_pcMvd;
+-  Char*     m_piRefIdx;
++  Short*    m_piRefIdx;
+   UInt      m_uiNumPartition;
+   AMVPInfo  m_cAMVPInfo;
+     
+@@ -152,7 +152,7 @@
+     m_piRefIdx = src->m_piRefIdx + offset;
+   }
+   
+-  Void compress(Char* pePredMode, Int scale); 
++  Void compress(UChar* pePredMode, Int scale); 
+ };
+ 
+ //! \}
 Index: source/Lib/TLibCommon/TComCABACTables.h
 ===================================================================
---- source/Lib/TLibCommon/TComCABACTables.h	(revision 3278)
+--- source/Lib/TLibCommon/TComCABACTables.h	(revision 3281)
 +++ source/Lib/TLibCommon/TComCABACTables.h	(working copy)
 @@ -47,14 +47,9 @@
   * \brief static class for CABAC tables
@@ -178,7 +389,7 @@ Index: source/Lib/TLibCommon/TComCABACTables.h
  #endif
 Index: source/Lib/TLibCommon/NAL.h
 ===================================================================
---- source/Lib/TLibCommon/NAL.h	(revision 3278)
+--- source/Lib/TLibCommon/NAL.h	(revision 3281)
 +++ source/Lib/TLibCommon/NAL.h	(working copy)
 @@ -88,7 +88,8 @@
   */
@@ -198,45 +409,9 @@ Index: source/Lib/TLibCommon/NAL.h
  };
  //! \}
  //! \}
-Index: source/Lib/TLibCommon/SEI.h
-===================================================================
---- source/Lib/TLibCommon/SEI.h	(revision 3278)
-+++ source/Lib/TLibCommon/SEI.h	(working copy)
-@@ -50,11 +50,11 @@
-     USER_DATA_UNREGISTERED = 5,
-     RECOVERY_POINT         = 6,
- #if SEI_DISPLAY_ORIENTATION
--    DISPLAY_ORIENTATION    = 47,
-+    DISPLAY_ORIENTATION_    = 47,
- #endif
-     ACTIVE_PARAMETER_SETS  = 130, 
- #if SEI_TEMPORAL_LEVEL0_INDEX
--    TEMPORAL_LEVEL0_INDEX  = 132,
-+    TEMPORAL_LEVEL0_INDEX_  = 132,
- #endif
- #if SUFFIX_SEI_NUT_DECODED_HASH_SEI
-     DECODED_PICTURE_HASH   = 133,
-@@ -193,7 +193,7 @@
- class SEIDisplayOrientation : public SEI
- {
- public:
--  PayloadType payloadType() const { return DISPLAY_ORIENTATION; }
-+  PayloadType payloadType() const { return DISPLAY_ORIENTATION_; }
- 
-   SEIDisplayOrientation()
-     : cancelFlag(true)
-@@ -215,7 +215,7 @@
- class SEITemporalLevel0Index : public SEI
- {
- public:
--  PayloadType payloadType() const { return TEMPORAL_LEVEL0_INDEX; }
-+  PayloadType payloadType() const { return TEMPORAL_LEVEL0_INDEX_; }
- 
-   SEITemporalLevel0Index()
-     : tl0Idx(0)
 Index: source/Lib/TLibCommon/TComRom.h
 ===================================================================
---- source/Lib/TLibCommon/TComRom.h	(revision 3278)
+--- source/Lib/TLibCommon/TComRom.h	(revision 3281)
 +++ source/Lib/TLibCommon/TComRom.h	(working copy)
 @@ -51,9 +51,9 @@
  // ====================================================================================================================
@@ -250,6 +425,15 @@ Index: source/Lib/TLibCommon/TComRom.h
  
  // ====================================================================================================================
  // Initialize / destroy functions
+@@ -73,7 +73,7 @@
+ extern       UInt   g_motionRefer[ MAX_NUM_SPU_W*MAX_NUM_SPU_W ];
+ #endif
+ 
+-Void         initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx );
++Void         initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt* rpuiCurrIdx );
+ Void         initRasterToZscan ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth         );
+ 
+ #if !LINEBUF_CLEANUP
 @@ -143,9 +143,9 @@
  // Angular Intra table
  // ====================================================================================================================
@@ -293,9 +477,45 @@ Index: source/Lib/TLibCommon/TComRom.h
  extern Int g_quantTSDefault4x4[16];
  extern UInt g_scalingListSize [SCALING_LIST_SIZE_NUM];
  extern UInt g_scalingListSizeX[SCALING_LIST_SIZE_NUM];
+Index: source/Lib/TLibCommon/SEI.h
+===================================================================
+--- source/Lib/TLibCommon/SEI.h	(revision 3281)
++++ source/Lib/TLibCommon/SEI.h	(working copy)
+@@ -50,11 +50,11 @@
+     USER_DATA_UNREGISTERED = 5,
+     RECOVERY_POINT         = 6,
+ #if SEI_DISPLAY_ORIENTATION
+-    DISPLAY_ORIENTATION    = 47,
++    DISPLAY_ORIENTATION_    = 47,
+ #endif
+     ACTIVE_PARAMETER_SETS  = 130, 
+ #if SEI_TEMPORAL_LEVEL0_INDEX
+-    TEMPORAL_LEVEL0_INDEX  = 132,
++    TEMPORAL_LEVEL0_INDEX_  = 132,
+ #endif
+ #if SUFFIX_SEI_NUT_DECODED_HASH_SEI
+     DECODED_PICTURE_HASH   = 133,
+@@ -193,7 +193,7 @@
+ class SEIDisplayOrientation : public SEI
+ {
+ public:
+-  PayloadType payloadType() const { return DISPLAY_ORIENTATION; }
++  PayloadType payloadType() const { return DISPLAY_ORIENTATION_; }
+ 
+   SEIDisplayOrientation()
+     : cancelFlag(true)
+@@ -215,7 +215,7 @@
+ class SEITemporalLevel0Index : public SEI
+ {
+ public:
+-  PayloadType payloadType() const { return TEMPORAL_LEVEL0_INDEX; }
++  PayloadType payloadType() const { return TEMPORAL_LEVEL0_INDEX_; }
+ 
+   SEITemporalLevel0Index()
+     : tl0Idx(0)
 Index: source/Lib/TLibCommon/TComSlice.h
 ===================================================================
---- source/Lib/TLibCommon/TComSlice.h	(revision 3278)
+--- source/Lib/TLibCommon/TComSlice.h	(revision 3281)
 +++ source/Lib/TLibCommon/TComSlice.h	(working copy)
 @@ -862,7 +862,7 @@
    Void setScalingListFlag       ( Bool b ) { m_scalingListEnabledFlag  = b;       }
@@ -335,9 +555,198 @@ Index: source/Lib/TLibCommon/TComSlice.h
    Void applyReferencePictureSet( TComList<TComPic*>& rcListPic, TComReferencePictureSet *RPSList);
    Bool isTemporalLayerSwitchingPoint( TComList<TComPic*>& rcListPic, TComReferencePictureSet *RPSList);
    Bool isStepwiseTemporalLayerSwitchingPointCandidate( TComList<TComPic*>& rcListPic, TComReferencePictureSet *RPSList);
+@@ -1420,7 +1420,7 @@
+   Void setFinalized                     ( Bool uiVal )      { m_bFinalized = uiVal;                       }
+   Bool getFinalized                     ()                  { return m_bFinalized;                        }
+   Void  setWpScaling    ( wpScalingParam  wp[2][MAX_NUM_REF][3] ) { memcpy(m_weightPredTable, wp, sizeof(wpScalingParam)*2*MAX_NUM_REF*3); }
+-  Void  getWpScaling    ( RefPicList e, Int iRefIdx, wpScalingParam *&wp);
++  wpScalingParam *getWpScaling    ( RefPicList e, Int iRefIdx);
+ 
+   Void  resetWpScaling  (wpScalingParam  wp[2][MAX_NUM_REF][3]);
+   Void  initWpScaling    (wpScalingParam  wp[2][MAX_NUM_REF][3]);
+Index: source/Lib/TLibCommon/TComPrediction.h
+===================================================================
+--- source/Lib/TLibCommon/TComPrediction.h	(revision 3281)
++++ source/Lib/TLibCommon/TComPrediction.h	(working copy)
+@@ -97,7 +97,7 @@
+   Void motionCompensation         ( TComDataCU*  pcCU, TComYuv* pcYuvPred, RefPicList eRefPicList = REF_PIC_LIST_X, Int iPartIdx = -1 );
+   
+   // motion vector prediction
+-  Void getMvPredAMVP              ( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, TComMv& rcMvPred );
++  TComMv getMvPredAMVP              ( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx );
+   
+   // Angular Intra
+   Void predIntraLumaAng           ( TComPattern* pcTComPattern, UInt uiDirMode, Pel* piPred, UInt uiStride, Int iWidth, Int iHeight,  TComDataCU* pcCU, Bool bAbove, Bool bLeft );
+Index: source/Lib/TLibCommon/TComDataCU.h
+===================================================================
+--- source/Lib/TLibCommon/TComDataCU.h	(revision 3281)
++++ source/Lib/TLibCommon/TComDataCU.h	(working copy)
+@@ -128,10 +128,10 @@
+   // CU data
+   // -------------------------------------------------------------------------------------------------------------------
+   Bool*         m_skipFlag;           ///< array of skip flags
+-  Char*         m_pePartSize;         ///< array of partition sizes
+-  Char*         m_pePredMode;         ///< array of prediction modes
++  UChar*        m_pePartSize;         ///< array of partition sizes
++  UChar*        m_pePredMode;         ///< array of prediction modes
+   Bool*         m_CUTransquantBypass;   ///< array of cu_transquant_bypass flags
+-  Char*         m_phQP;               ///< array of QP values
++  UChar*        m_phQP;               ///< array of QP values
+   UChar*        m_puhTrIdx;           ///< array of transform indices
+   UChar*        m_puhTransformSkip[3];///< array of transform skipping flags
+   UChar*        m_puhCbf[3];          ///< array of coded block flags (CBF)
+@@ -183,8 +183,8 @@
+   UChar*        m_puhLumaIntraDir;    ///< array of intra directions (luma)
+   UChar*        m_puhChromaIntraDir;  ///< array of intra directions (chroma)
+   UChar*        m_puhInterDir;        ///< array of inter directions
+-  Char*         m_apiMVPIdx[2];       ///< array of motion vector predictor candidates
+-  Char*         m_apiMVPNum[2];       ///< array of number of possible motion vectors predictors
++  UChar*        m_apiMVPIdx[2];       ///< array of motion vector predictor candidates
++  UChar*        m_apiMVPNum[2];       ///< array of number of possible motion vectors predictors
+   Bool*         m_pbIPCMFlag;         ///< array of intra_pcm flags
+ 
+   Int           m_numSucIPCM;         ///< the number of succesive IPCM blocks associated with the current log2CUSize
+@@ -201,7 +201,7 @@
+   UInt          m_uiTotalBins;       ///< sum of partition bins
+   UInt*         m_uiSliceStartCU;    ///< Start CU address of current slice
+   UInt*         m_uiDependentSliceStartCU; ///< Start CU address of current slice
+-  Char          m_codedQP;
++  UChar         m_codedQP;
+ protected:
+   
+   /// add possible motion vector predictor candidates
+@@ -254,8 +254,8 @@
+   
+   TComPic*      getPic                ()                        { return m_pcPic;           }
+   TComSlice*    getSlice              ()                        { return m_pcSlice;         }
+-  UInt&         getAddr               ()                        { return m_uiCUAddr;        }
+-  UInt&         getZorderIdxInCU      ()                        { return m_uiAbsIdxInLCU; }
++  UInt          getAddr               ()                        { return m_uiCUAddr;        }
++  UInt          getZorderIdxInCU      ()                        { return m_uiAbsIdxInLCU; }
+   UInt          getSCUAddr            ();
+   UInt          getCUPelX             ()                        { return m_uiCUPelX;        }
+   UInt          getCUPelY             ()                        { return m_uiCUPelY;        }
+@@ -271,7 +271,7 @@
+   // member functions for CU data
+   // -------------------------------------------------------------------------------------------------------------------
+   
+-  Char*         getPartitionSize      ()                        { return m_pePartSize;        }
++  UChar*        getPartitionSize      ()                        { return m_pePartSize;        }
+   PartSize      getPartitionSize      ( UInt uiIdx )            { return static_cast<PartSize>( m_pePartSize[uiIdx] ); }
+   Void          setPartitionSize      ( UInt uiIdx, PartSize uh){ m_pePartSize[uiIdx] = uh;   }
+   Void          setPartSizeSubParts   ( PartSize eMode, UInt uiAbsPartIdx, UInt uiDepth );
+@@ -282,7 +282,7 @@
+   Void         setSkipFlag           ( UInt idx, Bool skip)     { m_skipFlag[idx] = skip;   }
+   Void         setSkipFlagSubParts   ( Bool skip, UInt absPartIdx, UInt depth );
+ 
+-  Char*         getPredictionMode     ()                        { return m_pePredMode;        }
++  UChar*        getPredictionMode     ()                        { return m_pePredMode;        }
+   PredMode      getPredictionMode     ( UInt uiIdx )            { return static_cast<PredMode>( m_pePredMode[uiIdx] ); }
+   Bool*         getCUTransquantBypass ()                        { return m_CUTransquantBypass;        }
+   Bool          getCUTransquantBypass( UInt uiIdx )             { return m_CUTransquantBypass[uiIdx]; }
+@@ -299,15 +299,15 @@
+   
+   Void          setSizeSubParts       ( UInt uiWidth, UInt uiHeight, UInt uiAbsPartIdx, UInt uiDepth );
+   
+-  Char*         getQP                 ()                        { return m_phQP;              }
+-  Char          getQP                 ( UInt uiIdx )            { return m_phQP[uiIdx];       }
+-  Void          setQP                 ( UInt uiIdx, Char value ){ m_phQP[uiIdx] =  value;     }
++  UChar*        getQP                 ()                        { return m_phQP;              }
++  UChar         getQP                 ( UInt uiIdx )            { return m_phQP[uiIdx];       }
++  Void          setQP                 ( UInt uiIdx, Short value){ m_phQP[uiIdx] =  value;     }
+   Void          setQPSubParts         ( Int qp,   UInt uiAbsPartIdx, UInt uiDepth );
+   Int           getLastValidPartIdx   ( Int iAbsPartIdx );
+-  Char          getLastCodedQP        ( UInt uiAbsPartIdx );
++  UChar         getLastCodedQP        ( UInt uiAbsPartIdx );
+   Void          setQPSubCUs           ( Int qp, TComDataCU* pcCU, UInt absPartIdx, UInt depth, Bool &foundNonZeroCbf );
+-  Void          setCodedQP            ( Char qp )               { m_codedQP = qp;             }
+-  Char          getCodedQP            ()                        { return m_codedQP;           }
++  Void          setCodedQP            ( Short qp )              { m_codedQP = qp;             }
++  UChar         getCodedQP            ()                        { return m_codedQP;           }
+ 
+   Bool          isLosslessCoded(UInt absPartIdx);
+   
+@@ -324,18 +324,18 @@
+   
+   TComCUMvField* getCUMvField         ( RefPicList e )          { return  &m_acCUMvField[e];  }
+   
+-  TCoeff*&      getCoeffY             ()                        { return m_pcTrCoeffY;        }
+-  TCoeff*&      getCoeffCb            ()                        { return m_pcTrCoeffCb;       }
+-  TCoeff*&      getCoeffCr            ()                        { return m_pcTrCoeffCr;       }
++  TCoeff*       getCoeffY             ()                        { return m_pcTrCoeffY;        }
++  TCoeff*       getCoeffCb            ()                        { return m_pcTrCoeffCb;       }
++  TCoeff*       getCoeffCr            ()                        { return m_pcTrCoeffCr;       }
+ #if ADAPTIVE_QP_SELECTION
+-  Int*&         getArlCoeffY          ()                        { return m_pcArlCoeffY;       }
+-  Int*&         getArlCoeffCb         ()                        { return m_pcArlCoeffCb;      }
+-  Int*&         getArlCoeffCr         ()                        { return m_pcArlCoeffCr;      }
++  Int*          getArlCoeffY          ()                        { return m_pcArlCoeffY;       }
++  Int*          getArlCoeffCb         ()                        { return m_pcArlCoeffCb;      }
++  Int*          getArlCoeffCr         ()                        { return m_pcArlCoeffCr;      }
+ #endif
+   
+-  Pel*&         getPCMSampleY         ()                        { return m_pcIPCMSampleY;     }
+-  Pel*&         getPCMSampleCb        ()                        { return m_pcIPCMSampleCb;    }
+-  Pel*&         getPCMSampleCr        ()                        { return m_pcIPCMSampleCr;    }
++  Pel*          getPCMSampleY         ()                        { return m_pcIPCMSampleY;     }
++  Pel*          getPCMSampleCb        ()                        { return m_pcIPCMSampleCb;    }
++  Pel*          getPCMSampleCr        ()                        { return m_pcIPCMSampleCr;    }
+ 
+   UChar         getCbf    ( UInt uiIdx, TextType eType )                  { return m_puhCbf[g_aucConvertTxtTypeToIdx[eType]][uiIdx];  }
+   UChar*        getCbf    ( TextType eType )                              { return m_puhCbf[g_aucConvertTxtTypeToIdx[eType]];         }
+@@ -428,11 +428,11 @@
+   Void          getPartPosition       ( UInt partIdx, Int& xP, Int& yP, Int& nPSW, Int& nPSH);
+   Void          setMVPIdx             ( RefPicList eRefPicList, UInt uiIdx, Int iMVPIdx)  { m_apiMVPIdx[eRefPicList][uiIdx] = iMVPIdx;  }
+   Int           getMVPIdx             ( RefPicList eRefPicList, UInt uiIdx)               { return m_apiMVPIdx[eRefPicList][uiIdx];     }
+-  Char*         getMVPIdx             ( RefPicList eRefPicList )                          { return m_apiMVPIdx[eRefPicList];            }
++  UChar*        getMVPIdx             ( RefPicList eRefPicList )                          { return m_apiMVPIdx[eRefPicList];            }
+ 
+   Void          setMVPNum             ( RefPicList eRefPicList, UInt uiIdx, Int iMVPNum ) { m_apiMVPNum[eRefPicList][uiIdx] = iMVPNum;  }
+   Int           getMVPNum             ( RefPicList eRefPicList, UInt uiIdx )              { return m_apiMVPNum[eRefPicList][uiIdx];     }
+-  Char*         getMVPNum             ( RefPicList eRefPicList )                          { return m_apiMVPNum[eRefPicList];            }
++  UChar*        getMVPNum             ( RefPicList eRefPicList )                          { return m_apiMVPNum[eRefPicList];            }
+   
+   Void          setMVPIdxSubParts     ( Int iMVPIdx, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
+   Void          setMVPNumSubParts     ( Int iMVPNum, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth );
+@@ -484,7 +484,7 @@
+ 
+   TComDataCU*   getQpMinCuLeft              ( UInt&  uiLPartUnitIdx , UInt uiCurrAbsIdxInLCU );
+   TComDataCU*   getQpMinCuAbove             ( UInt&  aPartUnitIdx , UInt currAbsIdxInLCU );
+-  Char          getRefQP                    ( UInt   uiCurrAbsIdxInLCU                       );
++  UChar         getRefQP                    ( UInt   uiCurrAbsIdxInLCU                       );
+ 
+   TComDataCU*   getPUAboveRightAdi          ( UInt&  uiARPartUnitIdx, UInt uiCurrPartUnitIdx, UInt uiPartUnitOffset = 1, Bool bEnforceSliceRestriction=true, Bool bEnforceDependentSliceRestriction=true );
+   TComDataCU*   getPUBelowLeftAdi           ( UInt&  uiBLPartUnitIdx, UInt uiCurrPartUnitIdx, UInt uiPartUnitOffset = 1, Bool bEnforceSliceRestriction=true, Bool bEnforceDependentSliceRestriction=true );
+@@ -538,7 +538,7 @@
+   Double&       getTotalCost()                  { return m_dTotalCost;        }
+   UInt&         getTotalDistortion()            { return m_uiTotalDistortion; }
+   UInt&         getTotalBits()                  { return m_uiTotalBits;       }
+-  UInt&         getTotalNumPart()               { return m_uiNumPartition;    }
++  UInt          getTotalNumPart()               { return m_uiNumPartition;    }
+ 
+   UInt          getCoefScanIdx(UInt uiAbsPartIdx, UInt uiWidth, Bool bIsLuma, Bool bIsIntra);
+ 
+Index: source/Lib/TLibCommon/TComWeightPrediction.cpp
+===================================================================
+--- source/Lib/TLibCommon/TComWeightPrediction.cpp	(revision 3281)
++++ source/Lib/TLibCommon/TComWeightPrediction.cpp	(working copy)
+@@ -281,11 +281,11 @@
+   { // explicit --------------------
+     if ( iRefIdx0 >= 0 )
+     {
+-      pcSlice->getWpScaling(REF_PIC_LIST_0, iRefIdx0, wp0);
++      wp0 = pcSlice->getWpScaling(REF_PIC_LIST_0, iRefIdx0);
+     }
+     if ( iRefIdx1 >= 0 )
+     {
+-      pcSlice->getWpScaling(REF_PIC_LIST_1, iRefIdx1, wp1);
++      wp1 = pcSlice->getWpScaling(REF_PIC_LIST_1, iRefIdx1);
+     }
+   }
+   else
 Index: source/Lib/TLibCommon/TComList.h
 ===================================================================
---- source/Lib/TLibCommon/TComList.h	(revision 3278)
+--- source/Lib/TLibCommon/TComList.h	(revision 3281)
 +++ source/Lib/TLibCommon/TComList.h	(working copy)
 @@ -67,7 +67,7 @@
    {
@@ -363,9 +772,49 @@ Index: source/Lib/TLibCommon/TComList.h
  };
  
  //! \}
+Index: source/Lib/TLibCommon/TComMotionInfo.cpp
+===================================================================
+--- source/Lib/TLibCommon/TComMotionInfo.cpp	(revision 3281)
++++ source/Lib/TLibCommon/TComMotionInfo.cpp	(working copy)
+@@ -59,7 +59,7 @@
+   
+   m_pcMv     = new TComMv[ uiNumPartition ];
+   m_pcMvd    = new TComMv[ uiNumPartition ];
+-  m_piRefIdx = new Char  [ uiNumPartition ];
++  m_piRefIdx = new Short [ uiNumPartition ];
+   
+   m_uiNumPartition = uiNumPartition;
+ }
+@@ -92,7 +92,7 @@
+     m_pcMv [ i ].setZero();
+     m_pcMvd[ i ].setZero();      
+   }
+-  assert( sizeof( *m_piRefIdx ) == 1 );
++  assert( sizeof( *m_piRefIdx ) == 2 );
+   memset( m_piRefIdx, NOT_VALID, m_uiNumPartition * sizeof( *m_piRefIdx ) );
+ }
+ 
+@@ -314,7 +314,7 @@
+ 
+ Void TComCUMvField::setAllRefIdx ( Int iRefIdx, PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx )
+ {
+-  setAll(m_piRefIdx, static_cast<Char>(iRefIdx), eCUMode, iPartAddr, uiDepth, iPartIdx);
++  setAll(m_piRefIdx, static_cast<Short>(iRefIdx), eCUMode, iPartAddr, uiDepth, iPartIdx);
+ }
+ 
+ Void TComCUMvField::setAllMvField( TComMvField const & mvField, PartSize eCUMode, Int iPartAddr, UInt uiDepth, Int iPartIdx )
+@@ -327,7 +327,7 @@
+  * \param pePredMode Pointer to prediction modes
+  * \param scale      Factor by which to subsample motion information
+  */
+-Void TComCUMvField::compress(Char* pePredMode, Int scale)
++Void TComCUMvField::compress(UChar* pePredMode, Int scale)
+ {
+   Int N = scale * scale;
+   assert( N > 0 && N <= m_uiNumPartition);
 Index: source/Lib/TLibCommon/TypeDef.h
 ===================================================================
---- source/Lib/TLibCommon/TypeDef.h	(revision 3278)
+--- source/Lib/TLibCommon/TypeDef.h	(revision 3281)
 +++ source/Lib/TLibCommon/TypeDef.h	(working copy)
 @@ -530,13 +530,13 @@
  {
@@ -385,7 +834,7 @@ Index: source/Lib/TLibCommon/TypeDef.h
      LEVEL2_1 = 63,
 Index: source/Lib/TLibCommon/TComCABACTables.cpp
 ===================================================================
---- source/Lib/TLibCommon/TComCABACTables.cpp	(revision 3278)
+--- source/Lib/TLibCommon/TComCABACTables.cpp	(revision 3281)
 +++ source/Lib/TLibCommon/TComCABACTables.cpp	(working copy)
 @@ -40,7 +40,7 @@
  //! \ingroup TLibCommon
@@ -405,9 +854,242 @@ Index: source/Lib/TLibCommon/TComCABACTables.cpp
  {
    6,  5,  4,  4,
    3,  3,  3,  3,
+Index: source/Lib/TLibCommon/TComRom.cpp
+===================================================================
+--- source/Lib/TLibCommon/TComRom.cpp	(revision 3281)
++++ source/Lib/TLibCommon/TComRom.cpp	(working copy)
+@@ -104,7 +104,7 @@
+ 
+ UInt g_auiPUOffset[8] = { 0, 8, 4, 4, 2, 10, 1, 5};
+ 
+-Void initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx )
++Void _initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt*& rpuiCurrIdx )
+ {
+   Int iStride = 1 << ( iMaxDepth - 1 );
+   
+@@ -116,12 +116,16 @@
+   else
+   {
+     Int iStep = iStride >> iDepth;
+-    initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal,                     rpuiCurrIdx );
+-    initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep,               rpuiCurrIdx );
+-    initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep*iStride,       rpuiCurrIdx );
+-    initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep*iStride+iStep, rpuiCurrIdx );
++    _initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal,                     rpuiCurrIdx );
++    _initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep,               rpuiCurrIdx );
++    _initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep*iStride,       rpuiCurrIdx );
++    _initZscanToRaster( iMaxDepth, iDepth+1, uiStartVal+iStep*iStride+iStep, rpuiCurrIdx );
+   }
+ }
++Void initZscanToRaster ( Int iMaxDepth, Int iDepth, UInt uiStartVal, UInt* rpuiCurrIdx )
++{
++  _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx);
++}
+ 
+ Void initRasterToZscan ( UInt uiMaxCUWidth, UInt uiMaxCUHeight, UInt uiMaxDepth )
+ {
+Index: source/Lib/TLibCommon/TComSlice.cpp
+===================================================================
+--- source/Lib/TLibCommon/TComSlice.cpp	(revision 3281)
++++ source/Lib/TLibCommon/TComSlice.cpp	(working copy)
+@@ -1182,9 +1182,9 @@
+  * \param *&wpScalingParam
+  * \returns Void
+  */
+-Void  TComSlice::getWpScaling( RefPicList e, Int iRefIdx, wpScalingParam *&wp )
++wpScalingParam *TComSlice::getWpScaling( RefPicList e, Int iRefIdx)
+ {
+-  wp = m_weightPredTable[e][iRefIdx];
++  return m_weightPredTable[e][iRefIdx];
+ }
+ 
+ /** reset Default WP tables settings : no weight. 
+Index: source/Lib/TLibCommon/TComPrediction.cpp
+===================================================================
+--- source/Lib/TLibCommon/TComPrediction.cpp	(revision 3281)
++++ source/Lib/TLibCommon/TComPrediction.cpp	(working copy)
+@@ -661,8 +661,9 @@
+ }
+ 
+ // AMVP
+-Void TComPrediction::getMvPredAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx, TComMv& rcMvPred )
++TComMv TComPrediction::getMvPredAMVP( TComDataCU* pcCU, UInt uiPartIdx, UInt uiPartAddr, RefPicList eRefPicList, Int iRefIdx )
+ {
++  TComMv rcMvPred;
+   AMVPInfo* pcAMVPInfo = pcCU->getCUMvField(eRefPicList)->getAMVPInfo();
+   if( pcAMVPInfo->iN <= 1 )
+   {
+@@ -670,12 +671,12 @@
+ 
+     pcCU->setMVPIdxSubParts( 0, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));
+     pcCU->setMVPNumSubParts( pcAMVPInfo->iN, eRefPicList, uiPartAddr, uiPartIdx, pcCU->getDepth(uiPartAddr));
+-    return;
++    return rcMvPred;
+   }
+ 
+-  assert(pcCU->getMVPIdx(eRefPicList,uiPartAddr) >= 0);
++  assert(pcCU->getMVPIdx(eRefPicList,uiPartAddr) != 255);
+   rcMvPred = pcAMVPInfo->m_acMvCand[pcCU->getMVPIdx(eRefPicList,uiPartAddr)];
+-  return;
++  return rcMvPred;
+ }
+ 
+ /** Function for deriving planar intra prediction.
+Index: source/Lib/TLibCommon/TComDataCU.cpp
+===================================================================
+--- source/Lib/TLibCommon/TComDataCU.cpp	(revision 3281)
++++ source/Lib/TLibCommon/TComDataCU.cpp	(working copy)
+@@ -132,16 +132,16 @@
+   
+   if ( !bDecSubCu )
+   {
+-    m_phQP               = (Char*     )xMalloc(Char,     uiNumPartition);
++    m_phQP               = (UChar*    )xMalloc(Char,     uiNumPartition);
+     m_puhDepth           = (UChar*    )xMalloc(UChar,    uiNumPartition);
+     m_puhWidth           = (UChar*    )xMalloc(UChar,    uiNumPartition);
+     m_puhHeight          = (UChar*    )xMalloc(UChar,    uiNumPartition);
+ 
+     m_skipFlag           = new Bool[ uiNumPartition ];
+ 
+-    m_pePartSize         = new Char[ uiNumPartition ];
++    m_pePartSize         = new UChar[ uiNumPartition ];
+     memset( m_pePartSize, SIZE_NONE,uiNumPartition * sizeof( *m_pePartSize ) );
+-    m_pePredMode         = new Char[ uiNumPartition ];
++    m_pePredMode         = new UChar[ uiNumPartition ];
+     m_CUTransquantBypass = new Bool[ uiNumPartition ];
+     m_pbMergeFlag        = (Bool*  )xMalloc(Bool,   uiNumPartition);
+     m_puhMergeIndex      = (UChar* )xMalloc(UChar,  uiNumPartition);
+@@ -158,12 +158,12 @@
+     m_puhCbf[1]          = (UChar* )xMalloc(UChar,  uiNumPartition);
+     m_puhCbf[2]          = (UChar* )xMalloc(UChar,  uiNumPartition);
+     
+-    m_apiMVPIdx[0]       = new Char[ uiNumPartition ];
+-    m_apiMVPIdx[1]       = new Char[ uiNumPartition ];
+-    m_apiMVPNum[0]       = new Char[ uiNumPartition ];
+-    m_apiMVPNum[1]       = new Char[ uiNumPartition ];
+-    memset( m_apiMVPIdx[0], -1,uiNumPartition * sizeof( Char ) );
+-    memset( m_apiMVPIdx[1], -1,uiNumPartition * sizeof( Char ) );
++    m_apiMVPIdx[0]       = new UChar[ uiNumPartition ];
++    m_apiMVPIdx[1]       = new UChar[ uiNumPartition ];
++    m_apiMVPNum[0]       = new UChar[ uiNumPartition ];
++    m_apiMVPNum[1]       = new UChar[ uiNumPartition ];
++    memset( m_apiMVPIdx[0], 255,uiNumPartition * sizeof( UChar ) );
++    memset( m_apiMVPIdx[1], 255,uiNumPartition * sizeof( UChar ) );
+     
+     m_pcTrCoeffY         = (TCoeff*)xMalloc(TCoeff, uiWidth*uiHeight);
+     m_pcTrCoeffCb        = (TCoeff*)xMalloc(TCoeff, uiWidth*uiHeight/4);
+@@ -434,10 +434,10 @@
+     memset( m_puhTransformSkip[2] + firstElement, 0,                      numElements * sizeof( *m_puhTransformSkip[2]) );
+     memset( m_puhWidth          + firstElement, g_uiMaxCUWidth,           numElements * sizeof( *m_puhWidth ) );
+     memset( m_puhHeight         + firstElement, g_uiMaxCUHeight,          numElements * sizeof( *m_puhHeight ) );
+-    memset( m_apiMVPIdx[0]      + firstElement, -1,                       numElements * sizeof( *m_apiMVPIdx[0] ) );
+-    memset( m_apiMVPIdx[1]      + firstElement, -1,                       numElements * sizeof( *m_apiMVPIdx[1] ) );
+-    memset( m_apiMVPNum[0]      + firstElement, -1,                       numElements * sizeof( *m_apiMVPNum[0] ) );
+-    memset( m_apiMVPNum[1]      + firstElement, -1,                       numElements * sizeof( *m_apiMVPNum[1] ) );
++    memset( m_apiMVPIdx[0]      + firstElement, 255,                      numElements * sizeof( *m_apiMVPIdx[0] ) );
++    memset( m_apiMVPIdx[1]      + firstElement, 255,                      numElements * sizeof( *m_apiMVPIdx[1] ) );
++    memset( m_apiMVPNum[0]      + firstElement, 255,                      numElements * sizeof( *m_apiMVPNum[0] ) );
++    memset( m_apiMVPNum[1]      + firstElement, 255,                      numElements * sizeof( *m_apiMVPNum[1] ) );
+     memset( m_phQP              + firstElement, getSlice()->getSliceQp(), numElements * sizeof( *m_phQP ) );
+     memset( m_pbMergeFlag       + firstElement, false,                    numElements * sizeof( *m_pbMergeFlag ) );
+     memset( m_puhMergeIndex     + firstElement, 0,                        numElements * sizeof( *m_puhMergeIndex ) );
+@@ -558,10 +558,10 @@
+   {
+     if(getPic()->getPicSym()->getInverseCUOrderMap(getAddr())*m_pcPic->getNumPartInCU()+m_uiAbsIdxInLCU+ui >= getSlice()->getDependentSliceCurStartCUAddr())
+     {
+-      m_apiMVPIdx[0][ui] = -1;
+-      m_apiMVPIdx[1][ui] = -1;
+-      m_apiMVPNum[0][ui] = -1;
+-      m_apiMVPNum[1][ui] = -1;
++      m_apiMVPIdx[0][ui] = 255;
++      m_apiMVPIdx[1][ui] = 255;
++      m_apiMVPNum[0][ui] = 255;
++      m_apiMVPNum[1][ui] = 255;
+       m_puhDepth  [ui] = uiDepth;
+       m_puhWidth  [ui] = uhWidth;
+       m_puhHeight [ui] = uhHeight;
+@@ -668,10 +668,10 @@
+     m_pePartSize[ui] = SIZE_NONE;
+     m_pePredMode[ui] = MODE_NONE;
+     m_CUTransquantBypass[ui] = false;
+-    m_apiMVPIdx[0][ui] = -1;
+-    m_apiMVPIdx[1][ui] = -1;
+-    m_apiMVPNum[0][ui] = -1;
+-    m_apiMVPNum[1][ui] = -1;
++    m_apiMVPIdx[0][ui] = 255;
++    m_apiMVPIdx[1][ui] = 255;
++    m_apiMVPNum[0][ui] = 255;
++    m_apiMVPNum[1][ui] = 255;
+     if(m_pcPic->getPicSym()->getInverseCUOrderMap(getAddr())*m_pcPic->getNumPartInCU()+m_uiAbsIdxInLCU+ui<getSlice()->getDependentSliceCurStartCUAddr())
+     {
+       m_apiMVPIdx[0][ui] = pcCU->m_apiMVPIdx[0][uiPartOffset+ui];
+@@ -994,7 +994,7 @@
+ // It is used to predict for next part
+ Void TComDataCU::copyToPic( UChar uhDepth )
+ {
+-  TComDataCU*& rpcCU = m_pcPic->getCU( m_uiCUAddr );
++  TComDataCU* rpcCU = m_pcPic->getCU( m_uiCUAddr );
+   
+   rpcCU->getTotalCost()       = m_dTotalCost;
+   rpcCU->getTotalDistortion() = m_uiTotalDistortion;
+@@ -1064,7 +1064,7 @@
+ 
+ Void TComDataCU::copyToPic( UChar uhDepth, UInt uiPartIdx, UInt uiPartDepth )
+ {
+-  TComDataCU*&  rpcCU       = m_pcPic->getCU( m_uiCUAddr );
++  TComDataCU*   rpcCU       = m_pcPic->getCU( m_uiCUAddr );
+   UInt          uiQNumPart  = m_uiNumPartition>>(uiPartDepth<<1);
+   
+   UInt uiPartStart          = uiPartIdx*uiQNumPart;
+@@ -1644,7 +1644,7 @@
+ *\param   uiCurrAbsIdxInLCU
+ *\returns Char   reference QP value
+ */
+-Char TComDataCU::getRefQP( UInt uiCurrAbsIdxInLCU )
++UChar TComDataCU::getRefQP( UInt uiCurrAbsIdxInLCU )
+ {
+   UInt        lPartIdx = 0, aPartIdx = 0;
+   TComDataCU* cULeft  = getQpMinCuLeft ( lPartIdx, m_uiAbsIdxInLCU + uiCurrAbsIdxInLCU );
+@@ -1664,7 +1664,7 @@
+   return iLastValidPartIdx;
+ }
+ 
+-Char TComDataCU::getLastCodedQP( UInt uiAbsPartIdx )
++UChar TComDataCU::getLastCodedQP( UInt uiAbsPartIdx )
+ {
+   UInt uiQUPartIdxMask = ~((1<<((g_uiMaxCUDepth - getSlice()->getPPS()->getMaxCuDQPDepth())<<1))-1);
+   Int iLastValidPartIdx = getLastValidPartIdx( uiAbsPartIdx&uiQUPartIdxMask );
+@@ -2143,12 +2143,12 @@
+ 
+ Void TComDataCU::setMVPIdxSubParts( Int iMVPIdx, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )
+ {
+-  setSubPart<Char>( iMVPIdx, m_apiMVPIdx[eRefPicList], uiAbsPartIdx, uiDepth, uiPartIdx );
++  setSubPart<UChar>( iMVPIdx, m_apiMVPIdx[eRefPicList], uiAbsPartIdx, uiDepth, uiPartIdx );
+ }
+ 
+ Void TComDataCU::setMVPNumSubParts( Int iMVPNum, RefPicList eRefPicList, UInt uiAbsPartIdx, UInt uiPartIdx, UInt uiDepth )
+ {
+-  setSubPart<Char>( iMVPNum, m_apiMVPNum[eRefPicList], uiAbsPartIdx, uiDepth, uiPartIdx );
++  setSubPart<UChar>( iMVPNum, m_apiMVPNum[eRefPicList], uiAbsPartIdx, uiDepth, uiPartIdx );
+ }
+ 
+ 
+Index: source/Lib/TLibCommon/TComPicSym.h
+===================================================================
+--- source/Lib/TLibCommon/TComPicSym.h	(revision 3281)
++++ source/Lib/TLibCommon/TComPicSym.h	(working copy)
+@@ -119,7 +119,7 @@
+   UInt        getMinCUWidth()           { return m_uiMinCUWidth;                }
+   UInt        getMinCUHeight()          { return m_uiMinCUHeight;               }
+   UInt        getNumberOfCUsInFrame()   { return m_uiNumCUsInFrame;  }
+-  TComDataCU*&  getCU( UInt uiCUAddr )  { return m_apcTComDataCU[uiCUAddr];     }
++  TComDataCU* getCU( UInt uiCUAddr )    { return m_apcTComDataCU[uiCUAddr];     }
+   
+   Void        setSlice(TComSlice* p, UInt i) { m_apcTComSlice[i] = p;           }
+   UInt        getNumAllocatedSlice()    { return m_uiNumAllocatedSlice;         }
 Index: source/Lib/TLibEncoder/TEncCavlc.h
 ===================================================================
---- source/Lib/TLibEncoder/TEncCavlc.h	(revision 3278)
+--- source/Lib/TLibEncoder/TEncCavlc.h	(revision 3281)
 +++ source/Lib/TLibEncoder/TEncCavlc.h	(working copy)
 @@ -150,7 +150,7 @@
    
@@ -420,7 +1102,7 @@ Index: source/Lib/TLibEncoder/TEncCavlc.h
    Void xCodeScalingList ( TComScalingList* scalingList, UInt sizeId, UInt listId);
 Index: source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp
 ===================================================================
---- source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp	(revision 3278)
+--- source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp	(revision 3281)
 +++ source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp	(working copy)
 @@ -2142,7 +2142,7 @@
   * \param yCbCr color component index
@@ -447,7 +1129,7 @@ Index: source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.cpp
    Int64 iterOffset, tempOffset;
 Index: source/Lib/TLibEncoder/NALwrite.h
 ===================================================================
---- source/Lib/TLibEncoder/NALwrite.h	(revision 3278)
+--- source/Lib/TLibEncoder/NALwrite.h	(revision 3281)
 +++ source/Lib/TLibEncoder/NALwrite.h	(working copy)
 @@ -77,8 +77,13 @@
  inline NALUnitEBSP::NALUnitEBSP(OutputNALUnit& nalu)
@@ -466,7 +1148,7 @@ Index: source/Lib/TLibEncoder/NALwrite.h
  
 Index: source/Lib/TLibEncoder/AnnexBwrite.h
 ===================================================================
---- source/Lib/TLibEncoder/AnnexBwrite.h	(revision 3278)
+--- source/Lib/TLibEncoder/AnnexBwrite.h	(revision 3281)
 +++ source/Lib/TLibEncoder/AnnexBwrite.h	(working copy)
 @@ -75,8 +75,8 @@
        out.write(start_code_prefix+1, 3);
@@ -481,7 +1163,7 @@ Index: source/Lib/TLibEncoder/AnnexBwrite.h
    }
 Index: source/Lib/TLibEncoder/TEncGOP.cpp
 ===================================================================
---- source/Lib/TLibEncoder/TEncGOP.cpp	(revision 3278)
+--- source/Lib/TLibEncoder/TEncGOP.cpp	(revision 3281)
 +++ source/Lib/TLibEncoder/TEncGOP.cpp	(working copy)
 @@ -779,7 +779,7 @@
        writeRBSPTrailingBits(nalu.m_Bitstream);
@@ -537,9 +1219,62 @@ Index: source/Lib/TLibEncoder/TEncGOP.cpp
  #if VERBOSE_RATE
      printf("*** %6s numBytesInNALunit: %u\n", nalUnitTypeToString((*it)->m_nalUnitType), numRBSPBytes_nal);
  #endif
+Index: source/Lib/TLibEncoder/TEncCavlc.cpp
+===================================================================
+--- source/Lib/TLibEncoder/TEncCavlc.cpp	(revision 3281)
++++ source/Lib/TLibEncoder/TEncCavlc.cpp	(working copy)
+@@ -1405,7 +1405,7 @@
+ 
+       for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+       {
+-        pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++        wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+         if ( !bDenomCoded ) 
+         {
+           Int iDeltaDenom;
+@@ -1425,7 +1425,7 @@
+       {
+         for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+         {
+-          pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++          wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+           WRITE_FLAG( wp[1].bPresentFlag, "chroma_weight_lX_flag" );           // u(1): chroma_weight_lX_flag
+           uiTotalSignalledWeightFlags += 2*wp[1].bPresentFlag;
+         }
+@@ -1433,7 +1433,7 @@
+ 
+       for ( Int iRefIdx=0 ; iRefIdx<pcSlice->getNumRefIdx(eRefPicList) ; iRefIdx++ ) 
+       {
+-        pcSlice->getWpScaling(eRefPicList, iRefIdx, wp);
++        wp = pcSlice->getWpScaling(eRefPicList, iRefIdx);
+         if ( wp[0].bPresentFlag ) 
+         {
+           Int iDeltaWeight = (wp[0].iWeight - (1<<wp[0].uiLog2WeightDenom));
+Index: source/Lib/TLibEncoder/TEncSlice.cpp
+===================================================================
+--- source/Lib/TLibEncoder/TEncSlice.cpp	(revision 3281)
++++ source/Lib/TLibEncoder/TEncSlice.cpp	(working copy)
+@@ -889,7 +889,7 @@
+        uiCUAddr = rpcPic->getPicSym()->getCUOrderMap(++uiEncCUOrder) )
+   {
+     // initialize CU encoder
+-    TComDataCU*& pcCU = rpcPic->getCU( uiCUAddr );
++    TComDataCU* pcCU = rpcPic->getCU( uiCUAddr );
+     pcCU->initCU( rpcPic, uiCUAddr );
+ 
+ #if !RATE_CONTROL_LAMBDA_DOMAIN
+@@ -1395,7 +1395,7 @@
+       }
+     }
+ 
+-    TComDataCU*& pcCU = rpcPic->getCU( uiCUAddr );    
++    TComDataCU* pcCU = rpcPic->getCU( uiCUAddr );    
+     if ( pcSlice->getSPS()->getUseSAO() && (pcSlice->getSaoEnabledFlag()||pcSlice->getSaoEnabledFlagChroma()) )
+     {
+       SAOParam *saoParam = pcSlice->getPic()->getPicSym()->getSaoParam();
 Index: source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp
 ===================================================================
---- source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp	(revision 3278)
+--- source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp	(revision 3281)
 +++ source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp	(working copy)
 @@ -224,12 +224,12 @@
    m_uiBinsCoded += m_binCountIncrement;
@@ -558,7 +1293,7 @@ Index: source/Lib/TLibEncoder/TEncBinCoderCABAC.cpp
      rcCtxModel.updateLPS();
 Index: source/Lib/TLibEncoder/TEncEntropy.h
 ===================================================================
---- source/Lib/TLibEncoder/TEncEntropy.h	(revision 3278)
+--- source/Lib/TLibEncoder/TEncEntropy.h	(revision 3281)
 +++ source/Lib/TLibEncoder/TEncEntropy.h	(working copy)
 @@ -116,8 +116,8 @@
    virtual Void codeSaoUflc         ( UInt uiLength, UInt   uiCode ) = 0;
@@ -584,7 +1319,7 @@ Index: source/Lib/TLibEncoder/TEncEntropy.h
  
 Index: source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h
 ===================================================================
---- source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h	(revision 3278)
+--- source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h	(revision 3281)
 +++ source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h	(working copy)
 @@ -127,9 +127,9 @@
  #endif
@@ -601,7 +1336,7 @@ Index: source/Lib/TLibEncoder/TEncSampleAdaptiveOffset.h
  };
 Index: source/Lib/TLibEncoder/TEncSbac.h
 ===================================================================
---- source/Lib/TLibEncoder/TEncSbac.h	(revision 3278)
+--- source/Lib/TLibEncoder/TEncSbac.h	(revision 3281)
 +++ source/Lib/TLibEncoder/TEncSbac.h	(working copy)
 @@ -170,7 +170,7 @@
    Void estSignificantCoefficientsBit ( estBitsSbacStruct* pcEstBitsSbac, UInt uiCTXIdx, TextType eTType );
@@ -614,7 +1349,7 @@ Index: source/Lib/TLibEncoder/TEncSbac.h
  private:
 Index: source/Lib/TLibEncoder/SEIwrite.cpp
 ===================================================================
---- source/Lib/TLibEncoder/SEIwrite.cpp	(revision 3278)
+--- source/Lib/TLibEncoder/SEIwrite.cpp	(revision 3281)
 +++ source/Lib/TLibEncoder/SEIwrite.cpp	(working copy)
 @@ -65,7 +65,7 @@
      break;

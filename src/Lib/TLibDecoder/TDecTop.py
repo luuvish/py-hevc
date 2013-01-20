@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecTop.py
-    HM 8.0 Python Implementation
+    HM 9.1 Python Implementation
 """
 
 import sys
 
+from ... import ArrayInt
 from ... import TComPic
 from ... import ParameterSetManagerDecoder
 from ... import TComListTComPic
@@ -21,6 +22,7 @@ from ... import TComTrQuant
 from ... import TComLoopFilter
 from ... import TComSampleAdaptiveOffset
 
+from ... import SEIReader
 from ... import TDecBinCABAC
 from ... import TDecSbac
 from ... import TDecCavlc
@@ -35,58 +37,67 @@ from ..TLibCommon.TypeDef import (
 
 from ..TLibCommon.CommonDef import (
     MAX_INT,
-    NAL_UNIT_CODED_SLICE,
-    NAL_UNIT_CODED_SLICE_TFD,
+    MAX_TLAYER,
+    NAL_UNIT_CODED_SLICE_TRAIL_R,
+    NAL_UNIT_CODED_SLICE_TRAIL_N,
+    NAL_UNIT_CODED_SLICE_TSA_N,
     NAL_UNIT_CODED_SLICE_TLA,
-    NAL_UNIT_CODED_SLICE_CRA,
-    NAL_UNIT_CODED_SLICE_CRANT,
+    NAL_UNIT_CODED_SLICE_STSA_R,
+    NAL_UNIT_CODED_SLICE_STSA_N,
+    NAL_UNIT_CODED_SLICE_DLP,
+    NAL_UNIT_CODED_SLICE_TFD,
     NAL_UNIT_CODED_SLICE_BLA,
     NAL_UNIT_CODED_SLICE_BLANT,
+    NAL_UNIT_CODED_SLICE_BLA_N_LP,
     NAL_UNIT_CODED_SLICE_IDR,
+    NAL_UNIT_CODED_SLICE_IDR_N_LP,
+    NAL_UNIT_CODED_SLICE_CRA,
     NAL_UNIT_VPS,
     NAL_UNIT_SPS,
     NAL_UNIT_PPS,
-    NAL_UNIT_SEI
+    NAL_UNIT_SEI,
+    NAL_UNIT_SEI_SUFFIX
 )
 
 
-warningMessage = False
-
 class TDecTop(object):
 
+    warningMessage = False
+
     def __init__(self):
-        self.m_iGopSize = 0
-        self.m_bGopSizeSet = False
-        self.m_iMaxRefPicNum = 0
+        self.m_iGopSize                   = 0
+        self.m_bGopSizeSet                = False
+        self.m_iMaxRefPicNum              = 0
 
-        self.m_bRefreshPending = False
-        self.m_pocCRA = 0
-        self.m_prevRAPisBLA = False
-        self.m_pocRandomAccess = MAX_INT
+        self.m_bRefreshPending            = False
+        self.m_pocCRA                     = 0
+        self.m_prevRAPisBLA               = False
+        self.m_pocRandomAccess            = MAX_INT
 
-        self.m_cListPic = TComListTComPic()
+        self.m_cListPic                   = TComListTComPic()
         self.m_parameterSetManagerDecoder = ParameterSetManagerDecoder()
-        self.m_apcSlicePilot = None
+        self.m_apcSlicePilot              = None
 
-        self.m_SEIs = None
+        self.m_SEIs                       = None
 
-        self.m_cPrediction = TComPrediction()
-        self.m_cTrQuant = TComTrQuant()
-        self.m_cGopDecoder = TDecGop()
-        self.m_cSliceDecoder = TDecSlice()
-        self.m_cCuDecoder = TDecCu()
-        self.m_cEntropyDecoder = TDecEntropy()
-        self.m_cCavlcDecoder = TDecCavlc()
-        self.m_cSbacDecoder = TDecSbac()
-        self.m_cBinCABAC = TDecBinCABAC()
-        self.m_cLoopFilter = TComLoopFilter()
-        self.m_cSAO = TComSampleAdaptiveOffset()
+        self.m_cPrediction                = TComPrediction()
+        self.m_cTrQuant                   = TComTrQuant()
+        self.m_cGopDecoder                = TDecGop()
+        self.m_cSliceDecoder              = TDecSlice()
+        self.m_cCuDecoder                 = TDecCu()
+        self.m_cEntropyDecoder            = TDecEntropy()
+        self.m_cCavlcDecoder              = TDecCavlc()
+        self.m_cSbacDecoder               = TDecSbac()
+        self.m_cBinCABAC                  = TDecBinCABAC()
+        self.m_seiReader                  = SEIReader()
+        self.m_cLoopFilter                = TComLoopFilter()
+        self.m_cSAO                       = TComSampleAdaptiveOffset()
 
-        self.m_pcPic = None
-        self.m_uiSliceIdx = 0
-        self.m_prevPOC = MAX_INT
-        self.m_bFirstSliceInPicture = True
-        self.m_bFirstSliceInSequence = True
+        self.m_pcPic                      = None
+        self.m_uiSliceIdx                 = 0
+        self.m_prevPOC                    = MAX_INT
+        self.m_bFirstSliceInPicture       = True
+        self.m_bFirstSliceInSequence      = True
 
     def create(self):
         self.m_cGopDecoder.create()
@@ -103,10 +114,11 @@ class TDecTop(object):
 
         self.m_cSliceDecoder.destroy()
 
-    def setPictureDigestEnabled(self, enabled):
-        self.m_cGopDecoder.setPictureDigestEnabled(enabled)
+    def setDecodedPictureHashSEIEnabled(self, enabled):
+        self.m_cGopDecoder.setDecodedPictureHashSEIEnabled(enabled)
 
     def init(self):
+        # initialize ROM
         initROM()
         self.m_cGopDecoder.init(
             self.m_cEntropyDecoder, self.m_cSbacDecoder, self.m_cBinCABAC, self.m_cCavlcDecoder,
@@ -120,30 +132,37 @@ class TDecTop(object):
         self.m_cEntropyDecoder.setBitstream(nalu.m_Bitstream)
 
         if nalu.m_nalUnitType == NAL_UNIT_VPS:
-            self._xDecodeVPS()
+            self.xDecodeVPS()
             return False, iSkipFrame, iPOCLastDisplay
 
         elif nalu.m_nalUnitType == NAL_UNIT_SPS:
-            self._xDecodeSPS()
+            self.xDecodeSPS()
             return False, iSkipFrame, iPOCLastDisplay
 
         elif nalu.m_nalUnitType == NAL_UNIT_PPS:
-            self._xDecodePPS()
+            self.xDecodePPS()
             return False, iSkipFrame, iPOCLastDisplay
 
-        elif nalu.m_nalUnitType == NAL_UNIT_SEI:
-            self._xDecodeSEI()
+        elif nalu.m_nalUnitType == NAL_UNIT_SEI or \
+             nalu.m_nalUnitType == NAL_UNIT_SEI_SUFFIX:
+            self.xDecodeSEI(nalu.m_Bitstream, nalu.m_nalUnitType)
             return False, iSkipFrame, iPOCLastDisplay
 
-        elif nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE or \
-             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_TFD or \
+        elif nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_TRAIL_R or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_TRAIL_N or \
              nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_TLA or \
-             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_CRA or \
-             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_CRANT or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_TSA_N or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_STSA_R or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_STSA_N or \
              nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_BLA or \
              nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_BLANT or \
-             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_IDR:
-            return self._xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay)
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_BLA_N_LP or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_IDR or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_IDR_N_LP or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_CRA or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_DLP or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_TFD:
+            return self.xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay)
 
         else:
             assert(True)
@@ -160,27 +179,29 @@ class TDecTop(object):
         self.m_cSAO.destroy()
         self.m_cLoopFilter.destroy()
 
+        # destroy ROM
         destroyROM()
 
-    def executeDeblockAndAlf(self, ruiPOC, iSkipFrame, iPOCLastDisplay):
+    def executeLoopFilters(self, poc, iSkipFrame, iPOCLastDisplay):
         if not self.m_pcPic:
-            return None, ruiPOC, iSkipFrame, iPOCLastDisplay
+            # nothing to deblock
+            return None, poc, iSkipFrame, iPOCLastDisplay
 
         rpcListPic = None
         pcPic = self.m_pcPic
 
-        # Execute Deblock and ALF only + Cleanup
+        # Execute Deblock + Cleanup
         self.m_cGopDecoder.filterPicture(pcPic)
 
         TComSlice.sortPicList(self.m_cListPic) # sorting for application output
-        ruiPOC = pcPic.getSlice(self.m_uiSliceIdx-1).getPOC()
+        poc = pcPic.getSlice(self.m_uiSliceIdx-1).getPOC()
         rpcListPic = self.m_cListPic
         self.m_cCuDecoder.destroy()
         self.m_bFirstSliceInPicture = True
 
-        return rpcListPic, ruiPOC, iSkipFrame, iPOCLastDisplay
+        return rpcListPic, poc, iSkipFrame, iPOCLastDisplay
 
-    def _isSkipPictureForBLA(self, iPOCLastDisplay):
+    def isSkipPictureForBLA(self, iPOCLastDisplay):
         if self.m_prevRAPisBLA and \
            self.m_apcSlicePilot.getPOC() < self.m_pocCRA and \
            self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_TFD:
@@ -188,26 +209,24 @@ class TDecTop(object):
             return True, iPOCLastDisplay
         return False, iPOCLastDisplay
 
-    def _isRandomAccessSkipPicture(self, iSkipFrame, iPOCLastDisplay):
+    def isRandomAccessSkipPicture(self, iSkipFrame, iPOCLastDisplay):
         if iSkipFrame:
-            iSkipFrame -= 1
+            iSkipFrame -= 1 # decrement the counter
             return True, iSkipFrame, iPOCLastDisplay
-        # start of random access point, m_pocRandomAccess has not been set yet.
-        elif self.m_pocRandomAccess == MAX_INT:
+        elif self.m_pocRandomAccess == MAX_INT: # start of random access point, m_pocRandomAccess has not been set yet.
             if self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA or \
-               self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_CRANT or \
                self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA or \
+               self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_N_LP or \
                self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_BLANT:
                 # set the POC random access since we need to skip the reordered pictures in the case of CRA/CRANT/BLA/BLANT.
                 self.m_pocRandomAccess = self.m_apcSlicePilot.getPOC()
-            elif self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR:
-                # no need to skip the reordered pictures in IDR, they are decodable.
-                self.m_pocRandomAccess = 0;
+            elif self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR or \
+                 self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_N_LP:
+                self.m_pocRandomAccess = -MAX_INT; # no need to skip the reordered pictures in IDR, they are decodable.
             else:
-                global warningMessage
-                if not warningMessage:
+                if not TDecTop.warningMessage:
                     sys.stdout.write("\nWarning: this is not a valid random access point and the data is discarded until the first CRA picture")
-                    warningMessage = True
+                    TDecTop.warningMessage = True
                 return True, iSkipFrame, iPOCLastDisplay
         # skip the reordered pictures, if necessary
         elif self.m_apcSlicePilot.getPOC() < self.m_pocRandomAccess and \
@@ -217,8 +236,14 @@ class TDecTop(object):
         # if we reach here, then the picture is not skipped.
         return False, iSkipFrame, iPOCLastDisplay
 
-    def _xGetNewPicBuffer(self, pcSlice, rpcPic):
-        self._xUpdateGopSize(pcSlice)
+    def xGetNewPicBuffer(self, pcSlice, rpcPic):
+        numReorderPics = ArrayInt(MAX_TLAYER)
+        picCroppingWindow = pcSlice.getSPS().getPicCroppingWindow()
+
+        for temporalLayer in xrange(MAX_TLAYER):
+            numReorderPics[temporalLayer] = pcSlice.getSPS().getNumReorderPics(temporalLayer)
+
+        self.xUpdateGopSize(pcSlice)
 
         self.m_iMaxRefPicNum = pcSlice.getSPS().getMaxDecPicBuffering(pcSlice.getTLayer()) + \
                                pcSlice.getSPS().getNumReorderPics(pcSlice.getTLayer()) + 1
@@ -228,9 +253,11 @@ class TDecTop(object):
 
             rpcPic.create(pcSlice.getSPS().getPicWidthInLumaSamples(),
                           pcSlice.getSPS().getPicHeightInLumaSamples(),
-                          cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight, cvar.g_uiMaxCUDepth, True)
+                          cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight, cvar.g_uiMaxCUDepth,
+                          picCroppingWindow, numReorderPics.cast(), True)
             rpcPic.getPicSym().allocSaoParam(self.m_cSAO)
             self.m_cListPic.pushBack(rpcPic)
+
             return rpcPic
 
         bBufferInAvailable = False
@@ -255,31 +282,30 @@ class TDecTop(object):
         rpcPic.destroy()
         rpcPic.create(pcSlice.getSPS().getPicWidthInLumaSamples(),
                       pcSlice.getSPS().getPicHeightInLumaSamples(),
-                      cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight, cvar.g_uiMaxCUDepth, True)
+                      cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight, cvar.g_uiMaxCUDepth,
+                      picCroppingWindow, numReorderPics.cast(), True)
         rpcPic.getPicSym().allocSaoParam(self.m_cSAO)
 
         return rpcPic
 
-    def _xUpdateGopSize(self, pcSlice):
+    def xUpdateGopSize(self, pcSlice):
         if not pcSlice.isIntra() and not self.m_bGopSizeSet:
             self.m_iGopSize = pcSlice.getPOC()
             self.m_bGopSizeSet = True
 
             self.m_cGopDecoder.setGopSize(self.m_iGopSize)
 
-    def _xCreateLostPicture(self, iLostPoc):
+    def xCreateLostPicture(self, iLostPoc):
         sys.stdout.write("\ninserting lost poc : %d\n" % iLostPoc)
         cFillSlice = TComSlice()
         cFillSlice.setSPS(self.m_parameterSetManagerDecoder.getFirstSPS())
         cFillSlice.setPPS(self.m_parameterSetManagerDecoder.getFirstPPS())
         cFillSlice.initSlice()
-        cFillSlice.initTiles()
         cFillPic = None
-        cFillPic = self._xGetNewPicBuffer(cFillSlice, cFillPic)
+        cFillPic = self.xGetNewPicBuffer(cFillSlice, cFillPic)
         cFillPic.getSlice(0).setSPS(self.m_parameterSetManagerDecoder.getFirstSPS())
         cFillPic.getSlice(0).setPPS(self.m_parameterSetManagerDecoder.getFirstPPS())
         cFillPic.getSlice(0).initSlice()
-        cFillPic.getSlice(0).initTiles()
 
         closestPoc = 1000000
         for rpcPic in self.m_cListPic:
@@ -304,7 +330,7 @@ class TDecTop(object):
         if self.m_pocRandomAccess == MAX_INT:
             self.m_pocRandomAccess = iLostPoc
 
-    def _xActiveParameterSets(self):
+    def xActiveParameterSets(self):
         self.m_parameterSetManagerDecoder.applyPrefetchedPS()
 
         pps = self.m_parameterSetManagerDecoder.getPPS(self.m_apcSlicePilot.getPPSId())
@@ -318,9 +344,7 @@ class TDecTop(object):
         pps.setSPS(sps)
         pps.setNumSubstreams(
             (sps.getPicHeightInLumaSamples() + sps.getMaxCUHeight() - 1) / sps.getMaxCUHeight() *
-            (pps.getNumColumnsMinus1() + 1) if pps.getTilesOrEntropyCodingSyncIdc() == 2 else 1)
-        if pps.getDependentSlicesEnabledFlag():
-            pps.setNumSubstreams(1)
+            (pps.getNumColumnsMinus1() + 1) if pps.getEntropyCodingSyncEnabledFlag() else 1)
         pps.setMinCuDQPSize(sps.getMaxCUWidth() >> pps.getMaxCuDQPDepth())
 
         for i in xrange(sps.getMaxCUDepth() - cvar.g_uiAddCUDepth):
@@ -329,18 +353,14 @@ class TDecTop(object):
             sps.setAMPAcc(i, 0)
 
         self.m_cSAO.destroy()
-        self.m_cSAO.create(sps.getPicWidthInLumaSamples(), sps.getPicHeightInLumaSamples(),
-            cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight, cvar.g_uiMaxCUDepth)
+        self.m_cSAO.create(
+            sps.getPicWidthInLumaSamples(), sps.getPicHeightInLumaSamples(),
+            cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight)
         self.m_cLoopFilter.create(cvar.g_uiMaxCUDepth)
 
-    def _xDecodeSlice(self, nalu, iSkipFrame, iPOCLastDisplay):
+    def xDecodeSlice(self, nalu, iSkipFrame, iPOCLastDisplay):
         pcPic = self.m_pcPic
         self.m_apcSlicePilot.initSlice()
-
-        self.m_apcSlicePilot.setPPSId(0)
-        self.m_apcSlicePilot.setPPS(self.m_parameterSetManagerDecoder.getPrefetchedPPS(0))
-        self.m_apcSlicePilot.setSPS(self.m_parameterSetManagerDecoder.getPrefetchedSPS(0))
-        self.m_apcSlicePilot.initTiles()
 
         if self.m_bFirstSliceInPicture:
             self.m_uiSliceIdx = 0
@@ -349,8 +369,11 @@ class TDecTop(object):
             self.m_apcSlicePilot.copySliceInfo(pcPic.getPicSym().getSlice(self.m_uiSliceIdx-1))
 
         self.m_apcSlicePilot.setNalUnitType(nalu.m_nalUnitType)
-        # Putting this as true ensures that picture is referenced the first time it is in an RPS
-        self.m_apcSlicePilot.setReferenced(True)
+        if self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_TRAIL_N or \
+           self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_TSA_N or \
+           self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_STSA_N:
+            self.m_apcSlicePilot.setTemporalLayerNonReferenceFlag(True)
+        self.m_apcSlicePilot.setReferenced(True) # Putting this as true ensures that picture is referenced the first time it is in an RPS
         self.m_apcSlicePilot.setTLayerInfo(nalu.m_temporalId)
 
         self.m_cEntropyDecoder.decodeSliceHeader(self.m_apcSlicePilot, self.m_parameterSetManagerDecoder)
@@ -363,8 +386,7 @@ class TDecTop(object):
                 return True, iSkipFrame, iPOCLastDisplay
             self.m_prevPOC = self.m_apcSlicePilot.getPOC()
         # actual decoding starts here
-        self._xActiveParameterSets()
-        self.m_apcSlicePilot.initTiles()
+        self.xActiveParameterSets()
 
         if self.m_apcSlicePilot.isNextSlice():
             self.m_prevPOC = self.m_apcSlicePilot.getPOC()
@@ -372,11 +394,11 @@ class TDecTop(object):
         if self.m_apcSlicePilot.isNextSlice():
             # Skip pictures due to random access
             ret, iSkipFrame, iPOCLastDisplay = \
-                self._isRandomAccessSkipPicture(iSkipFrame, iPOCLastDisplay)
+                self.isRandomAccessSkipPicture(iSkipFrame, iPOCLastDisplay)
             if ret:
                 return False, iSkipFrame, iPOCLastDisplay
             # Skip TFD pictures associated with BLA/BLANT pictures
-            ret, iPOCLastDisplay = self._isSkipPictureForBLA(iPOCLastDisplay)
+            ret, iPOCLastDisplay = self.isSkipPictureForBLA(iPOCLastDisplay)
             if ret:
                 return False, iSkipFrame, iPOCLastDisplay
         # detect lost reference picture and insert copy of earlier frame.
@@ -387,13 +409,13 @@ class TDecTop(object):
                 True, self.m_pocRandomAccess)
             if lostPoc <= 0:
                 break
-            self._xCreateLostPicture(lostPoc-1)
+            self.xCreateLostPicture(lostPoc-1)
         if self.m_bFirstSliceInPicture:
             # Buffer initialize for prediction.
             self.m_cPrediction.initTempBuff()
             self.m_apcSlicePilot.applyReferencePictureSet(self.m_cListPic, self.m_apcSlicePilot.getRPS())
             # Get a new picture buffer
-            pcPic = self.m_pcPic = self._xGetNewPicBuffer(self.m_apcSlicePilot, pcPic)
+            pcPic = self.m_pcPic = self.xGetNewPicBuffer(self.m_apcSlicePilot, pcPic)
 
             # transfer any SEI messages that have been received to the picture
             pcPic.setSEIs(self.m_SEIs)
@@ -420,7 +442,7 @@ class TDecTop(object):
         # create the TComTileArray
         pcPic.getPicSym().xCreateTComTileArray()
 
-        if pcSlice.getPPS().getUniformSpacingIdr() == 1:
+        if pcSlice.getPPS().getUniformSpacingFlag():
             # set the width for each tile
             for j in xrange(pcPic.getPicSym().getNumRowsMinus1()+1):
                 for p in xrange(pcPic.getPicSym().getNumColumnsMinus1()+1):
@@ -507,7 +529,7 @@ class TDecTop(object):
                     pcSlice.setRefIdx(
                         pcSlice.getRefPic(REF_PIC_LIST_0, iRefIdx),
                         REF_PIC_LIST_1, iRefIdx)
-            if pcSlice.isInterB():
+            if not pcSlice.isIntra():
                 bLowDelay = True
                 iCurrPOC = pcSlice.getPOC()
 
@@ -515,10 +537,11 @@ class TDecTop(object):
                     if pcSlice.getRefPic(REF_PIC_LIST_0, iRefIdx).getPOC() > iCurrPOC:
                         bLowDelay = False
                         break
-                for iRefIdx in xrange(pcSlice.getNumRefIdx(REF_PIC_LIST_1)):
-                    if pcSlice.getRefPic(REF_PIC_LIST_1, iRefIdx).getPOC() > iCurrPOC:
-                        bLowDelay = False
-                        break
+                if pcSlice.isInterB():
+                    for iRefIdx in xrange(pcSlice.getNumRefIdx(REF_PIC_LIST_1)):
+                        if pcSlice.getRefPic(REF_PIC_LIST_1, iRefIdx).getPOC() > iCurrPOC:
+                            bLowDelay = False
+                            break
 
                 pcSlice.setCheckLDC(bLowDelay)
 
@@ -535,7 +558,7 @@ class TDecTop(object):
         pcPic.setCurrSliceIdx(self.m_uiSliceIdx)
         if pcSlice.getSPS().getScalingListFlag():
             pcSlice.setScalingList(pcSlice.getSPS().getScalingList())
-            if pcSlice.getSPS().getScalingListPresentFlag():
+            if pcSlice.getPPS().getScalingListPresentFlag():
                 pcSlice.setScalingList(pcSlice.getPPS().getScalingList())
             pcSlice.getScalingList().setUseTransformSkip(pcSlice.getPPS().getUseTransformSkip())
             if not pcSlice.getPPS().getScalingListPresentFlag() and \
@@ -555,25 +578,40 @@ class TDecTop(object):
 
         return False, iSkipFrame, iPOCLastDisplay
 
-    def _xDecodeVPS(self):
+    def xDecodeVPS(self):
         vps = TComVPS(); vps.thisown = False
         self.m_cEntropyDecoder.decodeVPS(vps)
         self.m_parameterSetManagerDecoder.storePrefetchedVPS(vps)
 
-    def _xDecodeSPS(self):
+    def xDecodeSPS(self):
         sps = TComSPS(); sps.thisown = False
         self.m_cEntropyDecoder.decodeSPS(sps)
         self.m_parameterSetManagerDecoder.storePrefetchedSPS(sps)
 
-    def _xDecodePPS(self):
+    def xDecodePPS(self):
         pps = TComPPS(); pps.thisown = False
         self.m_cEntropyDecoder.decodePPS(pps, self.m_parameterSetManagerDecoder)
         self.m_parameterSetManagerDecoder.storePrefetchedPPS(pps)
 
-        self.m_apcSlicePilot.setPPSId(pps.getPPSId())
-        self._xActiveParameterSets()
-        self.m_apcSlicePilot.initTiles()
+        if pps.getDependentSliceEnabledFlag():
+            NumCtx = 2 if pps.getEntropyCodingSyncEnabledFlag() else 1
+            self.m_cSliceDecoder.initCtxMem(NumCtx)
+            for st in xrange(NumCtx):
+                ctx = TDecSbac(); ctx.thisown = False
+                ctx.init(self.m_cBinCABAC)
+                self.m_cSliceDecoder.setCtxMem(ctx, st)
 
-    def _xDecodeSEI(self):
-        self.m_SEIs = SEImessages(); self.m_SEIs.thisown = False
-        self.m_cEntropyDecoder.decodeSEI(self.m_SEIs)
+    def xDecodeSEI(self, bs, nalUnitType):
+        if self.m_SEIs == None:
+            if nalUnitType == NAL_UNIT_SEI_SUFFIX and self.m_pcPic.getSEIs():
+                self.m_SEIs = self.m_pcPic.getSEIs() # If suffix SEI and SEI already present, use already existing SEI structure
+            else:
+                self.m_SEIs = SEImessages(); self.m_SEIs.thisown = False
+        else:
+            assert(nalUnitType != NAL_UNIT_SEI_SUFFIX)
+        self.m_SEIs.m_pSPS = self.m_parameterSetManagerDecoder.getSPS(0)
+        self.m_seiReader.parseSEImessage(bs, self.m_SEIs, nalUnitType)
+        if nalUnitType == NAL_UNIT_SEI_SUFFIX:
+            if not self.m_pcPic.getSEIs():
+                self.m_pcPic.setSEIs(self.m_SEIs) # Only suffix SEI present and new object created; update picture SEI variable
+            self.m_SEIs = None # SEI structure already updated using this pointer; not required now.

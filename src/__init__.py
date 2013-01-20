@@ -15,7 +15,7 @@ from src.Lib.TLibCommon.pointer import pointer
 from src.Lib.TLibCommon import trace
 
 
-use_swig = 4
+use_swig = 5
 
 if use_swig == 0:
     from swig.hevc import decmain as TAppDecoder
@@ -150,10 +150,11 @@ elif use_swig == 5:
     from swig.hevc import InputNALUnit, read
     from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
     from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
-    from swig.hevc import SEIpictureDigest, digest_get
+    from swig.hevc import SEIDecodedPictureHash, digest_get
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
     from swig.hevc import VectorBool, VectorUint8, VectorInt
+    from swig.hevc import ArrayInt
 
     from swig.hevc import TComPic
     from swig.hevc import ParameterSetManagerDecoder
@@ -176,7 +177,7 @@ elif use_swig == 5:
         luuvc_destroyROM()
 
     from swig.hevc import ArrayTComInputBitstream
-    from swig.hevc import TDecSbac, ArrayTDecSbac, ArrayTDecBinCABAC
+    from swig.hevc import TDecSbac, VectorTDecSbac, ArrayTDecSbac, ArrayTDecBinCABAC
 
     from swig.hevc import TVideoIOYuv
     from swig.hevc import TComSampleAdaptiveOffset
@@ -184,6 +185,7 @@ elif use_swig == 5:
     from swig.hevc import TComTrQuant
     from swig.hevc import TComPrediction
 
+    from swig.hevc import SEIReader
     from swig.hevc import TDecBinCABAC
     from swig.hevc import TDecSbac
     from swig.hevc import TDecCavlc

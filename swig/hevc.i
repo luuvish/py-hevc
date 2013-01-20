@@ -233,6 +233,8 @@ namespace std {
 %array_value(SaoLcuParam,           ArraySaoLcuParam       );
 %array_value(TComCUMvField,         ArrayTComCUMvField     );
 
+%template(VectorTDecSbac) std::vector<TDecSbac *>;
+
 namespace std {
   %template(ListTComPic   ) list<TComPic *>;
   %template(ListTComPicYuv) list<TComPicYuv *>;

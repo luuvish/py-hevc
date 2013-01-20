@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibVideoIO/TVideoIOYuv.py
-    HM 8.0 Python Implementation
+    HM 9.1 Python Implementation
 """
 
 import os
@@ -13,9 +13,9 @@ from ... import TComPicYuv
 from ..TLibCommon.CommonDef import Clip3
 
 
-def _scalePlane(img, stride, width, height, shiftbits, minval, maxval):
+def scalePlane(img, stride, width, height, shiftbits, minval, maxval):
 
-    def invScalePlane(img, stride, width, height, shiftbits, minval, maxval):
+    def _invScalePlane(img, stride, width, height, shiftbits, minval, maxval):
         img = pointer(img, type='short *')
         offset = 1 << (shiftbits-1)
         for y in xrange(height):
@@ -24,7 +24,7 @@ def _scalePlane(img, stride, width, height, shiftbits, minval, maxval):
                 img[x] = Clip3(minval, maxval, val)
             img += stride
 
-    def scalePlane(img, stride, width, height, shiftbits):
+    def _scalePlane(img, stride, width, height, shiftbits):
         img = pointer(img, type='short *')
         for y in xrange(height):
             for x in xrange(width):
@@ -35,32 +35,37 @@ def _scalePlane(img, stride, width, height, shiftbits, minval, maxval):
         return
 
     if shiftbits > 0:
-        scalePlane(img, stride, width, height, shiftbits)
+        _scalePlane(img, stride, width, height, shiftbits)
     else:
-        invScalePlane(img, stride, width, height, -shiftbits, minval, maxval)
+        _invScalePlane(img, stride, width, height, -shiftbits, minval, maxval)
 
 
 class TVideoIOYuv(object):
 
     def __init__(self):
-        self.m_cHandle = None
-        self.m_fileBitdepth = 0
-        self.m_bitdepthShift = 0
+        self.m_cHandle        = None
+        self.m_fileBitDepthY  = 0
+        self.m_fileBitDepthC  = 0
+        self.m_bitDepthShiftY = 0
+        self.m_bitDepthShiftC = 0
 
-    def open(self, pchFile, bWriteMode, fileBitDepth, internalBitDepth):
-        self.m_bitdepthShift = internalBitDepth - fileBitDepth
-        self.m_fileBitdepth = fileBitDepth
+    def open(self, pchFile, bWriteMode,
+             fileBitDepthY, fileBitDepthC, internalBitDepthY, internalBitDepthC):
+        self.m_bitDepthShiftY = internalBitDepthY - fileBitDepthY
+        self.m_bitDepthShiftC = internalBitDepthC - fileBitDepthC
+        self.m_fileBitDepthY = fileBitDepthY
+        self.m_fileBitDepthC = fileBitDepthC
 
         if bWriteMode:
-            self.m_cHandle = open(pchFile, "wb")
-
-            if not self.m_cHandle:
+            try:
+                self.m_cHandle = open(pchFile, "wb")
+            except IOError:
                 sys.stdout.write("\nfailed to write reconstructed YUV file\n")
                 sys.exit(False)
         else:
-            self.m_cHandle = open(pchFile, "rb")
-
-            if not self.m_cHandle:
+            try:
+                self.m_cHandle = open(pchFile, "rb")
+            except IOError:
                 sys.stdout.write("\nfailed to open Input YUV file\n")
                 sys.exit(False)
 
@@ -71,18 +76,20 @@ class TVideoIOYuv(object):
         if numFrames == 0:
             return
 
-        WORD_SIZE = 2 if self.m_fileBitdepth > 8 else 1
-        FRAME_SIZE = WORD_SIZE * width * height * 3 / 2
-        OFFSET = FRAME_SIZE * numFrames
+        wordsize = 2 if self.m_fileBitDepthY > 8 or self.m_fileBitDepthC > 8 else 1
+        framesize = wordsize * width * height * 3 / 2
+        offset = framesize * numFrames
 
-        self.m_cHandle.seek(OFFSET, os.SEEK_CUR)
-    #   self.m_cHandle.clear()
+        # attempt to seek
+        self.m_cHandle.seek(offset, os.SEEK_CUR)
+        return
 
-    #   BUF_SIZE = 512
-    #   OFFSET_MOD_BUFSIZE = OFFSET % BUF_SIZE
-    #   for i in range(OFFSET - OFFSET_MOD_BUFSIZE, BUF_SIZE):
-    #       buf = self.m_cHandle.read(BUF_SIZE)
-    #   buf = self.m_cHandle.read(OFFSET_MOD_BUFSIZE)
+        # fall back to consuming the input
+        BUF_SIZE = 512
+        offset_mod_bufsize = offset % BUF_SIZE
+        for i in xrange(0, offset - offset_mod_bufsize, BUF_SIZE):
+            buf = self.m_cHandle.read(BUF_SIZE)
+        buf = self.m_cHandle.read(offset_mod_bufsize)
 
     def read(self, pPicYuv, aiPad):
 
@@ -113,11 +120,13 @@ class TVideoIOYuv(object):
             del buf
             return True
 
+        # check end-of-file
         if self.isEof():
             return False
 
         iStride = pPicYuv.getStride()
 
+        # compute actual YUV width & height excluding padding size
         aiPad = pointer(aiPad, type='int *')
         pad_h = aiPad[0]
         pad_v = aiPad[1]
@@ -125,20 +134,18 @@ class TVideoIOYuv(object):
         height_full = pPicYuv.getHeight()
         width = width_full - pad_h
         height = height_full - pad_v
-        is16bit = self.m_fileBitdepth > 8
+        is16bit = self.m_fileBitDepthY > 8 or self.m_fileBitDepthC > 8
 
-        desired_bitdepth = self.m_fileBitdepth + self.m_bitdepthShift
-        minval = 0
-        maxval = (1 << desired_bitdepth) - 1
-
-        if self.m_bitdepthShift < 0 and desired_bitdepth >= 8:
-            # ITU-R BT.709 compliant clipping for converting say 10b to 8b
-            minval = 1 << (desired_bitdepth - 8)
-            maxval = (0xff << (desired_bitdepth - 8)) -1
+        desired_bitdepthY = self.m_fileBitDepthY + self.m_bitDepthShiftY
+        desired_bitdepthC = self.m_fileBitDepthC + self.m_bitDepthShiftC
+        minvalY = 0
+        minvalC = 0
+        maxvalY = (1 << desired_bitdepthY) - 1
+        maxvalC = (1 << desired_bitdepthC) - 1
 
         if not readPlane(pPicYuv.getLumaAddr(), self.m_cHandle, is16bit, iStride, width, height, pad_h, pad_v):
             return False
-        _scalePlane(pPicYuv.getLumaAddr(), iStride, width_full, height_full, self.m_bitdepthShift, minval, maxval)
+        scalePlane(pPicYuv.getLumaAddr(), iStride, width_full, height_full, self.m_bitDepthShiftY, minvalY, maxvalY)
 
         iStride >>= 1
         width_full >>= 1
@@ -150,11 +157,11 @@ class TVideoIOYuv(object):
 
         if not readPlane(pPicYuv.getCbAddr(), self.m_cHandle, is16bit, iStride, width, height, pad_h, pad_v):
             return False
-        _scalePlane(pPicYuv.getCbAddr(), iStride, width_full, height_full, self.m_bitdepthShift, minval, maxval)
+        scalePlane(pPicYuv.getCbAddr(), iStride, width_full, height_full, self.m_bitDepthShiftC, minvalC, maxvalC)
 
         if not readPlane(pPicYuv.getCrAddr(), self.m_cHandle, is16bit, iStride, width, height, pad_h, pad_v):
             return False
-        _scalePlane(pPicYuv.getCrAddr(), iStride, width_full, height_full, self.m_bitdepthShift, minval, maxval)
+        scalePlane(pPicYuv.getCrAddr(), iStride, width_full, height_full, self.m_bitDepthShiftC, minvalC, maxvalC)
 
         return True
 
@@ -181,29 +188,27 @@ class TVideoIOYuv(object):
             del buf
             return False
 
+        # compute actual YUV frame size excluding padding size
         iStride = pPicYuv.getStride()
         width = pPicYuv.getWidth() - cropLeft - cropRight
         height = pPicYuv.getHeight() - cropTop - cropBottom
-        is16bit = self.m_fileBitdepth > 8
+        is16bit = self.m_fileBitDepthY > 8 or self.m_fileBitDepthC > 8
         dstPicYuv = None
         retval = True
 
-        if self.m_bitdepthShift != 0:
+        if self.m_bitDepthShiftY != 0 or self.m_bitDepthShiftC != 0:
             dstPicYuv = TComPicYuv()
             dstPicYuv.create(pPicYuv.getWidth(), pPicYuv.getHeight(), 1, 1, 0)
             pPicYuv.copyToPic(dstPicYuv)
 
-            minval = 0
-            maxval = (1 << self.m_fileBitdepth) - 1
+            minvalY = 0
+            minvalC = 0
+            maxvalY = (1 << self.m_fileBitDepthY) - 1
+            maxvalC = (1 << self.m_fileBitDepthC) - 1
 
-            if -self.m_bitdepthShift < 0 and self.m_fileBitdepth >= 8:
-                # ITU-R BT.709 compliant clipping for converting say 10b to 8b
-                minval = 1 << (self.m_fileBitdepth - 8)
-                maxval = (0xff << (self.m_fileBitdepth - 8)) - 1
-
-            _scalePlane(dstPicYuv.getLumaAddr(), dstPicYuv.getStride(), dstPicYuv.getWidth(), dstPicYuv.getHeight(), -self.m_bitdepthShift, minval, maxval)
-            _scalePlane(dstPicYuv.getCbAddr(), dstPicYuv.getCStride(), dstPicYuv.getWidth()>>1, dstPicYuv.getHeight()>>1, -self.m_bitdepthShift, minval, maxval)
-            _scalePlane(dstPicYuv.getCrAddr(), dstPicYuv.getCStride(), dstPicYuv.getWidth()>>1, dstPicYuv.getHeight()>>1, -self.m_bitdepthShift, minval, maxval)
+            scalePlane(dstPicYuv.getLumaAddr(), dstPicYuv.getStride(), dstPicYuv.getWidth(), dstPicYuv.getHeight(), -self.m_bitDepthShiftY, minvalY, maxvalY)
+            scalePlane(dstPicYuv.getCbAddr(), dstPicYuv.getCStride(), dstPicYuv.getWidth()>>1, dstPicYuv.getHeight()>>1, -self.m_bitDepthShiftC, minvalC, maxvalC)
+            scalePlane(dstPicYuv.getCrAddr(), dstPicYuv.getCStride(), dstPicYuv.getWidth()>>1, dstPicYuv.getHeight()>>1, -self.m_bitDepthShiftC, minvalC, maxvalC)
         else:
             dstPicYuv = pPicYuv
 
@@ -227,7 +232,7 @@ class TVideoIOYuv(object):
         if not writePlane(self.m_cHandle, pointer(dstPicYuv.getCrAddr(), base=planeOffset, type='short *'), is16bit, iStride, width, height):
             retval = False
 
-        if self.m_bitdepthShift != 0:
+        if self.m_bitDepthShiftY != 0 or self.m_bitDepthShiftC != 0:
             dstPicYuv.destroy()
             dstPicYuv = None
         return retval

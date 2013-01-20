@@ -15,7 +15,7 @@ from src.Lib.TLibCommon.pointer import pointer
 from src.Lib.TLibCommon import trace
 
 
-use_swig = 5
+use_swig = 6
 
 if use_swig == 0:
     from swig.hevc import decmain as TAppDecoder
@@ -175,6 +175,21 @@ elif use_swig == 5:
         from swig.hevc import destroyROM as swig_destroyROM
         swig_destroyROM()
         luuvc_destroyROM()
+    def initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):
+        from src.Lib.TLibCommon.TComRom import initZscanToRaster as luuvc_initZscanToRaster
+        from swig.hevc import initZscanToRaster as swig_initZscanToRaster
+        swig_initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx)
+        luuvc_initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx)
+    def initRasterToZscan(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
+        from src.Lib.TLibCommon.TComRom import initRasterToZscan as luuvc_initRasterToZscan
+        from swig.hevc import initRasterToZscan as swig_initRasterToZscan
+        swig_initRasterToZscan(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
+        luuvc_initRasterToZscan(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
+    def initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
+        from src.Lib.TLibCommon.TComRom import initRasterToPelXY as luuvc_initRasterToPelXY
+        from swig.hevc import initRasterToPelXY as swig_initRasterToPelXY
+        swig_initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
+        luuvc_initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
 
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import TDecSbac, VectorTDecSbac, ArrayTDecSbac, ArrayTDecBinCABAC
@@ -205,10 +220,11 @@ elif use_swig == 6:
     from swig.hevc import InputNALUnit, read
     from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
     from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
-    from swig.hevc import SEIpictureDigest, digest_get
+    from swig.hevc import SEIDecodedPictureHash, digest_get
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
     from swig.hevc import VectorBool, VectorUint8, VectorInt
+    from swig.hevc import ArrayInt
 
     from swig.hevc import TComPic
     from swig.hevc import ParameterSetManagerDecoder
@@ -245,14 +261,9 @@ elif use_swig == 6:
         from swig.hevc import initRasterToPelXY as swig_initRasterToPelXY
         swig_initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
         luuvc_initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-    def initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
-        from src.Lib.TLibCommon.TComRom import initMotionReferIdx as luuvc_initMotionReferIdx
-        from swig.hevc import initMotionReferIdx as swig_initMotionReferIdx
-        swig_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-        luuvc_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
 
     from swig.hevc import ArrayTComInputBitstream
-    from swig.hevc import TDecSbac, ArrayTDecSbac, ArrayTDecBinCABAC
+    from swig.hevc import TDecSbac, VectorTDecSbac, ArrayTDecSbac, ArrayTDecBinCABAC
     from swig.hevc import TComYuv, ArrayTComYuv
     from swig.hevc import TComDataCU, ArrayTComDataCU
     from swig.hevc import ArrayTComMvField, ArrayUChar
@@ -262,6 +273,7 @@ elif use_swig == 6:
     from swig.hevc import TComTrQuant
     from swig.hevc import TComPrediction
 
+    from swig.hevc import SEIReader
     from swig.hevc import TDecBinCABAC
     from swig.hevc import TDecSbac
     from swig.hevc import TDecCavlc

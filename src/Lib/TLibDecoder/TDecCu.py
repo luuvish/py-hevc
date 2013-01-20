@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecCu.py
-    HM 8.0 Python Implementation
+    HM 9.1 Python Implementation
 """
 
 import sys
@@ -19,7 +19,6 @@ from ... import cvar
 from ... import initZscanToRaster
 from ... import initRasterToZscan
 from ... import initRasterToPelXY
-from ... import initMotionReferIdx
 
 use_trace = False
 
@@ -30,7 +29,7 @@ from ..TLibCommon.TypeDef import (
     REF_PIC_LIST_0, REF_PIC_LIST_1
 )
 
-from ..TLibCommon.CommonDef import (Clip, MRG_MAX_NUM_CANDS)
+from ..TLibCommon.CommonDef import (ClipY, ClipC, MRG_MAX_NUM_CANDS)
 
 from ..TLibCommon.TComRom import (
     g_auiZscanToRaster, g_auiRasterToPelX, g_auiRasterToPelY,
@@ -41,16 +40,16 @@ from ..TLibCommon.TComRom import (
 class TDecCu(object):
 
     def __init__(self):
-        self.m_uiMaxDepth = False
-        self.m_ppcYuvResi = None
-        self.m_ppcYuvReco = None
-        self.m_ppcCU = None
+        self.m_uiMaxDepth       = False
+        self.m_ppcYuvResi       = None
+        self.m_ppcYuvReco       = None
+        self.m_ppcCU            = None
 
-        self.m_pcTrQuant = None
-        self.m_pcPrediction = None
+        self.m_pcTrQuant        = None
+        self.m_pcPrediction     = None
         self.m_pcEntropyDecoder = None
 
-        self.m_bDecoderDQP = False
+        self.m_bDecoderDQP      = False
 
     def init(self, pcEntropyDecoder, pcTrQuant, pcPrediction):
         self.m_pcEntropyDecoder = pcEntropyDecoder
@@ -84,7 +83,6 @@ class TDecCu(object):
 
         # initialize conversion matrix from partition index to pel
         initRasterToPelXY(uiMaxWidth, uiMaxHeight, self.m_uiMaxDepth)
-        initMotionReferIdx(uiMaxWidth, uiMaxHeight, self.m_uiMaxDepth)
 
     def destroy(self):
         for ui in xrange(self.m_uiMaxDepth-1):
@@ -101,25 +99,17 @@ class TDecCu(object):
 
     def decodeCU(self, pcCU, ruiIsLast):
         if pcCU.getSlice().getPPS().getUseDQP():
-            self._setdQPFlag(True)
-
-        pcCU.setNumSucIPCM(0)
+            self.setdQPFlag(True)
 
         # start from the top level CU
-        ruiIsLast = self._xDecodeCU(pcCU, 0, 0, ruiIsLast)
+        ruiIsLast = self.xDecodeCU(pcCU, 0, 0, ruiIsLast)
         return ruiIsLast
 
     @trace.trace(enable=use_trace, init=trace.initCU, after=lambda self, pcCU: trace.dumpCU(pcCU))
     def decompressCU(self, pcCU):
-        self._xDecompressCU(pcCU, pcCU, 0, 0)
+        self.xDecompressCU(pcCU, pcCU, 0, 0)
 
-    def _getdQPFlag(self):
-        return self.m_bDecoderDQP
-
-    def _setdQPFlag(self, b):
-        self.m_bDecoderDQP = b
-
-    def _xDecodeCU(self, pcCU, uiAbsPartIdx, uiDepth, ruiIsLast):
+    def xDecodeCU(self, pcCU, uiAbsPartIdx, uiDepth, ruiIsLast):
         pcPic = pcCU.getPic()
         uiCurNumParts = pcPic.getNumPartInCU() >> (uiDepth<<1)
         uiQNumParts = uiCurNumParts >> 2
@@ -136,10 +126,7 @@ class TDecCu(object):
         if not bStartInCU and \
            uiRPelX < pcSlice.getSPS().getPicWidthInLumaSamples() and \
            uiBPelY < pcSlice.getSPS().getPicHeightInLumaSamples():
-            if pcCU.getNumSucIPCM() == 0:
-                self.m_pcEntropyDecoder.decodeSplitFlag(pcCU, uiAbsPartIdx, uiDepth)
-            else:
-                pcCU.setDepthSubParts(uiDepth, uiAbsPartIdx)
+            self.m_pcEntropyDecoder.decodeSplitFlag(pcCU, uiAbsPartIdx, uiDepth)
         else:
             bBoundary = True
 
@@ -149,7 +136,7 @@ class TDecCu(object):
             uiIdx = uiAbsPartIdx
             if (cvar.g_uiMaxCUWidth >> uiDepth) == pcCU.getSlice().getPPS().getMinCuDQPSize() and \
                pcCU.getSlice().getPPS().getUseDQP():
-                self._setdQPFlag(True)
+                self.setdQPFlag(True)
                 pcCU.setQPSubParts(pcCU.getRefQP(uiAbsPartIdx), uiAbsPartIdx, uiDepth) # set QP to default QP
 
             for uiPartUnitIdx in xrange(4):
@@ -160,7 +147,7 @@ class TDecCu(object):
                 if bSubInSlice:
                     if uiLPelX < pcCU.getSlice().getSPS().getPicWidthInLumaSamples() and \
                        uiTPelY < pcCU.getSlice().getSPS().getPicHeightInLumaSamples():
-                        ruiIsLast = self._xDecodeCU(pcCU, uiIdx, uiDepth+1, ruiIsLast)
+                        ruiIsLast = self.xDecodeCU(pcCU, uiIdx, uiDepth+1, ruiIsLast)
                     else:
                         pcCU.setOutsideCUPart(uiIdx, uiDepth+1)
                 if ruiIsLast:
@@ -169,7 +156,7 @@ class TDecCu(object):
                 uiIdx += uiQNumParts
             if (cvar.g_uiMaxCUWidth >> uiDepth) == pcCU.getSlice().getPPS().getMinCuDQPSize() and \
                pcCU.getSlice().getPPS().getUseDQP():
-                if self._getdQPFlag():
+                if self.getdQPFlag():
                     uiQPSrcPartIdx = 0;
                     if pcPic.getCU(pcCU.getAddr()).getDependentSliceStartCU(uiAbsPartIdx) != \
                        pcSlice.getDependentSliceCurStartCUAddr():
@@ -181,15 +168,14 @@ class TDecCu(object):
 
         if (cvar.g_uiMaxCUWidth >> uiDepth) >= pcCU.getSlice().getPPS().getMinCuDQPSize() and \
            pcCU.getSlice().getPPS().getUseDQP():
-            self._setdQPFlag(True)
+            self.setdQPFlag(True)
             pcCU.setQPSubParts(pcCU.getRefQP(uiAbsPartIdx), uiAbsPartIdx, uiDepth) # set QP to default QP
 
-        if pcCU.getSlice().getPPS().getTransquantBypassEnableFlag() and \
-           pcCU.getNumSucIPCM() == 0:
+        if pcCU.getSlice().getPPS().getTransquantBypassEnableFlag():
             self.m_pcEntropyDecoder.decodeCUTransquantBypassFlag(pcCU, uiAbsPartIdx, uiDepth)
 
         # decode CU mode and the partition size
-        if not pcCU.getSlice().isIntra() and pcCU.getNumSucIPCM() == 0:
+        if not pcCU.getSlice().isIntra():
             self.m_pcEntropyDecoder.decodeSkipFlag(pcCU, uiAbsPartIdx, uiDepth)
 
         if pcCU.isSkipped(uiAbsPartIdx):
@@ -198,13 +184,13 @@ class TDecCu(object):
             cMvFieldNeighbours = ArrayTComMvField(MRG_MAX_NUM_CANDS<<1) # double length for mv of both lists
             uhInterDirNeighbours = ArrayUChar(MRG_MAX_NUM_CANDS)
             numValidMergeCand = 0
-            for ui in xrange(MRG_MAX_NUM_CANDS):
+            for ui in xrange(self.m_ppcCU[uiDepth].getSlice().getMaxNumMergeCand()):
                 uhInterDirNeighbours[ui] = 0
             self.m_pcEntropyDecoder.decodeMergeIndex(pcCU, 0, uiAbsPartIdx, SIZE_2Nx2N,
                 uhInterDirNeighbours.cast(), cMvFieldNeighbours.cast(), uiDepth)
             uiMergeIndex = pcCU.getMergeIndex(uiAbsPartIdx)
-            numValidMergeCand = self.m_ppcCU[uiDepth].getInterMergeCandidates(0, 0, uiDepth,
-                cMvFieldNeighbours.cast(), uhInterDirNeighbours.cast(), numValidMergeCand, uiMergeIndex)
+            numValidMergeCand = self.m_ppcCU[uiDepth].getInterMergeCandidates(
+                0, 0, cMvFieldNeighbours.cast(), uhInterDirNeighbours.cast(), numValidMergeCand, uiMergeIndex)
             pcCU.setInterDirSubParts(uhInterDirNeighbours[uiMergeIndex], uiAbsPartIdx, 0, uiDepth)
 
             cTmpMv = TComMv(0, 0)
@@ -214,23 +200,17 @@ class TDecCu(object):
                     pcCU.setMVPNumSubParts(0, uiRefListIdx, uiAbsPartIdx, 0, uiDepth)
                     pcCU.getCUMvField(uiRefListIdx).setAllMvd(cTmpMv, SIZE_2Nx2N, uiAbsPartIdx, uiDepth)
                     pcCU.getCUMvField(uiRefListIdx).setAllMvField(cMvFieldNeighbours[2*uiMergeIndex+uiRefListIdx], SIZE_2Nx2N, uiAbsPartIdx, uiDepth)
-            ruiIsLast = self._xFinishDecodeCU(pcCU, uiAbsPartIdx, uiDepth, ruiIsLast)
+            ruiIsLast = self.xFinishDecodeCU(pcCU, uiAbsPartIdx, uiDepth, ruiIsLast)
             return ruiIsLast
 
-        if pcCU.getNumSucIPCM() == 0:
-            self.m_pcEntropyDecoder.decodePredMode(pcCU, uiAbsPartIdx, uiDepth)
-            self.m_pcEntropyDecoder.decodePartSize(pcCU, uiAbsPartIdx, uiDepth)
-        else:
-            pcCU.setPredModeSubParts(MODE_INTRA, uiAbsPartIdx, uiDepth)
-            pcCU.setPartSizeSubParts(SIZE_2Nx2N, uiAbsPartIdx, uiDepth)
-            pcCU.setSizeSubParts(cvar.g_uiMaxCUWidth>>uiDepth, cvar.g_uiMaxCUHeight>>uiDepth, uiAbsPartIdx, uiDepth)
-            pcCU.setTrIdxSubParts(0, uiAbsPartIdx, uiDepth)
+        self.m_pcEntropyDecoder.decodePredMode(pcCU, uiAbsPartIdx, uiDepth)
+        self.m_pcEntropyDecoder.decodePartSize(pcCU, uiAbsPartIdx, uiDepth)
 
         if pcCU.isIntra(uiAbsPartIdx) and pcCU.getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N:
             self.m_pcEntropyDecoder.decodeIPCMInfo(pcCU, uiAbsPartIdx, uiDepth)
 
             if pcCU.getIPCMFlag(uiAbsPartIdx):
-                ruiIsLast = self._xFinishDecodeCU(pcCU, uiAbsPartIdx, uiDepth, ruiIsLast)
+                ruiIsLast = self.xFinishDecodeCU(pcCU, uiAbsPartIdx, uiDepth, ruiIsLast)
                 return ruiIsLast
 
         uiCurrWidth = pcCU.getWidth(uiAbsPartIdx)
@@ -240,34 +220,29 @@ class TDecCu(object):
         self.m_pcEntropyDecoder.decodePredInfo(pcCU, uiAbsPartIdx, uiDepth, self.m_ppcCU[uiDepth])
 
         # Coefficient decoding
-        bCodeDQP = self._getdQPFlag()
+        bCodeDQP = self.getdQPFlag()
         self.m_pcEntropyDecoder.decodeCoeff(pcCU, uiAbsPartIdx, uiDepth, uiCurrWidth, uiCurrHeight, bCodeDQP)
-        self._setdQPFlag(bCodeDQP)
-        ruiIsLast = self._xFinishDecodeCU(pcCU, uiAbsPartIdx, uiDepth, ruiIsLast)
+        self.setdQPFlag(bCodeDQP)
+        ruiIsLast = self.xFinishDecodeCU(pcCU, uiAbsPartIdx, uiDepth, ruiIsLast)
         return ruiIsLast
 
-    def _xFinishDecodeCU(self, pcCU, uiAbsPartIdx, uiDepth, ruiIsLast):
+    def xFinishDecodeCU(self, pcCU, uiAbsPartIdx, uiDepth, ruiIsLast):
         if pcCU.getSlice().getPPS().getUseDQP():
             pcCU.setQPSubParts(
-                pcCU.getRefQP(uiAbsPartIdx) if self._getdQPFlag() else pcCU.getCodedQP(),
+                pcCU.getRefQP(uiAbsPartIdx) if self.getdQPFlag() else pcCU.getCodedQP(),
                 uiAbsPartIdx, uiDepth) # set QP
-        if pcCU.getNumSucIPCM() > 0:
-            ruiIsLast = 0
-            return ruiIsLast
 
-        ruiIsLast = self._xDecodeSliceEnd(pcCU, uiAbsPartIdx, uiDepth)
+        ruiIsLast = self.xDecodeSliceEnd(pcCU, uiAbsPartIdx, uiDepth)
         return ruiIsLast
 
-    def _xDecodeSliceEnd(self, pcCU, uiAbsPartIdx, uiDepth):
+    def xDecodeSliceEnd(self, pcCU, uiAbsPartIdx, uiDepth):
         uiIsLast = 0
         pcPic = pcCU.getPic()
         pcSlice = pcPic.getSlice(pcPic.getCurrSliceIdx())
         uiCurNumParts = pcPic.getNumPartInCU() >> (uiDepth<<1)
         uiWidth = pcSlice.getSPS().getPicWidthInLumaSamples()
         uiHeight = pcSlice.getSPS().getPicHeightInLumaSamples()
-
         uiGranularityWidth = cvar.g_uiMaxCUWidth
-
         uiPosX = pcCU.getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiAbsPartIdx]]
         uiPosY = pcCU.getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiAbsPartIdx]]
 
@@ -288,7 +263,7 @@ class TDecCu(object):
 
         return uiIsLast > 0
 
-    def _xDecompressCU(self, pcCU, pcCUCur, uiAbsPartIdx, uiDepth):
+    def xDecompressCU(self, pcCU, pcCUCur, uiAbsPartIdx, uiDepth):
         pcPic = pcCU.getPic()
 
         bBoundary = False
@@ -317,11 +292,11 @@ class TDecCu(object):
                 uiTPelY = pcCU.getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiIdx]]
 
                 binSlice = pcCU.getSCUAddr() + uiIdx + uiQNumParts > pcSlice.getDependentSliceCurStartCUAddr() and \
-                           pcCU.getSCUAddr() + uiIdx < pcSlice.getDependentSliceCurEndCUAddr() # SliceCurStartCUAddr() ???
+                           pcCU.getSCUAddr() + uiIdx < pcSlice.getDependentSliceCurEndCUAddr()
                 if binSlice and \
                    uiLPelX < pcSlice.getSPS().getPicWidthInLumaSamples() and \
                    uiTPelY < pcSlice.getSPS().getPicHeightInLumaSamples():
-                    self._xDecompressCU(pcCU, self.m_ppcCU[uiNextDepth], uiIdx, uiNextDepth)
+                    self.xDecompressCU(pcCU, self.m_ppcCU[uiNextDepth], uiIdx, uiNextDepth)
 
                 uiIdx += uiQNumParts
             return
@@ -333,23 +308,23 @@ class TDecCu(object):
 
         predMode = self.m_ppcCU[uiDepth].getPredictionMode(0)
         if predMode == MODE_INTER:
-            self._xReconInter(self.m_ppcCU[uiDepth], uiAbsPartIdx, uiDepth)
+            self.xReconInter(self.m_ppcCU[uiDepth], uiAbsPartIdx, uiDepth)
         elif predMode == MODE_INTRA:
-            self._xReconIntraQT(self.m_ppcCU[uiDepth], uiAbsPartIdx, uiDepth)
+            self.xReconIntraQT(self.m_ppcCU[uiDepth], uiAbsPartIdx, uiDepth)
         else:
             assert(False)
         if self.m_ppcCU[uiDepth].isLosslessCoded(0) and \
            self.m_ppcCU[uiDepth].getIPCMFlag(0) == False:
-            self._xFillPCMBuffer(self.m_ppcCU[uiDepth], uiAbsPartIdx, uiDepth)
+            self.xFillPCMBuffer(self.m_ppcCU[uiDepth], uiAbsPartIdx, uiDepth)
 
-        self._xCopyToPic(self.m_ppcCU[uiDepth], pcPic, uiAbsPartIdx, uiDepth)
+        self.xCopyToPic(self.m_ppcCU[uiDepth], pcPic, uiAbsPartIdx, uiDepth)
 
-    def _xReconInter(self, pcCU, uiAbsPartIdx, uiDepth):
+    def xReconInter(self, pcCU, uiAbsPartIdx, uiDepth):
         # inter prediction
         self.m_pcPrediction.motionCompensation(pcCU, self.m_ppcYuvReco[uiDepth])
 
         # inter recon
-        self._xDecodeInterTexture(pcCU, 0, uiDepth)
+        self.xDecodeInterTexture(pcCU, 0, uiDepth)
 
         # clip for only non-zero cbp case
         if pcCU.getCbf(0, TEXT_LUMA) or pcCU.getCbf(0, TEXT_CHROMA_U) or pcCU.getCbf(0, TEXT_CHROMA_V):
@@ -361,196 +336,24 @@ class TDecCu(object):
                 self.m_ppcYuvReco[uiDepth], 0,
                 pcCU.getWidth(0), pcCU.getHeight(0))
 
-    def _xReconIntraQT(self, pcCU, uiAbsPartIdx, uiDepth):
+    def xReconIntraQT(self, pcCU, uiAbsPartIdx, uiDepth):
         uiInitTrDepth = 0 if pcCU.getPartitionSize(0) == SIZE_2Nx2N else 1
         uiNumPart = pcCU.getNumPartInter()
         uiNumQPart = pcCU.getTotalNumPart() >> 2
 
         if pcCU.getIPCMFlag(0):
-            self._xReconPCM(pcCU, uiAbsPartIdx, uiDepth)
+            self.xReconPCM(pcCU, uiAbsPartIdx, uiDepth)
             return
 
         for uiPU in xrange(uiNumPart):
-            self._xIntraLumaRecQT(pcCU, uiInitTrDepth, uiPU * uiNumQPart,
+            self.xIntraLumaRecQT(pcCU, uiInitTrDepth, uiPU * uiNumQPart,
                 self.m_ppcYuvReco[uiDepth], self.m_ppcYuvReco[uiDepth], self.m_ppcYuvResi[uiDepth])
 
         for uiPU in xrange(uiNumPart):
-            self._xIntraChromaRecQT(pcCU, uiInitTrDepth, uiPU * uiNumQPart,
+            self.xIntraChromaRecQT(pcCU, uiInitTrDepth, uiPU * uiNumQPart,
                 self.m_ppcYuvReco[uiDepth], self.m_ppcYuvReco[uiDepth], self.m_ppcYuvResi[uiDepth])
 
-    def _xReconPCM(self, pcCU, uiAbsPartIdx, uiDepth):
-        # Luma
-        uiWidth = cvar.g_uiMaxCUWidth >> uiDepth
-        uiHeight = cvar.g_uiMaxCUHeight >> uiDepth
-
-        piPcmY = pointer(pcCU.getPCMSampleY(), type='short *')
-        piRecoY = pointer(self.m_ppcYuvReco[uiDepth].getLumaAddr(0, uiWidth), type='short *')
-
-        uiStride = self.m_ppcYuvResi[uiDepth].getStride()
-
-        self._xDecodePCMTexture(pcCU, 0, piPcmY, piRecoY, uiStride, uiWidth, uiHeight, TEXT_LUMA)
-
-        # Cb and Cr
-        uiCWidth = uiWidth >> 1
-        uiCHeight = uiHeight >> 1
-
-        piPcmCb = pointer(pcCU.getPCMSampleCb(), type='short *')
-        piPcmCr = pointer(pcCU.getPCMSampleCr(), type='short *')
-        pRecoCb = pointer(self.m_ppcYuvReco[uiDepth].getCbAddr(), type='short *')
-        pRecoCr = pointer(self.m_ppcYuvReco[uiDepth].getCrAddr(), type='short *')
-
-        uiCStride = self.m_ppcYuvReco[uiDepth].getCStride()
-
-        self._xDecodePCMTexture(pcCU, 0, piPcmCb, pRecoCb, uiCStride, uiCWidth, uiCHeight, TEXT_CHROMA_U)
-        self._xDecodePCMTexture(pcCU, 0, piPcmCr, pRecoCr, uiCStride, uiCWidth, uiCHeight, TEXT_CHROMA_V)
-
-    def _xFillPCMBuffer(self, pcCU, uiAbsPartIdx, uiDepth):
-        # Luma
-        uiWidth = cvar.g_uiMaxCUWidth >> uiDepth
-        uiHeight = cvar.g_uiMaxCUHeight >> uiDepth
-
-        piPcmY = pointer(pcCU.getPCMSampleY(), type='short *')
-        piRecoY = pointer(self.m_ppcYuvReco[uiDepth].getLumaAddr(0, uiWidth), type='short *')
-
-        uiStride = self.m_ppcYuvReco[uiDepth].getStride()
-
-        for uiY in xrange(uiHeight):
-            for uiX in xrange(uiWidth):
-                piPcmY[uiX] = piRecoY[uiX]
-            piPcmY += uiWidth
-            piRecoY += uiStride
-
-        # Cb and Cr
-        uiWidthC = uiWidth >> 1
-        uiHeightC = uiHeight >> 1
-
-        piPcmCb = pointer(pcCU.getPCMSampleCb(), type='short *')
-        piPcmCr = pointer(pcCU.getPCMSampleCr(), type='short *')
-        piRecoCb = pointer(self.m_ppcYuvReco[uiDepth].getCbAddr(), type='short *')
-        piRecoCr = pointer(self.m_ppcYuvReco[uiDepth].getCrAddr(), type='short *')
-
-        uiStrideC = self.m_ppcYuvReco[uiDepth].getCStride()
-
-        for uiY in xrange(uiHeightC):
-            for uiX in xrange(uiWidthC):
-                piPcmCb[uiX] = piRecoCb[uiX]
-                piPcmCr[uiX] = piRecoCr[uiX]
-            piPcmCb += uiWidthC
-            piPcmCr += uiWidthC
-            piRecoCb += uiStrideC
-            piRecoCr += uiStrideC
-
-    def _xCopyToPic(self, pcCU, pcPic, uiZorderIdx, uiDepth):
-        uiCUAddr = pcCU.getAddr()
-        self.m_ppcYuvReco[uiDepth].copyToPicYuv(pcPic.getPicYuvRec(), uiCUAddr, uiZorderIdx)
-
-    def _xDecodeInterTexture(self, pcCU, uiAbsPartIdx, uiDepth):
-        uiWidth = pcCU.getWidth(uiAbsPartIdx)
-        uiHeight = pcCU.getHeight(uiAbsPartIdx)
-        uiLumaTrMode = uiChromaTrMode = 0
-
-        uiLumaTrMode, uiChromaTrMode = \
-            pcCU.convertTransIdx(uiAbsPartIdx, pcCU.getTransformIdx(uiAbsPartIdx), uiLumaTrMode, uiChromaTrMode)
-
-        # Y
-        piCoeff = pcCU.getCoeffY()
-        pResi = self.m_ppcYuvResi[uiDepth].getLumaAddr()
-
-        self.m_pcTrQuant.setQPforQuant(
-            pcCU.getQP(uiAbsPartIdx), TEXT_LUMA,
-            pcCU.getSlice().getSPS().getQpBDOffsetY(), 0)
-        self.m_pcTrQuant.invRecurTransformNxN(
-            pcCU, 0, TEXT_LUMA, pResi,
-            0, self.m_ppcYuvResi[uiDepth].getStride(),
-            uiWidth, uiHeight, uiLumaTrMode, 0, piCoeff)
-
-        # Cb and Cr
-        curChromaQpOffset = pcCU.getSlice().getPPS().getChromaCbQpOffset() + pcCU.getSlice().getSliceQpDeltaCb()
-        self.m_pcTrQuant.setQPforQuant(
-            pcCU.getQP(uiAbsPartIdx), TEXT_CHROMA,
-            pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
-
-        uiWidth >>= 1
-        uiHeight >>= 1
-        piCoeff = pcCU.getCoeffCb()
-        pResi = self.m_ppcYuvResi[uiDepth].getCbAddr()
-        self.m_pcTrQuant.invRecurTransformNxN(
-            pcCU, 0, TEXT_CHROMA_U, pResi,
-            0, self.m_ppcYuvResi[uiDepth].getCStride(),
-            uiWidth, uiHeight, uiChromaTrMode, 0, piCoeff)
-
-        curChromaQpOffset = pcCU.getSlice().getPPS().getChromaCrQpOffset() + pcCU.getSlice().getSliceQpDeltaCr()
-        self.m_pcTrQuant.setQPforQuant(
-            pcCU.getQP(uiAbsPartIdx), TEXT_CHROMA,
-            pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
-
-        piCoeff = pcCU.getCoeffCr()
-        pResi = self.m_ppcYuvResi[uiDepth].getCrAddr()
-        self.m_pcTrQuant.invRecurTransformNxN(
-            pcCU, 0, TEXT_CHROMA_V, pResi,
-            0, self.m_ppcYuvResi[uiDepth].getCStride(),
-            uiWidth, uiHeight, uiChromaTrMode, 0, piCoeff)
-
-    def _xDecodePCMTexture(self, pcCU, uiPartIdx, piPCM, piReco, uiStride, uiWidth, uiHeight, ttText):
-        piPicReco = None
-        uiPicStride = uiPcmLeftShiftBit = 0
-
-        if ttText == TEXT_LUMA:
-            uiPicStride = pcCU.getPic().getPicYuvRec().getStride()
-            piPicReco = pcCU.getPic().getPicYuvRec().getLumaAddr(pcCU.getAddr(), pcCU.getZorderIdxInCU() + uiPartIdx)
-            uiPcmLeftShiftBit = cvar.g_uiBitDepth + cvar.g_uiBitIncrement - pcCU.getSlice().getSPS().getPCMBitDepthLuma()
-        else:
-            uiPicStride = pcCU.getPic().getPicYuvRec().getCStride()
-
-            if ttText == TEXT_CHROMA_U:
-                piPicReco = pcCU.getPic().getPicYuvRec().getCbAddr(pcCU.getAddr(), pcCU.getZorderIdxInCU() + uiPartIdx)
-            else:
-                piPicReco = pcCU.getPic().getPicYuvRec().getCrAddr(pcCU.getAddr(), pcCU.getZorderIdxInCU() + uiPartIdx)
-            uiPcmLeftShiftBit = cvar.g_uiBitDepth + cvar.g_uiBitIncrement - pcCU.getSlice().getSPS().getPCMBitDepthChroma()
-
-        piPicReco = pointer(piPicReco, type='short *')
-        for uiY in xrange(uiHeight):
-            for uiX in xrange(uiWidth):
-                piReco[uiX] = piPCM[uiX] << uiPcmLeftShiftBit
-                piPicReco[uiX] = piReco[uiX]
-            piPCM += uiWidth
-            piReco += uiStride
-            piPicReco += uiPicStride
-
-    def _xIntraRecQT(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv):
-        uiFullDepth = pcCU.getDepth(0) + uiTrDepth
-        uiTrMode = pcCU.getTransformIdx(uiAbsPartIdx)
-        if uiTrMode == uiTrDepth:
-            self._xIntraRecLumaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv)
-            self._xIntraRecChromaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, 0)
-            self._xIntraRecChromaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, 1)
-        else:
-            uiNumQPart = pcCU.getPic().getNumPartInCU() >> ((uiFullDepth+1) << 1)
-            for uiPart in xrange(4):
-                self._xIntraRecQT(pcCU, uiTrDepth+1, uiAbsPartIdx+uiPart*uiNumQPart, pcRecoYuv, pcPredYuv, pcResiYuv)
-
-    def _xIntraLumaRecQT(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv):
-        uiFullDepth = pcCU.getDepth(0) + uiTrDepth
-        uiTrMode = pcCU.getTransformIdx(uiAbsPartIdx)
-        if uiTrMode == uiTrDepth:
-            self._xIntraRecLumaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv)
-        else:
-            uiNumQPart = pcCU.getPic().getNumPartInCU() >> ((uiFullDepth+1) << 1)
-            for uiPart in xrange(4):
-                self._xIntraLumaRecQT(pcCU, uiTrDepth+1, uiAbsPartIdx+uiPart*uiNumQPart, pcRecoYuv, pcPredYuv, pcResiYuv)
-
-    def _xIntraChromaRecQT(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv):
-        uiFullDepth = pcCU.getDepth(0) + uiTrDepth
-        uiTrMode = pcCU.getTransformIdx(uiAbsPartIdx)
-        if uiTrMode == uiTrDepth:
-            self._xIntraRecChromaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, 0)
-            self._xIntraRecChromaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, 1)
-        else:
-            uiNumQPart = pcCU.getPic().getNumPartInCU() >> ((uiFullDepth+1) << 1)
-            for uiPart in xrange(4):
-                self._xIntraChromaRecQT(pcCU, uiTrDepth+1, uiAbsPartIdx+uiPart*uiNumQPart, pcRecoYuv, pcPredYuv, pcResiYuv)
-
-    def _xIntraRecLumaBlk(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv):
+    def xIntraRecLumaBlk(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv):
         uiWidth = pcCU.getWidth(0) >> uiTrDepth
         uiHeight = pcCU.getHeight(0) >> uiTrDepth
         uiStride = pcRecoYuv.getStride()
@@ -604,14 +407,14 @@ class TDecCu(object):
         #===== reconstruction =====
         for uiY in xrange(uiHeight):
             for uiX in xrange(uiWidth):
-                piReco[uiX] = Clip(piPred[uiX] + piResi[uiX])
+                piReco[uiX] = ClipY(piPred[uiX] + piResi[uiX])
                 piRecIPred[uiX] = piReco[uiX]
             piPred += uiStride
             piResi += uiStride
             piReco += uiStride
             piRecIPred += uiRecIPredStride
 
-    def _xIntraRecChromaBlk(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, uiChromaId):
+    def xIntraRecChromaBlk(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, uiChromaId):
         uiFullDepth = pcCU.getDepth(0) + uiTrDepth
         uiLog2TrSize = g_aucConvertToBit[pcCU.getSlice().getSPS().getMaxCUWidth() >> uiFullDepth] + 2
 
@@ -691,9 +494,173 @@ class TDecCu(object):
         #===== reconstruction =====
         for uiY in xrange(uiHeight):
             for uiX in xrange(uiWidth):
-                piReco[uiX] = Clip(piPred[uiX] + piResi[uiX])
+                piReco[uiX] = ClipC(piPred[uiX] + piResi[uiX])
                 piRecIPred[uiX] = piReco[uiX]
             piPred += uiStride
             piResi += uiStride
             piReco += uiStride
             piRecIPred += uiRecIPredStride
+
+    def xReconPCM(self, pcCU, uiAbsPartIdx, uiDepth):
+        # Luma
+        uiWidth = cvar.g_uiMaxCUWidth >> uiDepth
+        uiHeight = cvar.g_uiMaxCUHeight >> uiDepth
+
+        piPcmY = pointer(pcCU.getPCMSampleY(), type='short *')
+        piRecoY = pointer(self.m_ppcYuvReco[uiDepth].getLumaAddr(0, uiWidth), type='short *')
+
+        uiStride = self.m_ppcYuvResi[uiDepth].getStride()
+
+        self.xDecodePCMTexture(pcCU, 0, piPcmY, piRecoY, uiStride, uiWidth, uiHeight, TEXT_LUMA)
+
+        # Cb and Cr
+        uiCWidth = uiWidth >> 1
+        uiCHeight = uiHeight >> 1
+
+        piPcmCb = pointer(pcCU.getPCMSampleCb(), type='short *')
+        piPcmCr = pointer(pcCU.getPCMSampleCr(), type='short *')
+        pRecoCb = pointer(self.m_ppcYuvReco[uiDepth].getCbAddr(), type='short *')
+        pRecoCr = pointer(self.m_ppcYuvReco[uiDepth].getCrAddr(), type='short *')
+
+        uiCStride = self.m_ppcYuvReco[uiDepth].getCStride()
+
+        self.xDecodePCMTexture(pcCU, 0, piPcmCb, pRecoCb, uiCStride, uiCWidth, uiCHeight, TEXT_CHROMA_U)
+        self.xDecodePCMTexture(pcCU, 0, piPcmCr, pRecoCr, uiCStride, uiCWidth, uiCHeight, TEXT_CHROMA_V)
+
+    def xDecodeInterTexture(self, pcCU, uiAbsPartIdx, uiDepth):
+        uiWidth = pcCU.getWidth(uiAbsPartIdx)
+        uiHeight = pcCU.getHeight(uiAbsPartIdx)
+        trMode = pcCU.getTransformIdx(uiAbsPartIdx)
+
+        # Y
+        piCoeff = pcCU.getCoeffY()
+        pResi = self.m_ppcYuvResi[uiDepth].getLumaAddr()
+
+        self.m_pcTrQuant.setQPforQuant(
+            pcCU.getQP(uiAbsPartIdx), TEXT_LUMA,
+            pcCU.getSlice().getSPS().getQpBDOffsetY(), 0)
+
+        self.m_pcTrQuant.invRecurTransformNxN(
+            pcCU, 0, TEXT_LUMA, pResi,
+            0, self.m_ppcYuvResi[uiDepth].getStride(),
+            uiWidth, uiHeight, trMode, 0, piCoeff)
+
+        # Cb and Cr
+        curChromaQpOffset = pcCU.getSlice().getPPS().getChromaCbQpOffset() + pcCU.getSlice().getSliceQpDeltaCb()
+        self.m_pcTrQuant.setQPforQuant(
+            pcCU.getQP(uiAbsPartIdx), TEXT_CHROMA,
+            pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
+
+        uiWidth >>= 1
+        uiHeight >>= 1
+        piCoeff = pcCU.getCoeffCb()
+        pResi = self.m_ppcYuvResi[uiDepth].getCbAddr()
+        self.m_pcTrQuant.invRecurTransformNxN(
+            pcCU, 0, TEXT_CHROMA_U, pResi,
+            0, self.m_ppcYuvResi[uiDepth].getCStride(),
+            uiWidth, uiHeight, trMode, 0, piCoeff)
+
+        curChromaQpOffset = pcCU.getSlice().getPPS().getChromaCrQpOffset() + pcCU.getSlice().getSliceQpDeltaCr()
+        self.m_pcTrQuant.setQPforQuant(
+            pcCU.getQP(uiAbsPartIdx), TEXT_CHROMA,
+            pcCU.getSlice().getSPS().getQpBDOffsetC(), curChromaQpOffset)
+
+        piCoeff = pcCU.getCoeffCr()
+        pResi = self.m_ppcYuvResi[uiDepth].getCrAddr()
+        self.m_pcTrQuant.invRecurTransformNxN(
+            pcCU, 0, TEXT_CHROMA_V, pResi,
+            0, self.m_ppcYuvResi[uiDepth].getCStride(),
+            uiWidth, uiHeight, trMode, 0, piCoeff)
+
+    def xDecodePCMTexture(self, pcCU, uiPartIdx, piPCM, piReco, uiStride, uiWidth, uiHeight, ttText):
+        piPicReco = None
+        uiPicStride = uiPcmLeftShiftBit = 0
+
+        if ttText == TEXT_LUMA:
+            uiPicStride = pcCU.getPic().getPicYuvRec().getStride()
+            piPicReco = pcCU.getPic().getPicYuvRec().getLumaAddr(pcCU.getAddr(), pcCU.getZorderIdxInCU() + uiPartIdx)
+            uiPcmLeftShiftBit = cvar.g_bitDepthY - pcCU.getSlice().getSPS().getPCMBitDepthLuma()
+        else:
+            uiPicStride = pcCU.getPic().getPicYuvRec().getCStride()
+
+            if ttText == TEXT_CHROMA_U:
+                piPicReco = pcCU.getPic().getPicYuvRec().getCbAddr(pcCU.getAddr(), pcCU.getZorderIdxInCU() + uiPartIdx)
+            else:
+                piPicReco = pcCU.getPic().getPicYuvRec().getCrAddr(pcCU.getAddr(), pcCU.getZorderIdxInCU() + uiPartIdx)
+            uiPcmLeftShiftBit = cvar.g_bitDepthC - pcCU.getSlice().getSPS().getPCMBitDepthChroma()
+
+        piPicReco = pointer(piPicReco, type='short *')
+        for uiY in xrange(uiHeight):
+            for uiX in xrange(uiWidth):
+                piReco[uiX] = piPCM[uiX] << uiPcmLeftShiftBit
+                piPicReco[uiX] = piReco[uiX]
+            piPCM += uiWidth
+            piReco += uiStride
+            piPicReco += uiPicStride
+
+    def xCopyToPic(self, pcCU, pcPic, uiZorderIdx, uiDepth):
+        uiCUAddr = pcCU.getAddr()
+        self.m_ppcYuvReco[uiDepth].copyToPicYuv(pcPic.getPicYuvRec(), uiCUAddr, uiZorderIdx)
+
+    def xIntraLumaRecQT(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv):
+        uiFullDepth = pcCU.getDepth(0) + uiTrDepth
+        uiTrMode = pcCU.getTransformIdx(uiAbsPartIdx)
+        if uiTrMode == uiTrDepth:
+            self.xIntraRecLumaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv)
+        else:
+            uiNumQPart = pcCU.getPic().getNumPartInCU() >> ((uiFullDepth+1) << 1)
+            for uiPart in xrange(4):
+                self.xIntraLumaRecQT(pcCU, uiTrDepth+1, uiAbsPartIdx+uiPart*uiNumQPart, pcRecoYuv, pcPredYuv, pcResiYuv)
+
+    def xIntraChromaRecQT(self, pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv):
+        uiFullDepth = pcCU.getDepth(0) + uiTrDepth
+        uiTrMode = pcCU.getTransformIdx(uiAbsPartIdx)
+        if uiTrMode == uiTrDepth:
+            self.xIntraRecChromaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, 0)
+            self.xIntraRecChromaBlk(pcCU, uiTrDepth, uiAbsPartIdx, pcRecoYuv, pcPredYuv, pcResiYuv, 1)
+        else:
+            uiNumQPart = pcCU.getPic().getNumPartInCU() >> ((uiFullDepth+1) << 1)
+            for uiPart in xrange(4):
+                self.xIntraChromaRecQT(pcCU, uiTrDepth+1, uiAbsPartIdx+uiPart*uiNumQPart, pcRecoYuv, pcPredYuv, pcResiYuv)
+
+    def getdQPFlag(self):
+        return self.m_bDecoderDQP
+
+    def setdQPFlag(self, b):
+        self.m_bDecoderDQP = b
+
+    def xFillPCMBuffer(self, pcCU, uiAbsPartIdx, uiDepth):
+        # Luma
+        uiWidth = cvar.g_uiMaxCUWidth >> uiDepth
+        uiHeight = cvar.g_uiMaxCUHeight >> uiDepth
+
+        piPcmY = pointer(pcCU.getPCMSampleY(), type='short *')
+        piRecoY = pointer(self.m_ppcYuvReco[uiDepth].getLumaAddr(0, uiWidth), type='short *')
+
+        uiStride = self.m_ppcYuvReco[uiDepth].getStride()
+
+        for uiY in xrange(uiHeight):
+            for uiX in xrange(uiWidth):
+                piPcmY[uiX] = piRecoY[uiX]
+            piPcmY += uiWidth
+            piRecoY += uiStride
+
+        # Cb and Cr
+        uiWidthC = uiWidth >> 1
+        uiHeightC = uiHeight >> 1
+
+        piPcmCb = pointer(pcCU.getPCMSampleCb(), type='short *')
+        piPcmCr = pointer(pcCU.getPCMSampleCr(), type='short *')
+        piRecoCb = pointer(self.m_ppcYuvReco[uiDepth].getCbAddr(), type='short *')
+        piRecoCr = pointer(self.m_ppcYuvReco[uiDepth].getCrAddr(), type='short *')
+
+        uiStrideC = self.m_ppcYuvReco[uiDepth].getCStride()
+
+        for uiY in xrange(uiHeightC):
+            for uiX in xrange(uiWidthC):
+                piPcmCb[uiX] = piRecoCb[uiX]
+                piPcmCr[uiX] = piRecoCr[uiX]
+            piPcmCb += uiWidthC
+            piPcmCr += uiWidthC
+            piRecoCb += uiStrideC
+            piRecoCr += uiStrideC

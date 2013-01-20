@@ -4,7 +4,9 @@
     HM 9.1 Python Implementation
 """
 
-from .TComRom import g_uiIBDI_MAX
+import sys
+
+from .TComRom import g_bitDepthY, g_bitDepthC
 
 
 NV_VERSION                  = "9.1" # Current software version
@@ -46,10 +48,15 @@ NOT_VALID                   = -1
 
 
 # clip x, such that 0 <= x <= #g_uiIBDI_MAX
-Clip = lambda x: min(g_uiIBDI_MAX, max(0, x))
+ClipY = lambda x: min((1 << g_bitDepthY) -1, max(0, x))
+ClipC = lambda x: min((1 << g_bitDepthC) -1, max(0, x))
 
 # clip a, such that minVal <= a <= maxVal
 Clip3 = lambda minVal, maxVal, a: min(max(minVal, a), maxVal)
+
+
+DATA_ALIGN                  = 1
+FATAL_ERROR_0 = lambda message, exitcode: (sys.stdout.write(message), sys.exit(exitcode))
 
 
 # AMVP: advanced motion vector prediction

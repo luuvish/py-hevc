@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/TComRom.py
-    HM 8.0 Python Implementation
+    HM 9.1 Python Implementation
 """
 
 import sys
@@ -23,7 +23,6 @@ MAX_NUM_SPU_W = MAX_CU_SIZE / MIN_PU_SIZE # maximum number of SPU in horizontal 
 # flexible conversion from relative to absolute index
 g_auiZscanToRaster = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
 g_auiRasterToZscan = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
-g_motionRefer      = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
 
 # conversion of partition index to picture pel position
 g_auiRasterToPelX = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
@@ -132,8 +131,6 @@ g_aucChromaScale = (
 
 g_auiSigLastScan = [[None for j in xrange(MAX_CU_DEPTH)] for i in xrange(4)]
 
-g_auiNonSquareSigLastScan = 4 * [0]
-
 g_uiGroupIdx = (0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9)
 g_uiMinInGroup = (0,1,2,3,4,6,8,12,16,24)
 
@@ -159,14 +156,8 @@ g_aucIntraModeNumFast = (
     3  # 128x128  
 )
 
-g_aucIntraModeNumAng   = 7 * [0]
-g_aucIntraModeBitsAng  = 7 * [0]
-g_aucAngIntraModeOrder = NUM_INTRA_MODE * [0]
-
-g_uiBitDepth          = 8 # base bit-depth
-g_uiBitIncrement      = 0 # increments
-g_uiIBDI_MAX          = 255 # max. value after  IBDI
-g_uiBASE_MAX          = 255 # max. value before IBDI
+g_bitDepthY           = 8 # base bit-depth
+g_bitDepthC           = 8 # base bit-depth
 g_uiPCMBitDepthLuma   = 8 # PCM bit-depth
 g_uiPCMBitDepthChroma = 8 # PCM bit-depth
 
@@ -180,8 +171,6 @@ g_as_DST_MAT_4 = (
     (84,-29,-74, 55),
     (55,-84, 74,-29),
 )
-g_aucDCTDSTMode_Vert = NUM_INTRA_MODE * [0]
-g_aucDCTDSTMode_Hor  = NUM_INTRA_MODE * [0]
 
 g_aucConvertToBit = (MAX_CU_SIZE + 1) * [0]
 
@@ -192,12 +181,6 @@ SCALING_LIST_START_VALUE = 8 # start value for dpcm mode
 MAX_MATRIX_COEF_NUM      = 64 # max coefficient number for quantization matrix
 MAX_MATRIX_SIZE_NUM      = 8 # max size number for quantization matrix
 SCALING_LIST_DC          = 16 # default DC value
-
-# ScalingListDIR
-SCALING_LIST_SQT     = 0
-SCALING_LIST_VER     = 1
-SCALING_LIST_HOR     = 2
-SCALING_LIST_DIR_NUM = 3
 
 # ScalingListSize
 SCALING_LIST_4x4      = 0
@@ -241,27 +224,6 @@ MatrixType_DC = (
      "INTER32X32_LUMA_DC")
 )
 
-g_quantIntraDefault4x4 = (
-    16,16,17,21,
-    16,17,20,25,
-    17,20,30,41,
-    21,25,41,70
-)
-
-g_quantInterDefault4x4 = (
-    16,16,17,21,
-    16,17,21,24,
-    17,21,24,36,
-    21,24,36,57
-)
-
-g_quantTSDefault4x4 = (
-    16,16,16,16,
-    16,16,16,16,
-    16,16,16,16,
-    16,16,16,16
-)
-
 g_quantIntraDefault8x8 = (
     16,16,16,16,17,18,21,24,
     16,16,16,16,17,19,22,25,
@@ -284,10 +246,12 @@ g_quantInterDefault8x8 = (
     24,25,28,33,41,54,71,91
 )
 
-g_quantIntraDefault16x16 = 256 * [0]
-g_quantInterDefault16x16 = 256 * [0]
-g_quantIntraDefault32x32 = 1024 * [0]
-g_quantInterDefault32x32 = 1024 * [0]
+g_quantTSDefault4x4 = (
+    16,16,16,16,
+    16,16,16,16,
+    16,16,16,16,
+    16,16,16,16
+)
 
 g_scalingListSize = (16, 64, 256, 1024)
 g_scalingListSizeX = (4, 8, 16, 32)
@@ -313,10 +277,8 @@ def initROM():
         g_auiSigLastScan[0][i] = (c*c) * [0]
         g_auiSigLastScan[1][i] = (c*c) * [0]
         g_auiSigLastScan[2][i] = (c*c) * [0]
-        g_auiSigLastScan[3][i] = (c*c) * [0]
         initSigLastScan(
-            g_auiSigLastScan[0][i], g_auiSigLastScan[1][i],
-            g_auiSigLastScan[2][i], g_auiSigLastScan[3][i],
+            g_auiSigLastScan[0][i], g_auiSigLastScan[1][i], g_auiSigLastScan[2][i],
             c, c, i)
         c <<= 1
 
@@ -326,59 +288,31 @@ def destroyROM():
 #       del g_auiSigLastScan[0][i]
 #       del g_auiSigLastScan[1][i]
 #       del g_auiSigLastScan[2][i]
-#       del g_auiSigLastScan[3][i]
 
+def _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):
+    iStride = 1 << (iMaxDepth - 1)
+
+    if iDepth == iMaxDepth:
+        rpuiCurrIdx[0] = uiStartVal
+        rpuiCurrIdx += 1
+    else:
+        iStep = iStride >> iDepth
+        _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal, rpuiCurrIdx)
+        _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep, rpuiCurrIdx)
+        _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride, rpuiCurrIdx)
+        _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride+iStep, rpuiCurrIdx)
 def initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):
-    def _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):
-        iStride = 1 << (iMaxDepth - 1)
-
-        if iDepth == iMaxDepth:
-            rpuiCurrIdx[0] = uiStartVal
-            rpuiCurrIdx += 1
-        else:
-            iStep = iStride >> iDepth
-            _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal, rpuiCurrIdx)
-            _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep, rpuiCurrIdx)
-            _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride, rpuiCurrIdx)
-            _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride+iStep, rpuiCurrIdx)
-
     _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, pointer(rpuiCurrIdx))
 
 def initRasterToZscan(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
     uiMinCUWidth = uiMaxCUWidth  >> (uiMaxDepth - 1)
     uiMinCUHeight = uiMaxCUHeight >> (uiMaxDepth - 1)
   
-    uiNumPartInWidth = uiMaxCUWidth / uiMinCUWidth
-    uiNumPartInHeight = uiMaxCUHeight / uiMinCUHeight
+    uiNumPartInWidth = uiMaxCUWidth // uiMinCUWidth
+    uiNumPartInHeight = uiMaxCUHeight // uiMinCUHeight
   
     for i in xrange(uiNumPartInWidth*uiNumPartInHeight):
         g_auiRasterToZscan[g_auiZscanToRaster[i]] = i
-
-def initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
-    minSUWidth = uiMaxCUWidth >> (uiMaxDepth - 1)
-    minSUHeight = uiMaxCUHeight >> (uiMaxDepth - 1)
-
-    numPartInWidth = uiMaxCUWidth / minSUWidth
-    numPartInHeight = uiMaxCUHeight / minSUHeight
-
-    for i in xrange(numPartInWidth*numPartInHeight):
-        g_motionRefer[i] = i
-
-    maxCUDepth = g_uiMaxCUDepth - (g_uiAddCUDepth - 1)
-    minCUWidth = uiMaxCUWidth >> (maxCUDepth - 1)
-
-    if not (minCUWidth == 8 and minSUWidth == 4): #check if Minimum PU width == 4
-        return
-
-    compressionNum = 2
-
-    for i in xrange(numPartInWidth*(numPartInHeight-1), numPartInWidth*numPartInHeight, compressionNum*2):
-        for j in xrange(1, compressionNum):
-            g_motionRefer[g_auiRasterToZscan[i+j]] = g_auiRasterToZscan[i]
-
-    for i in xrange(numPartInWidth*(numPartInHeight-1)+compressionNum*2-1, numPartInWidth*numPartInHeight, compressionNum*2):
-        for j in xrange(1, compressionNum):
-            g_motionRefer[g_auiRasterToZscan[i-j]] = g_auiRasterToZscan[i]
 
 def initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
     uiTempX = pointer(g_auiRasterToPelX)
@@ -387,8 +321,8 @@ def initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
     uiMinCUWidth = uiMaxCUWidth >> (uiMaxDepth - 1)
     uiMinCUHeight = uiMaxCUHeight >> (uiMaxDepth - 1)
   
-    uiNumPartInWidth = uiMaxCUWidth / uiMinCUWidth
-    uiNumPartInHeight = uiMaxCUHeight / uiMinCUHeight
+    uiNumPartInWidth = uiMaxCUWidth // uiMinCUWidth
+    uiNumPartInHeight = uiMaxCUHeight // uiMinCUHeight
 
     uiTempX[0] = 0
     uiTempX += 1
@@ -401,13 +335,12 @@ def initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
         uiTempX += uiNumPartInWidth
 
     for i in xrange(1, uiNumPartInWidth*uiNumPartInHeight):
-        uiTempY[i] = (i / uiNumPartInWidth) * uiMinCUWidth
+        uiTempY[i] = (i // uiNumPartInWidth) * uiMinCUWidth
 
-def initSigLastScan(pBuffZ, pBuffH, pBuffV, pBuffD, iWidth, iHeight, iDepth):
-    pBuffZ = pointer(pBuffZ)
+def initSigLastScan(pBuffD, pBuffH, pBuffV, iWidth, iHeight, iDepth):
+    pBuffD = pointer(pBuffD)
     pBuffH = pointer(pBuffH)
     pBuffV = pointer(pBuffV)
-    pBuffD = pointer(pBuffD)
 
     uiNumScanPos = iWidth * iWidth
     uiNextScanPos = 0
@@ -439,7 +372,7 @@ def initSigLastScan(pBuffZ, pBuffH, pBuffV, pBuffD, iWidth, iHeight, iDepth):
             initBlkPos = g_auiSigLastScan[SCAN_DIAG][log2Blk][uiBlk]
             if iWidth == 32:
                 initBlkPos = g_sigLastScanCG32x32[uiBlk]
-            offsetY = initBlkPos / uiNumBlkSide
+            offsetY = initBlkPos // uiNumBlkSide
             offsetX = initBlkPos - offsetY * uiNumBlkSide
             offsetD = 4 * (offsetX + offsetY * iWidth)
             offsetScan = 16 * uiBlk
@@ -487,63 +420,3 @@ def initSigLastScan(pBuffZ, pBuffH, pBuffV, pBuffD, iWidth, iHeight, iDepth):
             for iY in xrange(iHeight):
                 pBuffV[uiCnt] = iY * iWidth + iX
                 uiCnt += 1
-
-def initNonSquareSigLastScan(pBuffZ, uiWidth, uiHeight):
-    pBuffZ = pointer(pBuffZ)
-    c = 0
-
-    # starting point
-    pBuffZ[c] = 0
-    c += 1
-
-    # loop
-    if uiWidth > uiHeight:
-        x = 0
-        y = 1
-        while True:
-            # increase loop
-            while y >= 0:
-                if 0 <= x < uiWidth and 0 <= y < uiHeight:
-                    pBuffZ[c] = x + y * uiWidth
-                    c += 1
-                x += 1
-                y -= 1
-            y = 0
-
-            # decrease loop
-            while x >= 0:
-                if 0 <= x < uiWidth and 0 <= y < uiHeight:
-                    pBuffZ[c] = x + y * uiWidth
-                    c += 1
-                x -= 1
-                y += 1
-            x = 0
-
-            # termination condition
-            if c >= uiWidth * uiHeight:
-                break
-    else:
-        x = 1
-        y = 0
-        while True:
-            # increase loop
-            while x >= 0:
-                if 0 <= x < uiWidth and 0 <= y < uiHeight:
-                    pBuffZ[c] = x + y * uiWidth
-                    c += 1
-                x -= 1
-                y += 1
-            x = 0
-    
-            # decrease loop
-            while y >= 0:
-                if 0 <= x < uiWidth and 0 <= y < uiHeight:
-                    pBuffZ[c] = x + y * uiWidth
-                    c += 1
-                x += 1
-                y -= 1
-            y = 0
-
-            # termination condition
-            if c >= uiWidth * uiHeight:
-                break;

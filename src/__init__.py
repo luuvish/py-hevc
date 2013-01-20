@@ -15,7 +15,7 @@ from src.Lib.TLibCommon.pointer import pointer
 from src.Lib.TLibCommon import trace
 
 
-use_swig = 3
+use_swig = 4
 
 if use_swig == 0:
     from swig.hevc import decmain as TAppDecoder
@@ -82,8 +82,9 @@ elif use_swig == 4:
     from swig.hevc import InputNALUnit, read
     from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
     from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
-    from swig.hevc import SEIpictureDigest, digest_get
+    from swig.hevc import SEIDecodedPictureHash, digest_get
     from swig.hevc import VectorBool, VectorUint8, VectorInt
+    from swig.hevc import ArrayInt
 
     from swig.hevc import TComPic
     from swig.hevc import ParameterSetManagerDecoder
@@ -119,11 +120,6 @@ elif use_swig == 4:
         from swig.hevc import initRasterToPelXY as swig_initRasterToPelXY
         swig_initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
         luuvc_initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-    def initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
-        from src.Lib.TLibCommon.TComRom import initMotionReferIdx as luuvc_initMotionReferIdx
-        from swig.hevc import initMotionReferIdx as swig_initMotionReferIdx
-        swig_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
-        luuvc_initMotionReferIdx(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth)
 
     from swig.hevc import ArrayTComInputBitstream
     from swig.hevc import TDecSbac, ArrayTDecSbac, ArrayTDecBinCABAC
@@ -134,6 +130,7 @@ elif use_swig == 4:
     from swig.hevc import TComTrQuant
     from swig.hevc import TComPrediction
 
+    from swig.hevc import SEIReader
     from swig.hevc import TDecBinCABAC
     from swig.hevc import TDecSbac
     from swig.hevc import TDecCavlc

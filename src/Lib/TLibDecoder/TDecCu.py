@@ -9,11 +9,9 @@ import sys
 from ... import pointer
 from ... import trace
 
-from ... import TComMv
-
 from ... import TComDataCU, ArrayTComDataCU
 from ... import ArrayTComMvField, ArrayUChar
-from ... import ArrayTComYuv
+from ... import TComMv, ArrayTComYuv
 
 from ... import cvar
 from ... import initZscanToRaster

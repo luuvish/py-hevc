@@ -11,11 +11,11 @@ from time import clock
 CLOCKS_PER_SEC = 1
 
 
-from src.Lib.TLibCommon.pointer import pointer
-from src.Lib.TLibCommon import trace
+from .pointer import pointer
+from .trace import Trace
 
 
-use_swig = 8
+use_swig = 9
 
 
 from swig.hevc import VectorBool, VectorUint8, VectorInt
@@ -57,13 +57,9 @@ if 2 <= use_swig:
     from swig.hevc import InputNALUnit, read
     from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
 if 3 <= use_swig:
-    from swig.hevc import TComPic
     from swig.hevc import ParameterSetManagerDecoder
-    from swig.hevc import TComListTComPic
-    from swig.hevc import TComSlice
-    from swig.hevc import SEImessages
-    from swig.hevc import TComVPS, TComSPS, TComPPS
-    from swig.hevc import TComPicYuv
+    from swig.hevc import TComPicYuv, TComPic, TComListTComPic
+    from swig.hevc import TComSlice, TComVPS, TComSPS, TComPPS
 if 4 <= use_swig:
     from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
     from swig.hevc import SEIDecodedPictureHash, digest_get
@@ -75,8 +71,8 @@ if 4 <= use_swig <= 8:
     from swig.hevc import ArrayTDecSbac, ArrayTDecBinCABAC
 elif 9 <= use_swig:
     def ArrayTDecBinCABAC(size):
-        from src.Lib.TLibDecoder.TDecBinCabac import TDecBinCabac
-        return pointer([TDecBinCabac() for i in xrange(size)])
+        from src.Lib.TLibDecoder.TDecBinCoderCABAC import TDecBinCABAC
+        return pointer([TDecBinCABAC() for i in xrange(size)])
     def ArrayTDecSbac(size):
         from src.Lib.TLibDecoder.TDecSbac import TDecSbac
         return pointer([TDecSbac() for i in xrange(size)])
@@ -101,9 +97,7 @@ if 3 <= use_swig <= 8:
     from swig.hevc import TComTrQuant
     from swig.hevc import TComPrediction
 
-    from swig.hevc import SEIReader
-    from swig.hevc import TDecBinCABAC
-    from swig.hevc import TDecSbac
+    from swig.hevc import SEIReader, SEImessages
 
 elif use_swig == 9:
     from swig.hevc import TComSampleAdaptiveOffset
@@ -111,9 +105,7 @@ elif use_swig == 9:
     from swig.hevc import TComTrQuant
     from swig.hevc import TComPrediction
 
-    from swig.hevc import SEIReader
-    from src.Lib.TLibDecoder.TDecBinCabac import TDecBinCabac as TDecBinCABAC
-    from src.Lib.TLibDecoder.TDecSbac import TDecSbac
+    from swig.hevc import SEIReader, SEImessages
 
 elif use_swig == 10:
     from swig.hevc import TComSampleAdaptiveOffset
@@ -121,9 +113,6 @@ elif use_swig == 10:
     from swig.hevc import TComTrQuant
 
     from src.Lib.TLibCommon.TComPrediction import TComPrediction
-
-    from src.Lib.TLibDecoder.TDecBinCabac import TDecBinCabac as TDecBinCABAC
-    from src.Lib.TLibDecoder.TDecSbac import TDecSbac
 
 elif use_swig == 11:
     from src.Lib.TLibCommon.TComYuv import TComYuv
@@ -136,9 +125,6 @@ elif use_swig == 11:
     from src.Lib.TLibCommon.TComTrQuant import TComTrQuant
     from src.Lib.TLibCommon.TComPrediction import TComPrediction
 
-    from src.Lib.TLibDecoder.TDecBinCabac import TDecBinCabac as TDecBinCABAC
-    from src.Lib.TLibDecoder.TDecSbac import TDecSbac
-
 elif use_swig == 12:
     from src.Lib.TLibCommon.TComYuv import TComYuv
     def ArrayTComYuv(size):
@@ -149,9 +135,6 @@ elif use_swig == 12:
     from src.Lib.TLibCommon.TComLoopFilter import TComLoopFilter
     from src.Lib.TLibCommon.TComTrQuant import TComTrQuant
     from src.Lib.TLibCommon.TComPrediction import TComPrediction
-
-    from src.Lib.TLibDecoder.TDecBinCabac import TDecBinCabac as TDecBinCABAC
-    from src.Lib.TLibDecoder.TDecSbac import TDecSbac
 
 elif use_swig == 13:
     from swig.hevc import VectorNDBFBlockInfo
@@ -170,9 +153,6 @@ elif use_swig == 13:
     from src.Lib.TLibCommon.TComTrQuant import TComTrQuant
     from src.Lib.TLibCommon.TComPrediction import TComPrediction
 
-    from src.Lib.TLibDecoder.TDecBinCabac import TDecBinCabac as TDecBinCABAC
-    from src.Lib.TLibDecoder.TDecSbac import TDecSbac
-
 elif use_swig == 14:
     from ..TLibCommon import TComRom as cvar # depend on TDecCavlc
 
@@ -181,6 +161,12 @@ elif use_swig == 14:
 
 
 
+if 3 <= use_swig <= 8:
+    from swig.hevc import TDecBinCABAC
+    from swig.hevc import TDecSbac
+elif 9 <= use_swig:
+    from src.Lib.TLibDecoder.TDecBinCoderCABAC import TDecBinCABAC
+    from src.Lib.TLibDecoder.TDecSbac import TDecSbac
 if 3 <= use_swig <= 7:
     from swig.hevc import TDecCavlc
 elif 8 <= use_swig:

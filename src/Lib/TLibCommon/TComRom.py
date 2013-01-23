@@ -139,9 +139,8 @@ g_auiGoRiceRange = (7, 14, 26, 46, 78)
 g_auiGoRicePrefixLen = (8, 7, 6, 5, 4)
 
 g_sigLastScan8x8 = (
-    (0, 1, 2, 3),
-    (0, 1, 2, 3),
     (0, 2, 1, 3),
+    (0, 1, 2, 3),
     (0, 2, 1, 3)
 )
 g_sigLastScanCG32x32 = 64 * [0]

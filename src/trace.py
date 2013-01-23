@@ -1,139 +1,89 @@
 # -*- coding: utf-8 -*-
 """
-    module : src/Lib/TLibCommon/trace.py
-    HM 8.0 Python Implementation
+    module : src/trace.py
+    HM 9.1 Python Implementation
 """
 
 import sys
 
-from ... import pointer
+from . import pointer
 
 use_swig = True
 if use_swig:
     sys.path.insert(0, '../../..')
     from swig.hevc import cvar
 
-from .TComRom import g_auiRasterToZscan
-
-use_trace = False
+from .Lib.TLibCommon.TComRom import g_auiRasterToZscan
 
 
-def trace(enable, init=None, wrapper=None, before=None, after=None):
-    if enable:
-        if init:
-            init()
+class Trace(object):
 
-        def trace_func(func):
-            if wrapper:
-                def func_hook(*args, **kwargs):
-                    return wrapper(func)(*args, **kwargs)
-            else:
-                def func_hook(*args, **kwargs):
-                    if before:
-                        before(*args, **kwargs)
-                    ret = func(*args, **kwargs)
-                    if after:
-                        after(*args, **kwargs)
-                    return ret
-            return func_hook
-        return trace_func
-    else:
-        def trace_none(func):
-            return func
-        return trace_none
+    on               = False
 
+    g_hTrace         = None
+    g_nSymbolCounter = 0
 
-g_hTrace = None
-g_nSymbolCounter = 0
-
-def initCavlc():
-    global g_hTrace
-    global g_nSymbolCounter
-    if not g_hTrace:
+    if on:
         g_hTrace = open('trace_dec.txt', 'wt')
         g_nSymbolCounter = 0
 
-def traceSPSHeader(pSPS):
-    g_hTrace.write("=========== Sequence Parameter Set ID: %d ===========\n" % pSPS.getSPSId())
+    COUNTER_START = 1
+    COUNTER_END   = 0 #( UInt64(1) << 63 )
 
-def tracePPSHeader(pPPS):
-    g_hTrace.write("=========== Picture Parameter Set ID: %d ===========\n" % pPPS.getPPSId())
+    @staticmethod
+    def DTRACE_CABAC_F(x):
+        Trace.g_hTrace.write("%f" % x)
+        Trace.g_hTrace.flush()
+    @staticmethod
+    def DTRACE_CABAC_V(x):
+        Trace.g_hTrace.write("%d" % x)
+        Trace.g_hTrace.flush()
+    @staticmethod
+    def DTRACE_CABAC_VL(x):
+        Trace.g_hTrace.write("%d" % x)
+        Trace.g_hTrace.flush()
+    @staticmethod
+    def DTRACE_CABAC_T(x):
+        Trace.g_hTrace.write("%s" % x)
+        Trace.g_hTrace.flush()
+    @staticmethod
+    def DTRACE_CABAC_X(x):
+        Trace.g_hTrace.write("%x" % x)
+        Trace.g_hTrace.flush()
+    @staticmethod
+    def DTRACE_CABAC_R(x, y):
+        Trace.g_hTrace.write(x % y)
+        Trace.g_hTrace.flush()
+    @staticmethod
+    def DTRACE_CABAC_N():
+        Trace.g_hTrace.write("\n")
+        Trace.g_hTrace.flush()
 
-def traceSliceHeader(pSlice):
-    g_hTrace.write("=========== Slice ===========\n")
+    @staticmethod
+    def trace(enable, init=None, wrapper=None, before=None, after=None):
+        if enable:
+            if init:
+                init()
 
-def traceReadCode(func):
-    def wrap(self, length, pSymbolName=''):
-        rValue = func(self, length)
-        if pSymbolName:
-            global g_nSymbolCounter
-            g_hTrace.write("%8d  " % g_nSymbolCounter)
-            g_hTrace.write("%-40s u(%d) : %d\n" % (pSymbolName, length, rValue))
-            g_hTrace.flush()
-            g_nSymbolCounter += 1
-        return rValue
-    return wrap
+            def trace_func(func):
+                if wrapper:
+                    def func_hook(*args, **kwargs):
+                        return wrapper(func)(*args, **kwargs)
+                else:
+                    def func_hook(*args, **kwargs):
+                        if before:
+                            before(*args, **kwargs)
+                        ret = func(*args, **kwargs)
+                        if after:
+                            after(*args, **kwargs)
+                        return ret
+                return func_hook
+            return trace_func
+        else:
+            def trace_none(func):
+                return func
+            return trace_none
 
-def traceReadUvlc(func):
-    def wrap(self, pSymbolName=''):
-        rValue = func(self)
-        if pSymbolName:
-            global g_nSymbolCounter
-            g_hTrace.write("%8d  " % g_nSymbolCounter)
-            g_hTrace.write("%-40s u(v) : %d\n" % (pSymbolName, rValue))
-            g_hTrace.flush()
-            g_nSymbolCounter += 1
-        return rValue
-    return wrap
-
-def traceReadSvlc(func):
-    def wrap(self, pSymbolName=''):
-        rValue = func(self)
-        if pSymbolName:
-            global g_nSymbolCounter
-            g_hTrace.write("%8d  " % g_nSymbolCounter)
-            g_hTrace.write("%-40s s(v) : %d\n" % (pSymbolName, rValue))
-            g_hTrace.flush()
-            g_nSymbolCounter += 1
-        return rValue
-    return wrap
-
-def traceReadFlag(func):
-    def wrap(self, pSymbolName=''):
-        rValue = func(self)
-        if pSymbolName:
-            global g_nSymbolCounter
-            g_hTrace.write("%8d  " % g_nSymbolCounter)
-            g_hTrace.write("%-40s u(1) : %d\n" % (pSymbolName, rValue))
-            g_hTrace.flush()
-            g_nSymbolCounter += 1
-        return rValue
-    return wrap
-
-COUNTER_START = 1
-COUNTER_END   = 0 #( UInt64(1) << 63 )
-
-def DTRACE_CABAC_F(x):
-    g_hTrace.write("%f" % x)
-    g_hTrace.flush()
-def DTRACE_CABAC_V(x):
-    g_hTrace.write("%d" % x)
-    g_hTrace.flush()
-def DTRACE_CABAC_VL(x):
-    g_hTrace.write("%d" % x)
-    g_hTrace.flush()
-def DTRACE_CABAC_T(x):
-    g_hTrace.write("%s" % x)
-    g_hTrace.flush()
-def DTRACE_CABAC_X(x):
-    g_hTrace.write("%x" % x)
-    g_hTrace.flush()
-def DTRACE_CABAC_R(x, y):
-    g_hTrace.write(x % y)
-    g_hTrace.flush()
-def DTRACE_CABAC_N():
-    g_hTrace.write("\n")
-    g_hTrace.flush()
 
 
 fpCU = None

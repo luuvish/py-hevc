@@ -8,7 +8,7 @@ import sys
 
 from ... import clock
 from ... import pointer
-from ... import trace
+from ... import Trace
 
 from ... import ParameterSetManager
 from ... import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
@@ -70,12 +70,12 @@ class TDecSlice(object):
         rpcPic.setPicYuvPred(None)
         rpcPic.setPicYuvResi(None)
 
-        if trace.use_trace:
-            trace.DTRACE_CABAC_VL(trace.g_nSymbolCounter)
-            trace.g_nSymbolCounter += 1
-            trace.DTRACE_CABAC_T('\tPOC: ')
-            trace.DTRACE_CABAC_V(rpcPic.getPOC())
-            trace.DTRACE_CABAC_T('\n')
+        if Trace.on:
+            Trace.DTRACE_CABAC_VL(Trace.g_nSymbolCounter)
+            Trace.g_nSymbolCounter += 1
+            Trace.DTRACE_CABAC_T('\tPOC: ')
+            Trace.DTRACE_CABAC_V(rpcPic.getPOC())
+            Trace.DTRACE_CABAC_T('\n')
 
         uiTilesAcross = rpcPic.getPicSym().getNumColumnsMinus1() + 1
         pcSlice = rpcPic.getSlice(rpcPic.getCurrSliceIdx())

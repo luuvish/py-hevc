@@ -7,7 +7,7 @@
 import sys
 
 from ... import pointer
-from ... import trace
+from ... import Trace
 
 from ... import TComMv
 from ... import ArrayTComMvField, ArrayUChar
@@ -288,16 +288,16 @@ class TDecEntropy(object):
             assert(uiDepth >= pcCU.getDepth(uiAbsPartIdx))
             pcCU.setTrIdxSubParts(uiTrDepth, uiAbsPartIdx, uiDepth)
 
-            if trace.use_trace:
-                trace.DTRACE_CABAC_VL(trace.g_nSymbolCounter)
-                trace.g_nSymbolCounter += 1
-                trace.DTRACE_CABAC_T("\tTrIdx: abspart=")
-                trace.DTRACE_CABAC_V(uiAbsPartIdx)
-                trace.DTRACE_CABAC_T("\tdepth=")
-                trace.DTRACE_CABAC_V(uiDepth)
-                trace.DTRACE_CABAC_T("\ttrdepth=")
-                trace.DTRACE_CABAC_V(uiTrDepth)
-                trace.DTRACE_CABAC_T("\n")
+            if Trace.on:
+                Trace.DTRACE_CABAC_VL(Trace.g_nSymbolCounter)
+                Trace.g_nSymbolCounter += 1
+                Trace.DTRACE_CABAC_T("\tTrIdx: abspart=")
+                Trace.DTRACE_CABAC_V(uiAbsPartIdx)
+                Trace.DTRACE_CABAC_T("\tdepth=")
+                Trace.DTRACE_CABAC_V(uiDepth)
+                Trace.DTRACE_CABAC_T("\ttrdepth=")
+                Trace.DTRACE_CABAC_V(uiTrDepth)
+                Trace.DTRACE_CABAC_T("\n")
 
             pcCU.setCbfSubParts(0, TEXT_LUMA, uiAbsPartIdx, uiDepth)
             if pcCU.getPredictionMode(uiAbsPartIdx) != MODE_INTRA and \

@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-    module : src/Lib/TLibDecoder/TDecBinCabac.py
-    HM 8.0 Python Implementation
+    module : src/Lib/TLibDecoder/TDecBinCoderCABAC.py
+    HM 9.1 Python Implementation
 """
 
-from ..TLibCommon.TComCabacTables import sm_aucLPSTable, sm_aucRenormTable
+from ..TLibCommon.TComCABACTables import sm_aucLPSTable, sm_aucRenormTable
 
 
-class TDecBinCabac(object):
+class TDecBinCABAC(object):
 
     def __init__(self):
         self.m_pcTComBitstream = None
-        self.m_uiRange = 0
-        self.m_uiValue = 0
-        self.m_bitsNeeded = 0
+        self.m_uiRange         = 0
+        self.m_uiValue         = 0
+        self.m_bitsNeeded      = 0
 
     def init(self, pcTComBitstream):
         self.m_pcTComBitstream = pcTComBitstream
@@ -36,20 +36,6 @@ class TDecBinCabac(object):
             uiBits = 0
             uiBits = self.m_pcTComBitstream.read(1, uiBits)
         self.start()
-
-    def resetBac(self):
-        self.m_uiRange = 510
-        self.m_bitsNeeded = -8
-        self.m_uiValue = self.m_pcTComBitstream.read(16)
-
-    def copyState(self, pcTDecBinIf):
-        pcTDecBinCABAC = pcTDecBinIf.getTDecBinCABAC()
-        self.m_uiRange = pcTDecBinCABAC.m_uiRange
-        self.m_uiValue = pcTDecBinCABAC.m_uiValue
-        self.m_bitsNeeded = pcTDecBinCABAC.m_bitsNeeded
-
-    def getTDecBinCABAC(self):
-        return self
 
     def decodeBin(self, ruiBin, rcCtxModel):
         uiLPS = sm_aucLPSTable[rcCtxModel.getState()][(self.m_uiRange>>6)-4]
@@ -155,34 +141,27 @@ class TDecBinCabac(object):
 
         return ruiBin
 
-    def decodeNumSubseqIPCM(self, numSubseqIPCM):
-        bit = 0
-        numSubseqIPCM = 0
-
-        while True:
-            self.m_uiValue += self.m_uiValue
-            self.m_bitsNeeded += 1
-            if self.m_bitsNeeded >= 0:
-                self.m_bitsNeeded = -8
-                self.m_uiValue += self.m_pcTComBitstream.readByte()
-            bit = (self.m_uiValue & 128) >> 7
-            numSubseqIPCM += 1
-            if not (bit and numSubseqIPCM < 3):
-                break
-
-        if bit and numSubseqIPCM == 3:
-            numSubseqIPCM += 1
-
-        numSubseqIPCM -= 1
-        return numSubseqIPCM
+    def resetBac(self):
+        self.m_uiRange = 510
+        self.m_bitsNeeded = -8
+        self.m_uiValue = self.m_pcTComBitstream.read(16)
 
     def decodePCMAlignBits(self):
         iNum = self.m_pcTComBitstream.getNumBitsUntilByteAligned()
 
         uiBit = 0
-        self.m_pcTComBitstream.read(iNum, uiBit)
+        uiBit = self.m_pcTComBitstream.read(iNum, uiBit)
 
     def xReadPCMCode(self, uiLength, ruiCode):
         assert(uiLength > 0)
         ruiCode = self.m_pcTComBitstream.read(uiLength, ruiCode)
         return ruiCode
+
+    def copyState(self, pcTDecBinIf):
+        pcTDecBinCABAC = pcTDecBinIf.getTDecBinCABAC()
+        self.m_uiRange = pcTDecBinCABAC.m_uiRange
+        self.m_uiValue = pcTDecBinCABAC.m_uiValue
+        self.m_bitsNeeded = pcTDecBinCABAC.m_bitsNeeded
+
+    def getTDecBinCABAC(self):
+        return self

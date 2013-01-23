@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/ContextTables.py
-    HM 8.0 Python Implementation
+    HM 9.1 Python Implementation
 """
 
 
@@ -13,7 +13,6 @@ NUM_SKIP_FLAG_CTX                 =   3
 NUM_MERGE_FLAG_EXT_CTX            =   1
 NUM_MERGE_IDX_EXT_CTX             =   1
 
-NUM_ALF_CTRL_FLAG_CTX             =   1
 NUM_PART_SIZE_CTX                 =   4
 NUM_CU_AMP_CTX                    =   1
 NUM_PRED_MODE_CTX                 =   1
@@ -47,9 +46,6 @@ NUM_ABS_FLAG_CTX_CHROMA           =   2
 
 NUM_MVP_IDX_CTX                   =   2
 
-NUM_ALF_FLAG_CTX                  =   1
-NUM_ALF_UVLC_CTX                  =   2
-NUM_ALF_SVLC_CTX                  =   3
 NUM_SAO_MERGE_FLAG_CTX            =   1
 NUM_SAO_TYPE_IDX_CTX              =   1
 
@@ -74,12 +70,6 @@ INIT_SKIP_FLAG = (
     (197, 185, 201),
     (197, 185, 201),
     (CNU, CNU, CNU),
-)
-
-INIT_ALF_CTRL_FLAG = (
-    (102, ),
-    (102, ),
-    (118, ),
 )
 
 INIT_MERGE_FLAG_EXT = (
@@ -206,24 +196,6 @@ INIT_MVP_IDX = (
     (168, CNU),
     (168, CNU),
     (CNU, CNU),
-)
-
-INIT_ALF_FLAG = (
-    (153, ),
-    (153, ),
-    (153, ),
-)
-
-INIT_ALF_UVLC = (
-    (154, 154),
-    (154, 154),
-    (140, 154),
-)
-
-INIT_ALF_SVLC = (
-    (141, 154, 159),
-    (141, 154, 189),
-    (187, 154, 159),
 )
 
 INIT_SAO_MERGE_FLAG = (

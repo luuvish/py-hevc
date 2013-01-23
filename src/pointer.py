@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-    module : src/Lib/TLibCommon/pointer.py
-    HM 8.0 Python Implementation
+    module : src/pointer.py
+    HM 9.1 Python Implementation
 """
 
 import sys

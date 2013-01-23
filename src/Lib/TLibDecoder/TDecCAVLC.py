@@ -7,7 +7,7 @@
 import sys
 
 from ... import pointer
-from ... import trace
+from ... import Trace
 
 from ... import TComSPS
 from ... import ArrayUInt
@@ -40,14 +40,17 @@ from ..TLibCommon.TComRom import (
 )
 
 
+def xTraceVUIHeader(pVUI, pcSPS):
+    Trace.g_hTrace.write("----------- vui_parameters -----------\n")
+
 def xTraceSPSHeader(pSPS):
-    g_hTrace.write("=========== Sequence Parameter Set ID: %d ===========\n" % pSPS.getSPSId())
+    Trace.g_hTrace.write("=========== Sequence Parameter Set ID: %d ===========\n" % pSPS.getSPSId())
 
 def xTracePPSHeader(pPPS):
-    g_hTrace.write("=========== Picture Parameter Set ID: %d ===========\n" % pPPS.getPPSId())
+    Trace.g_hTrace.write("=========== Picture Parameter Set ID: %d ===========\n" % pPPS.getPPSId())
 
 def xTraceSliceHeader(pSlice):
-    g_hTrace.write("=========== Slice ===========\n")
+    Trace.g_hTrace.write("=========== Slice ===========\n")
 
 
 class TDecCavlc(SyntaxElementParser, TDecEntropy):
@@ -266,7 +269,7 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
         uiCode = self.xReadFlag(uiCode, 'vps_extension_flag')
         assert(not uiCode)
 
-    @trace.trace(trace.use_trace, init=trace.initCavlc, before=lambda self, pcSPS: trace.traceSPSHeader(pcSPS))
+    @Trace.trace(Trace.on, before=lambda self, pcSPS: xTraceSPSHeader(pcSPS))
     def parseSPS(self, pcSPS):
         uiCode = 0
 
@@ -423,7 +426,7 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
             while self.xMoreRbspData():
                 uiCode = self.xReadFlag(uiCode, 'sps_extension_data_flag')
 
-    @trace.trace(trace.use_trace, before=lambda self, pcPPS: trace.tracePPSHeader(pcPPS))
+    @Trace.trace(Trace.on, before=lambda self, pcPPS: xTracePPSHeader(pcPPS))
     def parsePPS(self, pcPPS):
         uiCode = 0
         iCode = 0
@@ -553,7 +556,7 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
             while self.xMoreRbspData():
                 uiCode = self.xReadFlag(uiCode, 'pps_extension_data_flag')
 
-    @trace.trace(trace.use_trace, before=lambda self, pSlice, psm: trace.traceSliceHeader(pSlice))
+    @Trace.trace(Trace.on, before=lambda self, pcVUI, pcSPS: xTraceVUIHeader(pcVUI, pcSPS))
     def parseVUI(self, pcVUI, pcSPS):
         uiCode = 0
 
@@ -750,7 +753,7 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
                 uiCode = self.xReadCode(16, uiCode, 'avg_pic_rate[i]')
                 info.setAvgPicRate(i, uiCode)
 
-    @trace.trace(trace.use_trace, before=lambda self, pSlice, psm: trace.traceSliceHeader(pSlice))
+    @Trace.trace(Trace.on, before=lambda self, pSlice, psm: xTraceSliceHeader(pSlice))
     def parseSliceHeader(self, rpcSlice, parameterSetManager):
         uiCode = 0
         iCode = 0

@@ -7,7 +7,7 @@
 import sys
 
 from ... import pointer
-from ... import trace
+from ... import Trace
 
 from ... import TComDataCU, ArrayTComDataCU
 from ... import ArrayTComMvField, ArrayUChar
@@ -103,7 +103,7 @@ class TDecCu(object):
         ruiIsLast = self.xDecodeCU(pcCU, 0, 0, ruiIsLast)
         return ruiIsLast
 
-    @trace.trace(enable=use_trace, init=trace.initCU, after=lambda self, pcCU: trace.dumpCU(pcCU))
+    #@Trace.trace(enable=use_trace, init=Trace.initCU, after=lambda self, pcCU: Trace.dumpCU(pcCU))
     def decompressCU(self, pcCU):
         self.xDecompressCU(pcCU, pcCU, 0, 0)
 

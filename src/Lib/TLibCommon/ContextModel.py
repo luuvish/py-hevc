@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/ContextModel.py
-    HM 8.0 Python Implementation
+    HM 9.1 Python Implementation
 """
 
 from .CommonDef import Clip3
@@ -97,6 +97,6 @@ class ContextModel(object):
         return ContextModel.m_entropyBits[126 ^ val]
 
     def setBinsCoded(self, val):
-        return ContextModel.m_entropyBits[126 ^ val]
+        self.m_binsCoded = val
     def getBinsCoded(self):
         return self.m_binsCoded

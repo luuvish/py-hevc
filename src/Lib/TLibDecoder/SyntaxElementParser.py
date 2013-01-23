@@ -6,7 +6,50 @@
 
 import sys
 
-from ... import trace
+from ... import Trace
+
+def xReadCodeTr(xReadCode):
+    def wrap(self, length, rValue, pSymbolName=''):
+        rValue = xReadCode(self, length, rValue)
+        Trace.g_hTrace.write("%8d  " % Trace.g_nSymbolCounter)
+        Trace.g_nSymbolCounter += 1
+        if length < 10:
+            Trace.g_hTrace.write("%-50s u(%d)  : %d\n" % (pSymbolName, length, rValue))
+        else:
+            Trace.g_hTrace.write("%-50s u(%d) : %d\n" % (pSymbolName, length, rValue))
+        Trace.g_hTrace.flush()
+        return rValue
+    return wrap
+
+def xReadUvlcTr(xReadUvlc):
+    def wrap(self, rValue, pSymbolName=''):
+        rValue = xReadUvlc(self, rValue)
+        Trace.g_hTrace.write("%8d  " % Trace.g_nSymbolCounter)
+        Trace.g_nSymbolCounter += 1
+        Trace.g_hTrace.write("%-50s ue(v) : %d\n" % (pSymbolName, rValue))
+        Trace.g_hTrace.flush()
+        return rValue
+    return wrap
+
+def xReadSvlcTr(xReadSvlc):
+    def wrap(self, rValue, pSymbolName=''):
+        rValue = xReadSvlc(self, rValue)
+        Trace.g_hTrace.write("%8d  " % Trace.g_nSymbolCounter)
+        Trace.g_nSymbolCounter += 1
+        Trace.g_hTrace.write("%-50s se(v) : %d\n" % (pSymbolName, rValue))
+        Trace.g_hTrace.flush()
+        return rValue
+    return wrap
+
+def xReadFlagTr(xReadFlag):
+    def wrap(self, rValue, pSymbolName=''):
+        rValue = xReadFlag(self, rValue)
+        Trace.g_hTrace.write("%8d  " % Trace.g_nSymbolCounter)
+        Trace.g_nSymbolCounter += 1
+        Trace.g_hTrace.write("%-50s u(1)  : %d\n" % (pSymbolName, rValue))
+        Trace.g_hTrace.flush()
+        return rValue
+    return wrap
 
 
 class SyntaxElementParser(object):
@@ -14,60 +57,14 @@ class SyntaxElementParser(object):
     def __init__(self):
         self.m_pcBitstream = None
 
-    def xReadCodeTr(self, XReadCode):
-        def wrap(self, length, rValue, pSymbolName=''):
-            rValue = xReadCode(self, length, rValue)
-            global g_nSymbolCounter
-            g_hTrace.write("%8d  " % g_nSymbolCounter)
-            g_nSymbolCounter += 1
-            if length < 10:
-                g_hTrace.write("%-50s u(%d)  : %d\n" % (pSymbolName, length, rValue))
-            else:
-                g_hTrace.write("%-50s u(%d) : %d\n" % (pSymbolName, length, rValue))
-            g_hTrace.flush()
-            return rValue
-        return wrap
 
-    def xReadUvlcTr(self, xReadUvlc):
-        def wrap(self, rValue, pSymbolName=''):
-            rValue = xReadUvlc(self, rValue)
-            global g_nSymbolCounter
-            g_hTrace.write("%8d  " % g_nSymbolCounter)
-            g_nSymbolCounter += 1
-            g_hTrace.write("%-50s ue(v) : %d\n" % (pSymbolName, rValue))
-            g_hTrace.flush()
-            return rValue
-        return wrap
-
-    def xReadSvlcTr(self, xReadSvlc):
-        def wrap(self, rValue, pSymbolName=''):
-            rValue = xReadSvlc(self, rValue)
-            global g_nSymbolCounter
-            g_hTrace.write("%8d  " % g_nSymbolCounter)
-            g_nSymbolCounter += 1
-            g_hTrace.write("%-50s se(v) : %d\n" % (pSymbolName, rValue))
-            g_hTrace.flush()
-            return rValue
-        return wrap
-
-    def xReadFlagTr(self, xReadFlag):
-        def wrap(self, rValue, pSymbolName=''):
-            rValue = xReadFlag(self, rValue)
-            global g_nSymbolCounter
-            g_hTrace.write("%8d  " % g_nSymbolCounter)
-            g_nSymbolCounter += 1
-            g_hTrace.write("%-50s u(1)  : %d\n" % (pSymbolName, rValue))
-            g_hTrace.flush()
-            return rValue
-        return wrap
-
-    @trace.trace(trace.use_trace, wrapper=trace.traceReadCode)
+    @Trace.trace(Trace.on, wrapper=xReadCodeTr)
     def xReadCode(self, uiLength, ruiCode, pSymbolName=''):
         assert(uiLength > 0)
         ruiCode = self.m_pcBitstream.read(uiLength, ruiCode)
         return ruiCode
 
-    @trace.trace(trace.use_trace, wrapper=trace.traceReadUvlc)
+    @Trace.trace(Trace.on, wrapper=xReadUvlcTr)
     def xReadUvlc(self, ruiVal, pSymbolName=''):
         uiVal = 0
         uiCode = 0
@@ -86,7 +83,7 @@ class SyntaxElementParser(object):
         ruiVal = uiVal
         return ruiVal
 
-    @trace.trace(trace.use_trace, wrapper=trace.traceReadSvlc)
+    @Trace.trace(Trace.on, wrapper=xReadSvlcTr)
     def xReadSvlc(self, riVal, pSymbolName=''):
         uiBits = 0
         uiBits = self.m_pcBitstream.read(1, uiBits)
@@ -106,7 +103,7 @@ class SyntaxElementParser(object):
 
         return riVal
 
-    @trace.trace(trace.use_trace, wrapper=trace.traceReadFlag)
+    @Trace.trace(Trace.on, wrapper=xReadFlagTr)
     def xReadFlag(self, ruiCode, pSymbolName=''):
         ruiCode = self.m_pcBitstream.read(1, ruiCode)
         return ruiCode

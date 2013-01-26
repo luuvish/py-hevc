@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 	module : hevc
-    HM 8.0 Python Swig Wrapper
+    HM 9.2 Python Swig Wrapper
 """
 
 import hevc

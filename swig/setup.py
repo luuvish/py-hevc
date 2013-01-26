@@ -2,7 +2,7 @@
 
 from distutils.core import setup, Extension
 
-hm_dir = '../hm-9.1'
+hm_dir = '../hm-9.2'
 hm_obj = hm_dir + '/build/linux/app'
 
 include_dirs = [hm_dir+'/source/'+inc for inc in ['Lib', 'App/TAppDecoder', 'App/TAppEncoder']]
@@ -18,7 +18,7 @@ extra_compile_args = ['-fPIC', '-Wall', '-Wno-sign-compare', '-O3', '-Wuninitial
 extra_link_args = ['-Wall']
 
 setup(name = 'hevc',
-      version = '0.9.1',
+      version = '0.9.2',
       py_modules = ['hevc.py'],
       ext_modules = [
         Extension('_hevc',

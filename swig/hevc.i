@@ -1,4 +1,4 @@
-/* hevc.i : HM 9.1 Python Swig Wrapper */
+/* hevc.i : HM 9.2 Python Swig Wrapper */
 
 %module hevc
 

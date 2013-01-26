@@ -2,19 +2,20 @@ Lib/TLibCommon/TypeDef.py
 Lib/TLibCommon/CommonDef.py
 Lib/TLibCommon/TComRom.py
 
-App/TAppDecoder/TAppDecoder.py
-App/TAppDecoder/TAppDecTop.py, TAppDecCfg.py
+  55.51 sec.
+  55.51 sec. App/TAppDecoder/TAppDecoder.py
+  55.62 sec. App/TAppDecoder/TAppDecTop.py, TAppDecCfg.py
 
-Lib/TLibVideoIO/TVideoIOYuv.py < TComPicYuv.py
+2252.11 sec. Lib/TLibVideoIO/TVideoIOYuv.py < TComPicYuv.py
 
-Lib/TLibDecoder/TDecTop.py
-Lib/TLibDecoder/TDecGop.py < TComInputBitstream.py, TDecSbac.py, TDecBinCabac.py
-Lib/TLibDecoder/TDecSlice.py
-Lib/TLibDecoder/TDecCu.py < TComYuv.py
-Lib/TLibDecoder/TDecEntropy.py
-Lib/TLibDecoder/TDecCavlc.py < TComRom.py
-Lib/TLibDecoder/TDecSbac.py < TComRom.py, TComTrQuant.py
-Lib/TLibDecoder/TDecBinCabac.py
+  57.15 sec. Lib/TLibDecoder/TDecTop.py
+  57.75 sec. Lib/TLibDecoder/TDecGop.py < TComInputBitstream.py, TDecSbac.py, TDecBinCabac.py
+  69.40 sec. Lib/TLibDecoder/TDecSlice.py
+1840.61 sec. Lib/TLibDecoder/TDecCu.py < TComYuv.py
+        sec. Lib/TLibDecoder/TDecEntropy.py
+        sec. Lib/TLibDecoder/TDecCAVLC.py < TComRom.py
+2611.16 sec. Lib/TLibDecoder/TDecSbac.py < TComRom.py, TComTrQuant.py
+             Lib/TLibDecoder/TDecBinCoderCABAC.py
 
 Lib/TLibCommon/TComPrediction.py, TComWeightPrediction.py < TDecEntropy.py, TComYuv.py
 Lib/TLibCommon/TComInterpolationFilter.py
@@ -24,3 +25,6 @@ Lib/TLibCommon/TComSampleAdaptiveOffset.py < TComPicSym.py
 
 Lib/TLibCommon/TComYuv.py
 Lib/TLibCommon/TComDataCU.py, TComPattern.py
+
+
+34239.406 sec. TAppEncoder

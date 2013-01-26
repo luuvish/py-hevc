@@ -15,7 +15,7 @@ from .pointer import pointer
 from .trace import Trace
 
 
-use_swig = 9
+use_swig = 2
 
 
 from swig.hevc import VectorBool, VectorUint8, VectorInt
@@ -56,13 +56,14 @@ if 2 <= use_swig:
     from swig.hevc import InputByteStream, AnnexBStats, byteStreamNALUnit
     from swig.hevc import InputNALUnit, read
     from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
+if 2 <= use_swig:
+    from swig.hevc import TComPicYuv
 if 3 <= use_swig:
     from swig.hevc import ParameterSetManagerDecoder
-    from swig.hevc import TComPicYuv, TComPic, TComListTComPic
+    from swig.hevc import TComPic, TComListTComPic
     from swig.hevc import TComSlice, TComVPS, TComSPS, TComPPS
 if 4 <= use_swig:
-    from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString
-    from swig.hevc import SEIDecodedPictureHash, digest_get
+    from swig.hevc import calcMD5, calcCRC, calcChecksum, digestToString, digest_get
 if 5 <= use_swig:
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
@@ -91,21 +92,11 @@ if 9 <= use_swig:
 
 
 
-if 3 <= use_swig <= 8:
+if 3 <= use_swig <= 9:
     from swig.hevc import TComSampleAdaptiveOffset
     from swig.hevc import TComLoopFilter
     from swig.hevc import TComTrQuant
     from swig.hevc import TComPrediction
-
-    from swig.hevc import SEIReader, SEImessages
-
-elif use_swig == 9:
-    from swig.hevc import TComSampleAdaptiveOffset
-    from swig.hevc import TComLoopFilter
-    from swig.hevc import TComTrQuant
-    from swig.hevc import TComPrediction
-
-    from swig.hevc import SEIReader, SEImessages
 
 elif use_swig == 10:
     from swig.hevc import TComSampleAdaptiveOffset
@@ -160,6 +151,12 @@ elif use_swig == 14:
 
 
 
+if 2 <= use_swig:
+    from swig.hevc import SEIDecodedPictureHash, SEImessages
+    from swig.hevc import SEIReader
+elif 9 <= use_swig:
+    from src.Lib.TLibCommon.SEI import SEIDecodedPictureHash, SEImessages
+    from src.Lib.TLibDecoder.SEIread import SEIReader
 
 if 3 <= use_swig <= 8:
     from swig.hevc import TDecBinCABAC
@@ -177,10 +174,10 @@ if 3 <= use_swig <= 6:
 elif 7 <= use_swig:
     from src.Lib.TLibDecoder.TDecEntropy import TDecEntropy
 
-if 2 <= use_swig <= 5:
-    from swig.hevc import TVideoIOYuv
-elif 6 <= use_swig:
-    from src.Lib.TLibVideoIO.TVideoIOYuv import TVideoIOYuv
+#if 2 <= use_swig:
+#    from swig.hevc import TVideoIOYuv
+#elif 6 <= use_swig:
+from src.Lib.TLibVideoIO.TVideoIOYuv import TVideoIOYuv
 
 if 3 <= use_swig <= 5:
     from swig.hevc import TDecCu

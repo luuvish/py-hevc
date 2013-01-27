@@ -15,7 +15,7 @@ from .pointer import pointer
 from .trace import Trace
 
 
-use_swig = 3
+use_swig = 4
 
 
 from swig.hevc import VectorBool, VectorUint8, VectorInt
@@ -153,13 +153,17 @@ elif use_swig == 14:
 
 
 if 3 <= use_swig:
-    from swig.hevc import SEIDecodedPictureHash
-    from swig.hevc import SEIMessages, getSeisByType, extractSeisByType, deleteSEIs
+    from swig.hevc import SEI, SEIMessages
+    from swig.hevc import getSeisByType, extractSeisByType, deleteSEIs
     from swig.hevc import SEIReader
 elif 9 <= use_swig:
-    from src.Lib.TLibCommon.SEI import SEIDecodedPictureHash
-    from src.Lib.TLibCommon.SEI import SEIMessages, getSeisByType, extractSeisByType, deleteSEIs
+    from src.Lib.TLibCommon.SEI import SEI, SEIMessages
+    from src.Lib.TLibCommon.SEI import getSeisByType, extractSeisByType, deleteSEIs
     from src.Lib.TLibDecoder.SEIread import SEIReader
+if 4 <= use_swig:
+    from swig.hevc import SEIDecodedPictureHash, SEIDecodedPictureHash_cast
+elif 9 <= use_swig:
+    from src.Lib.TLibCommon.SEI import SEIDecodedPictureHash
 
 if 3 <= use_swig <= 8:
     from swig.hevc import TDecBinCABAC

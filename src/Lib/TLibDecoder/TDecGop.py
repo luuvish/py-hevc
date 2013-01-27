@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecGop.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 import sys
@@ -9,8 +9,9 @@ import sys
 from ... import clock, CLOCKS_PER_SEC
 from ... import pointer
 
-from ... import calcMD5, calcCRC, calcChecksum, digestToString
-from ... import SEIDecodedPictureHash, digest_get
+from ... import calcMD5, calcCRC, calcChecksum, digestToString, digest_get
+from ... import SEI, getSeisByType
+from ... import SEIDecodedPictureHash, SEIDecodedPictureHash_cast
 from ... import VectorBool, VectorInt
 
 from ... import ArrayTComInputBitstream
@@ -21,8 +22,6 @@ from ... import cvar
 class TDecGop(object):
 
     def __init__(self):
-        self.m_iGopSize                     = 0
-
         self.m_pcEntropyDecoder             = None
         self.m_pcSbacDecoder                = None
         self.m_pcBinCABAC                   = None
@@ -64,7 +63,7 @@ class TDecGop(object):
         #-- For time output for each slice
         iBeforeTime = clock()
 
-        uiStartCUAddr = pcSlice.getDependentSliceCurStartCUAddr()
+        uiStartCUAddr = pcSlice.getSliceSegmentCurStartCUAddr()
 
         uiSliceStartCuAddr = pcSlice.getSliceCurStartCUAddr()
         if uiSliceStartCuAddr == uiStartCUAddr:
@@ -100,7 +99,7 @@ class TDecGop(object):
             self.m_LFCrossSliceBoundaryFlag.push_back(pcSlice.getLFCrossSliceBoundaryFlag())
         self.m_pcSbacDecoders[0].load(self.m_pcSbacDecoder)
         self.m_pcSliceDecoder.decompressSlice(
-            pcBitstream, ppcSubstreams.cast(), rpcPic,
+            ppcSubstreams.cast(), rpcPic,
             self.m_pcSbacDecoder, self.m_pcSbacDecoders.cast())
         self.m_pcEntropyDecoder.setBitstream(ppcSubstreams[uiNumSubstreams-1])
         # deallocate all created substreams, including internal buffers.
@@ -126,7 +125,6 @@ class TDecGop(object):
         self.m_pcLoopFilter.setCfg(bLFCrossTileBoundary)
         self.m_pcLoopFilter.loopFilterPic(rpcPic)
 
-        pcSlice = rpcPic.getSlice(0)
         if pcSlice.getSPS().getUseSAO():
             self.m_sliceStartCUAddress.push_back(rpcPic.getNumCUsInFrame() * rpcPic.getNumPartInCU())
             rpcPic.createNonDBFilterInfo(
@@ -134,16 +132,15 @@ class TDecGop(object):
                 rpcPic.getPicSym().getNumTiles(), bLFCrossTileBoundary)
 
         if pcSlice.getSPS().getUseSAO():
-            if pcSlice.getSaoEnabledFlag() or pcSlice.getSaoEnabledFlagChroma():
-                saoParam = rpcPic.getPicSym().getSaoParam()
-                abSaoFlag = pointer(saoParam.bSaoFlag, type='bool *')
-                abSaoFlag[0] = pcSlice.getSaoEnabledFlag()
-                abSaoFlag[1] = pcSlice.getSaoEnabledFlagChroma()
-                self.m_pcSAO.setSaoLcuBasedOptimization(1)
-                self.m_pcSAO.createPicSaoInfo(rpcPic, self.m_sliceStartCUAddress.size()-1)
-                self.m_pcSAO.SAOProcess(saoParam)
-                self.m_pcSAO.PCMLFDisableProcess(rpcPic)
-                self.m_pcSAO.destroyPicSaoInfo()
+            saoParam = rpcPic.getPicSym().getSaoParam()
+            abSaoFlag = pointer(saoParam.bSaoFlag, type='bool *')
+            abSaoFlag[0] = pcSlice.getSaoEnabledFlag()
+            abSaoFlag[1] = pcSlice.getSaoEnabledFlagChroma()
+            self.m_pcSAO.setSaoLcuBasedOptimization(1)
+            self.m_pcSAO.createPicSaoInfo(rpcPic)
+            self.m_pcSAO.SAOProcess(saoParam)
+            self.m_pcSAO.PCMLFDisableProcess(rpcPic)
+            self.m_pcSAO.destroyPicSaoInfo()
 
         if pcSlice.getSPS().getUseSAO():
             rpcPic.destroyNonDBFilterInfo()
@@ -167,37 +164,38 @@ class TDecGop(object):
                 sys.stdout.write("%d " % pcSlice.getRefPOC(iRefList, iRefIndex))
             sys.stdout.write("] ")
         if self.m_decodedPictureHashSEIEnabled:
-            calcAndPrintHashStatus(rpcPic.getPicYuvRec(), rpcPic.getSEIs())
+            pictureHashes = getSeisByType(rpcPic.getSEIs(), SEI.DECODED_PICTURE_HASH)
+            hash = SEIDecodedPictureHash_cast(pictureHashes.front()) if pictureHashes.size() > 0 else None
+            if pictureHashes.size() > 1:
+                sys.stdout.write("Warning: Got multiple decoded picture hash SEI messages. Using first.")
+            calcAndPrintHashStatus(rpcPic.getPicYuvRec(), hash)
 
         rpcPic.setOutputMark(True)
         rpcPic.setReconMark(True)
         self.m_sliceStartCUAddress.clear()
         self.m_LFCrossSliceBoundaryFlag.clear()
 
-    def setGopSize(self, i):
-        self.m_iGopSize = i
-
     def setDecodedPictureHashSEIEnabled(self, enabled):
         self.m_decodedPictureHashSEIEnabled = enabled
 
 
-def calcAndPrintHashStatus(pic, seis):
+def calcAndPrintHashStatus(pic, pictureHashSEI):
     # calculate MD5sum for entire reconstructed picture
     dummy = SEIDecodedPictureHash()
     recon_digest = dummy.digest;
     numChar = 0
     hashType = ''
 
-    if seis and seis.picture_digest:
-        if seis.picture_digest.method == SEIDecodedPictureHash.MD5:
+    if pictureHashSEI:
+        if pictureHashSEI.method == SEIDecodedPictureHash.MD5:
             hashType = 'MD5'
             calcMD5(pic, recon_digest)
             numChar = 16
-        elif seis.picture_digest.method == SEIDecodedPictureHash.CRC:
+        elif pictureHashSEI.method == SEIDecodedPictureHash.CRC:
             hashType = 'CRC'
             calcCRC(pic, recon_digest)
             numChar = 2
-        elif seis.picture_digest.method == SEIDecodedPictureHash.CHECKSUM:
+        elif pictureHashSEI.method == SEIDecodedPictureHash.CHECKSUM:
             hashType = 'Checksum'
             calcChecksum(pic, recon_digest)
             numChar = 4
@@ -208,11 +206,11 @@ def calcAndPrintHashStatus(pic, seis):
     ok = '(unk)'
     mismatch = False
 
-    if seis and seis.picture_digest:
+    if pictureHashSEI:
         ok = '(OK)'
         for yuvIdx in xrange(3):
             for i in xrange(numChar):
-                if digest_get(recon_digest, yuvIdx, i) != digest_get(seis.picture_digest.digest, yuvIdx, i):
+                if digest_get(recon_digest, yuvIdx, i) != digest_get(pictureHashSEI.digest, yuvIdx, i):
                     ok = '(***ERROR***)'
                     mismatch = True
 
@@ -220,4 +218,4 @@ def calcAndPrintHashStatus(pic, seis):
 
     if mismatch:
         cvar.g_md5_mismatch = True
-        sys.stdout.write("[rx%s:%s] " % (hashType, digestToString(seis.picture_digest.digest, numChar)))
+        sys.stdout.write("[rx%s:%s] " % (hashType, digestToString(pictureHashSEI.digest, numChar)))

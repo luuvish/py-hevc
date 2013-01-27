@@ -266,6 +266,9 @@ namespace std {
   unsigned char
   digest_get(unsigned char digest[3][16], int i, int j) { return digest[i][j]; }
 
+  SEIDecodedPictureHash *
+  SEIDecodedPictureHash_cast(SEI *sei) { return (SEIDecodedPictureHash *)sei; }
+
   Bool   *BoolAdd  (Bool   *base, Int offset) { return base + offset; }
   Char   *CharAdd  (Char   *base, Int offset) { return base + offset; }
   UChar  *UCharAdd (UChar  *base, Int offset) { return base + offset; }

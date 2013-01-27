@@ -7,12 +7,12 @@
 import sys
 
 from ... import ArrayInt
-from ... import TComPic
 from ... import ParameterSetManagerDecoder
+from ... import TComPic
 from ... import TComListTComPic
-from ... import TComSlice
-from ... import SEIMessages, getSeisByType, extractSeisByType, deleteSEIs
-from ... import TComVPS, TComSPS, TComPPS
+from ... import SEI, SEIMessages
+from ... import getSeisByType, extractSeisByType, deleteSEIs
+from ... import TComSlice, TComVPS, TComSPS, TComPPS
 
 from ... import cvar
 from ... import initROM, destroyROM
@@ -612,7 +612,7 @@ class TDecTop(object):
                 self.m_parameterSetManagerDecoder.getActiveSPS())
             activeParamSets = getSeisByType(self.m_SEIs, SEI.ACTIVE_PARAMETER_SETS)
             if activeParamSets.size() > 0:
-                seiAps = activeParamSets.begin()
+                seiAps = activeParamSets.front()
                 self.m_parameterSetManagerDecoder.applyPrefetchedPS()
                 if not self.m_parameterSetManagerDecoder.activateSPSWithSEI(seiAps.activeSeqParamSetId[0]):
                     sys.stdout.write("Warning SPS activation with Active parameter set SEI failed")

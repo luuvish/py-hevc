@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/CommonDef.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 import sys
@@ -9,7 +9,7 @@ import sys
 from .TComRom import g_bitDepthY, g_bitDepthC
 
 
-NV_VERSION                  = "9.1" # Current software version
+NV_VERSION                  = "9.2" # Current software version
 
 __GNUC__                    = 4
 __GNUC_MINOR__              = 2
@@ -33,8 +33,9 @@ _SUMMARY_PIC_               = 0  # print-out PSNR results for each slice type to
 
 MAX_GOP                     = 64 # max. value of hierarchical GOP size
 
+MAX_NUM_REF_PICS            = 16 # max. number of pictures used for reference
 MAX_NUM_REF                 = 4  # max. value of multiple reference frames
-MAX_NUM_REF_LC              = 8  # max. value of combined reference frames
+MAX_NUM_REF_LC              = MAX_NUM_REF_PICS # TODO: remove this macro definition (leftover from combined list concept)
 
 MAX_UINT                    = 0xFFFFFFFF  # max. value of unsigned 32-bit integer
 MAX_INT                     = 2147483647  # max. value of signed 32-bit integer
@@ -91,23 +92,29 @@ EARLY_SKIP_THRES            = 1.50 # if RD < thres*avg[BestSkipRD]
 MAX_CHROMA_FORMAT_IDC       = 3
 
 
-#NalUnitType
+# NalUnitType
 NAL_UNIT_CODED_SLICE_TRAIL_N   =  0
 NAL_UNIT_CODED_SLICE_TRAIL_R   =  1
+
 NAL_UNIT_CODED_SLICE_TSA_N     =  2
 NAL_UNIT_CODED_SLICE_TLA       =  3 # Current name in the spec: TSA_R
+
 NAL_UNIT_CODED_SLICE_STSA_N    =  4
 NAL_UNIT_CODED_SLICE_STSA_R    =  5
+
 NAL_UNIT_CODED_SLICE_RADL_N    =  6
 NAL_UNIT_CODED_SLICE_DLP       =  7 # Current name in the spec: RADL_R
+
 NAL_UNIT_CODED_SLICE_RASL_N    =  8
 NAL_UNIT_CODED_SLICE_TFD       =  9 # Current name in the spec: RASL_R
+
 NAL_UNIT_RESERVED_10           = 10
 NAL_UNIT_RESERVED_11           = 11
 NAL_UNIT_RESERVED_12           = 12
 NAL_UNIT_RESERVED_13           = 13
 NAL_UNIT_RESERVED_14           = 14
 NAL_UNIT_RESERVED_15           = 15
+
 NAL_UNIT_CODED_SLICE_BLA       = 16 # Current name in the spec: BLA_W_LP
 NAL_UNIT_CODED_SLICE_BLANT     = 17 # Current name in the spec: BLA_W_DLP
 NAL_UNIT_CODED_SLICE_BLA_N_LP  = 18
@@ -116,6 +123,7 @@ NAL_UNIT_CODED_SLICE_IDR_N_LP  = 20
 NAL_UNIT_CODED_SLICE_CRA       = 21
 NAL_UNIT_RESERVED_22           = 22
 NAL_UNIT_RESERVED_23           = 23
+
 NAL_UNIT_RESERVED_24           = 24
 NAL_UNIT_RESERVED_25           = 25
 NAL_UNIT_RESERVED_26           = 26
@@ -124,6 +132,7 @@ NAL_UNIT_RESERVED_28           = 28
 NAL_UNIT_RESERVED_29           = 29
 NAL_UNIT_RESERVED_30           = 30
 NAL_UNIT_RESERVED_31           = 31
+
 NAL_UNIT_VPS                   = 32
 NAL_UNIT_SPS                   = 33
 NAL_UNIT_PPS                   = 34

@@ -1,67 +1,17 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/TypeDef.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
-SUFFIX_SEI_NUT_DECODED_HASH_SEI              = 1  # K0120: Use the suffix SEI NUT for the decoded hash SEI message
-HLS_SEI_GENERIC_EXTENSION                    = 1  # K0371: generic SEI payload extension mechanism
-HLS_REMOVE_ACTIVE_PARAM_SET_SEI_EXT_FLAG     = 1  # K0371: remove active_parameter_set_sei_extension_flag
-HLS_ADD_SUBLAYER_ORDERING_INFO_PRESENT_FLAG  = 1  # K0330: Use sub_layer_ordering_info_present_flag in VPS and SPS as a shortcut to signal only one set of values
-HLS_GROUP_SPS_PCM_FLAGS                      = 1  # K0217: Group together syntax elements for PCM in SPS
-HLS_EXTRA_SLICE_HEADER_BITS                  = 1  # K0210: signal num_extra_slice_header_bits in PPS
-HLS_MOVE_SPS_PICLIST_FLAGS                   = 1  # K0170: move restricted_ref_pic_lists_flag and lists_modification_present_flag
-HLS_ADD_VUI_PICSTRUCT_PRESENT_FLAG           = 1  # add pic_struct_present_flag to VUI
-HLS_DISPLAY_WINDOW_PLACEHOLDER               = 1  # K0382: add display window flag placeholder
-
-VARYING_DBL_PARAMS                           = 1  # K0289: Specifying varying deblocking parameters in GOP
-
-DISALLOW_LTRP_REPETITIONS                    = 1  # K0123: Disallow duplicate LTRP entries in RPS
-REMOVE_LTRP_LSB_RESTRICTIONS                 = 1  # K0123: Remove restrictions that LTRP LSBs have to be increasing/decreasing
-POC_TEMPORAL_RELATIONSHIP                    = 1  # K0120: Add syntax in SPS/VUI to indicate POC temporal relationship
-SIGNAL_BITRATE_PICRATE_IN_VPS                = 1  # K0125: Signal bit_rate and pic_rate in VPS
-MOVE_SPS_TEMPORAL_ID_NESTING_FLAG            = 1  # K0120: Move sps_temporal_id_nesting_flag and replace sps_reserved_zero_bit
-CONDITION_SUBLAYERPROFILEPRESENTFLAG         = 1  # K0125: Condition signalling of sub_layer_profile_present_flag
-
-VPS_OPERATING_POINT                          = 1  # K0204 - Operation point added to VPS
-if VPS_OPERATING_POINT:
-    MAX_VPS_NUM_HRD_PARAMETERS               = 1
-    MAX_VPS_NUM_HRD_PARAMETERS_ALLOWED_PLUS1 = 1024
-    MAX_VPS_NUH_RESERVED_ZERO_LAYER_ID_PLUS1 = 1
-SEI_DISPLAY_ORIENTATION                      = 1  # Display orientation SEI message
-SEI_TEMPORAL_LEVEL0_INDEX                    = 1  # K0205 - Temporal level zero index SEI message
+MAX_VPS_NUM_HRD_PARAMETERS                   = 1
+MAX_VPS_NUM_HRD_PARAMETERS_ALLOWED_PLUS1     = 1024
+MAX_VPS_NUH_RESERVED_ZERO_LAYER_ID_PLUS1     = 1
 
 RATE_CONTROL_LAMBDA_DOMAIN                   = 1  # JCTVC-K0103, rate control by R-lambda model
 
-MIN_SPATIAL_SEGMENTATION                     = 1  # JCTVC-K0236
-SAVE_BITS_REFPICLIST_MOD_FLAG                = 1  # K0224 Proposal#1: Send ref_pic_list_modification_flag_lX only when NumPocTotalCurr is greater than 1.
-
-VPS_REARRANGE                                = 1  # JCTVC-K0254
-HRD_BUFFER                                   = 1  # JCTVC-K0221
-
-USE_PIC_CHROMA_QP_OFFSETS_IN_DEBLOCKING      = 1  # K0220: Use picture-based chroma QP offsets in deblocking filter.
-
-REMOVE_BURST_IPCM                            = 1  # Ticket763
-REMOVE_ENTROPY_SLICES                        = 1
-
-DEPENDENT_SLICE_SEGMENT_FLAGS                = 1  # K0184: Move dependent_slice_enabled_flag after seq_parameter_set_id in PPS.
-                                                  # Move dependent_slice_flag between pic_parameter_set_id and slice_address.
-SPS_INTER_REF_SET_PRED                       = 1  # K0136: Not send inter_ref_pic_set_prediction_flag for index 0
-HM9_NALU_TYPES                               = 1
-
-STRONG_INTRA_SMOOTHING                       = 1  # Enables Bilinear interploation of reference samples instead of 121 filter in intra prediction when reference samples are flat.
-
-RESTRICT_INTRA_BOUNDARY_SMOOTHING            = 1  # K0380, K0186 
-LINEBUF_CLEANUP                              = 1  # K0101
-MERGE_CLEANUP_AND_K0197                      = 1  #Code cleanup and K0197: removal of indirect use of A1 and B1 in merging candidate list construction.
-RPL_INIT_FIX                                 = 1  # K0255 2nd part (editorial)
-
 MAX_CPB_CNT                                  = 32 # Upper bound of (cpb_cnt_minus1 + 1)
 MAX_NUM_LAYER_IDS                            = 64
-
-FLAT_4x4_DSL                                 = 1  # Use flat 4x4 default scaling list (see notes on K0203)
-
-RDOQ_TRANSFORMSKIP                           = 1  # Enable RDOQ for transform skip (see noted on K0245)
 
 COEF_REMAIN_BIN_REDUCTION                    = 3  # indicates the level at which the VLC 
                                                   # transitions from Golomb-Rice to TU+EG(k)
@@ -88,7 +38,6 @@ if SAO_ENCODING_CHOICE:
     SAO_ENCODING_CHOICE_CHROMA               = 1  # J0044: picture early termination Luma and Chroma are handled separatenly
     if SAO_ENCODING_CHOICE_CHROMA:
         SAO_ENCODING_RATE_CHROMA             = 0.5
-        SAO_ENCODING_CHOICE_CHROMA_BF        = 1  # K0156: Bug fix for SAO selection consistency
 
 MAX_NUM_VPS                                  = 16
 MAX_NUM_SPS                                  = 16
@@ -113,8 +62,6 @@ if ADAPTIVE_QP_SELECTION:
 
 NS_HAD                                       = 0
 
-K0251                                        = 1  # explicitly signal slice_temporal_mvp_enable_flag in non-IDR I Slices
-
 HHI_RQT_INTRA_SPEEDUP                        = 1  # tests one best mode with full rqt
 HHI_RQT_INTRA_SPEEDUP_MOD                    = 0  # tests two best modes with full rqt
 
@@ -133,6 +80,7 @@ FAST_UDI_MAX_RDMODE_NUM                      = 35 # maximum number of RD compari
 ZERO_MVD_EST                                 = 0  # Zero Mvd Estimation in normal mode
 
 NUM_INTRA_MODE                               = 36
+LM_CHROMA_IDX                                = 35
 
 WRITE_BACK                                   = 1  # Enable/disable the encoder to replace the deltaPOC and Used by current from the config file with the values derived by the refIdc parameter.
 AUTO_INTER_RPS                               = 1  # Enable/disable the automatic generation of refIdc from the deltaPOC and Used by current from the config file.
@@ -161,18 +109,6 @@ if FULL_NBIT:
 else:
     DISTORTION_PRECISION_ADJUSTMENT = lambda x: x
 
-
-AD_HOC_SLICES_FIXED_NUMBER_OF_LCU_IN_SLICE   = 1  # OPTION IDENTIFIER. mode==1 -> Limit maximum number of largest coding tree blocks in a slice
-AD_HOC_SLICES_FIXED_NUMBER_OF_BYTES_IN_SLICE = 2  # OPTION IDENTIFIER. mode==2 -> Limit maximum number of bins/bits in a slice
-AD_HOC_SLICES_FIXED_NUMBER_OF_TILES_IN_SLICE = 3
-
-DEPENDENT_SLICES                             = 1  # JCTVC-I0229
-# Dependent slice options
-SHARP_FIXED_NUMBER_OF_LCU_IN_DEPENDENT_SLICE    = 1  # OPTION IDENTIFIER. Limit maximum number of largest coding tree blocks in an dependent slice
-SHARP_MULTIPLE_CONSTRAINT_BASED_DEPENDENT_SLICE = 2  # OPTION IDENTIFIER. Limit maximum number of bins/bits in an dependent slice
-if DEPENDENT_SLICES:
-    FIXED_NUMBER_OF_TILES_IN_DEPENDENT_SLICE    = 3  # JCTVC-I0229
-
 LOG2_MAX_NUM_COLUMNS_MINUS1                  = 7
 LOG2_MAX_NUM_ROWS_MINUS1                     = 7
 LOG2_MAX_COLUMN_WIDTH                        = 13
@@ -194,6 +130,12 @@ CABAC_INIT_PRESENT_FLAG                      = 1
 
 MAX_LAYER_NUM                                = 10
 
+
+# SliceConstraint
+NO_SLICES             = 0
+FIXED_NUMBER_OF_LCU   = 1
+FIXED_NUMBER_OF_BYTES = 2
+FIXED_NUMBER_OF_TILES = 3
 
 NUM_DOWN_PART = 4
 

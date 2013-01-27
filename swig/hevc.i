@@ -117,6 +117,7 @@ namespace std {
 
 %include "std_list.i"
 %template(ListNALUnitEBSP) std::list<NALUnitEBSP *>;
+%template(SEIMessages) std::list<SEI *>;
 
 %include "TLibCommon/AccessUnit.h"
 %include "TLibCommon/ContextModel.h"

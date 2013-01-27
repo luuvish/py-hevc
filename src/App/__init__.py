@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
 """
 	module : src/App
-    HM 8.0 Python Implementation
+    HM 9.2 Python Implementation
 """

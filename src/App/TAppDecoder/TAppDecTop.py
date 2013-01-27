@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/App/TAppDecoder/TAppDecTop.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 import sys
@@ -14,6 +14,7 @@ from ... import VectorUint8
 from ... import cvar
 from ... import TDecTop
 from ... import TVideoIOYuv
+from ... import Window
 
 from .TAppDecCfg import TAppDecCfg
 
@@ -109,8 +110,7 @@ class TAppDecTop(TAppDecCfg):
                         bytestream.reset()
                     bPreviousPictureDecoded = True
             if bNewPicture or istream_not(bitstreamFile):
-                rpcListPic, poc, self.m_iSkipFrame, self.m_iPOCLastDisplay = \
-                    self.m_cTDecTop.executeLoopFilters(poc, self.m_iSkipFrame, self.m_iPOCLastDisplay)
+                rpcListPic, poc = self.m_cTDecTop.executeLoopFilters(poc)
                 if rpcListPic:
                     pcListPic = rpcListPic
 
@@ -172,10 +172,14 @@ class TAppDecTop(TAppDecCfg):
                 # write to file
                 not_displayed -= 1
                 if self.m_pchReconFile:
-                    crop = pcPic.getCroppingWindow()
+                    conf = pcPic.getConformanceWindow()
+                    defDisp = pcPic.getSlice(0).getSPS().getVuiParameters().getDefaultDisplayWindow() \
+                        if self.m_respectDefDispWindow or not pcPic.getSlice(0).getSPS().getVuiParametersPresentFlag() else Window()
                     self.m_cTVideoIOYuvReconFile.write(pcPic.getPicYuvRec(),
-                        crop.getPicCropLeftOffset(), crop.getPicCropRightOffset(),
-                        crop.getPicCropTopOffset(), crop.getPicCropBottomOffset())
+                        conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
+                        conf.getWindowRightOffset() + defDisp.getWindowRightOffset(),
+                        conf.getWindowTopOffset() + defDisp.getWindowTopOffset(),
+                        conf.getWindowBottomOffset() + defDisp.getWindowBottomOffset())
 
                 # update POC of display order
                 self.m_iPOCLastDisplay = pcPic.getPOC()
@@ -196,10 +200,14 @@ class TAppDecTop(TAppDecCfg):
             if pcPic.getOutputMark():
                 # write to file
                 if self.m_pchReconFile:
-                    crop = pcPic.getCroppingWindow()
+                    conf = pcPic.getConformanceWindow()
+                    defDisp = pcPic.getSlice(0).getSPS().getVuiParameters().getDefaultDisplayWindow() \
+                        if self.m_respectDefDispWindow or not pcPic.getSlice(0).getSPS().getVuiParametersPresentFlag() else Window()
                     self.m_cTVideoIOYuvReconFile.write(pcPic.getPicYuvRec(),
-                        crop.getPicCropLeftOffset(), crop.getPicCropRightOffset(),
-                        crop.getPicCropTopOffset(), crop.getPicCropBottomOffset())
+                        conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
+                        conf.getWindowRightOffset() + defDisp.getWindowRightOffset(),
+                        conf.getWindowTopOffset() + defDisp.getWindowTopOffset(),
+                        conf.getWindowBottomOffset() + defDisp.getWindowBottomOffset())
 
                 # update POC of display order
                 self.m_iPOCLastDisplay = pcPic.getPOC()

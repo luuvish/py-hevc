@@ -15,7 +15,7 @@ from .pointer import pointer
 from .trace import Trace
 
 
-use_swig = 0
+use_swig = 2
 
 
 from swig.hevc import VectorBool, VectorUint8, VectorInt
@@ -58,6 +58,7 @@ if 2 <= use_swig:
     from swig.hevc import istream_open, istream_clear, istream_not, istream_tellg, istream_seekg
 if 2 <= use_swig:
     from swig.hevc import TComPicYuv
+    from swig.hevc import Window
 if 3 <= use_swig:
     from swig.hevc import ParameterSetManagerDecoder
     from swig.hevc import TComPic, TComListTComPic
@@ -151,7 +152,7 @@ elif use_swig == 14:
 
 
 
-if 2 <= use_swig:
+if 3 <= use_swig:
     from swig.hevc import SEIDecodedPictureHash, SEImessages
     from swig.hevc import SEIReader
 elif 9 <= use_swig:

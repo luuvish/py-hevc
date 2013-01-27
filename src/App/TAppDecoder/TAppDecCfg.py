@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/App/TAppDecoder/TAppDecCfg.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 import sys
@@ -23,6 +23,7 @@ class TAppDecCfg(object):
         self.m_decodedPictureHashSEIEnabled = 0
 
         self.m_targetDecLayerIdSet          = []
+        self.m_respectDefDispWindow         = 0
 
     def parseCfg(self, argv):
         p = optparse.OptionParser()
@@ -56,6 +57,9 @@ class TAppDecCfg(object):
             help='targetDecLayerIdSet file name. ' +
                  'The file should include white space seperated LayerId values to be decoded. ' +
                  'Omitting the option or a value of -1 in the file decodes all layers.')
+        p.add_option('-w', '--RespectDefDispWindow',
+            action='store', type='int', dest='m_respectDefDispWindow', default=0,
+            help='Only output content inside the default display window\n')
 
         opt, args = p.parse_args(argv[1:])
 
@@ -74,6 +78,7 @@ class TAppDecCfg(object):
         self.m_outputBitDepthC              = opt.m_outputBitDepthC
         self.m_iMaxTemporalLayer            = opt.m_iMaxTemporalLayer
         self.m_decodedPictureHashSEIEnabled = opt.m_decodedPictureHashSEIEnabled
+        self.m_respectDefDispWindow         = opt.m_respectDefDispWindow
 
         if not self.m_pchBitstreamFile:
             sys.stderr.write("No input file specifed, aborting\n")

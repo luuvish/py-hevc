@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibVideoIO/TVideoIOYuv.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 import os

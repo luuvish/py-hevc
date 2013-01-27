@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecBinCoderCABAC.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 from ..TLibCommon.TComCABACTables import sm_aucLPSTable, sm_aucRenormTable

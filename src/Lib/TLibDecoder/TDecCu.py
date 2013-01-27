@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecCu.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 import sys
@@ -85,8 +85,14 @@ class TDecCu(object):
     def destroy(self):
         for ui in xrange(self.m_uiMaxDepth-1):
             self.m_ppcYuvResi[ui].destroy()
+            #del self.m_ppcYuvResi[ui]
+            #self.m_ppcYuvResi[ui] = None
             self.m_ppcYuvReco[ui].destroy()
+            #del self.m_ppcYuvReco[ui]
+            #self.m_ppcYuvReco[ui] = None
             self.m_ppcCU[ui].destroy()
+            #del self.m_ppcCU[ui]
+            #self.m_ppcCU[ui] = None
 
         del self.m_ppcYuvResi
         self.m_ppcYuvResi = None
@@ -105,7 +111,7 @@ class TDecCu(object):
 
     #@Trace.trace(enable=use_trace, init=Trace.initCU, after=lambda self, pcCU: Trace.dumpCU(pcCU))
     def decompressCU(self, pcCU):
-        self.xDecompressCU(pcCU, pcCU, 0, 0)
+        self.xDecompressCU(pcCU, 0, 0)
 
     def xDecodeCU(self, pcCU, uiAbsPartIdx, uiDepth, ruiIsLast):
         pcPic = pcCU.getPic()
@@ -119,8 +125,8 @@ class TDecCu(object):
         uiBPelY = uiTPelY + (cvar.g_uiMaxCUHeight>>uiDepth) - 1
 
         pcSlice = pcCU.getPic().getSlice(pcCU.getPic().getCurrSliceIdx())
-        bStartInCU = (pcCU.getSCUAddr() + uiAbsPartIdx + uiCurNumParts) > pcSlice.getDependentSliceCurStartCUAddr() and \
-                     (pcCU.getSCUAddr() + uiAbsPartIdx) < pcSlice.getDependentSliceCurStartCUAddr()
+        bStartInCU = (pcCU.getSCUAddr() + uiAbsPartIdx + uiCurNumParts) > pcSlice.getSliceSegmentCurStartCUAddr() and \
+                     (pcCU.getSCUAddr() + uiAbsPartIdx) < pcSlice.getSliceSegmentCurStartCUAddr()
         if not bStartInCU and \
            uiRPelX < pcSlice.getSPS().getPicWidthInLumaSamples() and \
            uiBPelY < pcSlice.getSPS().getPicHeightInLumaSamples():
@@ -141,24 +147,23 @@ class TDecCu(object):
                 uiLPelX = pcCU.getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiIdx]]
                 uiTPelY = pcCU.getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiIdx]]
 
-                bSubInSlice = pcCU.getSCUAddr() + uiIdx + uiQNumParts > pcSlice.getDependentSliceCurStartCUAddr()
+                bSubInSlice = pcCU.getSCUAddr() + uiIdx + uiQNumParts > pcSlice.getSliceSegmentCurStartCUAddr()
                 if bSubInSlice:
-                    if uiLPelX < pcCU.getSlice().getSPS().getPicWidthInLumaSamples() and \
+                    if not ruiIsLast and \
+                       uiLPelX < pcCU.getSlice().getSPS().getPicWidthInLumaSamples() and \
                        uiTPelY < pcCU.getSlice().getSPS().getPicHeightInLumaSamples():
                         ruiIsLast = self.xDecodeCU(pcCU, uiIdx, uiDepth+1, ruiIsLast)
                     else:
                         pcCU.setOutsideCUPart(uiIdx, uiDepth+1)
-                if ruiIsLast:
-                    break
 
                 uiIdx += uiQNumParts
             if (cvar.g_uiMaxCUWidth >> uiDepth) == pcCU.getSlice().getPPS().getMinCuDQPSize() and \
                pcCU.getSlice().getPPS().getUseDQP():
                 if self.getdQPFlag():
                     uiQPSrcPartIdx = 0;
-                    if pcPic.getCU(pcCU.getAddr()).getDependentSliceStartCU(uiAbsPartIdx) != \
-                       pcSlice.getDependentSliceCurStartCUAddr():
-                        uiQPSrcPartIdx = pcSlice.getDependentSliceCurStartCUAddr() % pcPic.getNumPartInCU()
+                    if pcPic.getCU(pcCU.getAddr()).getSliceSegmentStartCU(uiAbsPartIdx) != \
+                       pcSlice.getSliceSegmentCurStartCUAddr():
+                        uiQPSrcPartIdx = pcSlice.getSliceSegmentCurStartCUAddr() % pcPic.getNumPartInCU()
                     else:
                         uiQPSrcPartIdx = uiAbsPartIdx
                     pcCU.setQPSubParts(pcCU.getRefQP(uiQPSrcPartIdx), uiAbsPartIdx, uiDepth) # set QP to default QP
@@ -184,8 +189,7 @@ class TDecCu(object):
             numValidMergeCand = 0
             for ui in xrange(self.m_ppcCU[uiDepth].getSlice().getMaxNumMergeCand()):
                 uhInterDirNeighbours[ui] = 0
-            self.m_pcEntropyDecoder.decodeMergeIndex(pcCU, 0, uiAbsPartIdx, SIZE_2Nx2N,
-                uhInterDirNeighbours.cast(), cMvFieldNeighbours.cast(), uiDepth)
+            self.m_pcEntropyDecoder.decodeMergeIndex(pcCU, 0, uiAbsPartIdx, uiDepth)
             uiMergeIndex = pcCU.getMergeIndex(uiAbsPartIdx)
             numValidMergeCand = self.m_ppcCU[uiDepth].getInterMergeCandidates(
                 0, 0, cMvFieldNeighbours.cast(), uhInterDirNeighbours.cast(), numValidMergeCand, uiMergeIndex)
@@ -248,20 +252,20 @@ class TDecCu(object):
             (uiPosX + pcCU.getWidth(uiAbsPartIdx)) == uiWidth) and \
            ((uiPosY + pcCU.getHeight(uiAbsPartIdx)) % uiGranularityWidth == 0 or
             (uiPosY + pcCU.getHeight(uiAbsPartIdx)) == uiHeight):
-            self.m_pcEntropyDecoder.decodeTerminatingBit(uiIsLast)
+            uiIsLast = self.m_pcEntropyDecoder.decodeTerminatingBit(uiIsLast)
         else:
             uiIsLast = 0
 
         if uiIsLast:
-            if pcSlice.isNextDependentSlice() and not pcSlice.isNextSlice():
-                pcSlice.setDependentSliceCurEndCUAddr(pcCU.getSCUAddr() + uiAbsPartIdx + uiCurNumParts)
+            if pcSlice.isNextSliceSegment() and not pcSlice.isNextSlice():
+                pcSlice.setSliceSegmentCurEndCUAddr(pcCU.getSCUAddr() + uiAbsPartIdx + uiCurNumParts)
             else:
                 pcSlice.setSliceCurEndCUAddr(pcCU.getSCUAddr() + uiAbsPartIdx + uiCurNumParts)
-                pcSlice.setDependentSliceCurEndCUAddr(pcCU.getSCUAddr() + uiAbsPartIdx + uiCurNumParts)
+                pcSlice.setSliceSegmentCurEndCUAddr(pcCU.getSCUAddr() + uiAbsPartIdx + uiCurNumParts)
 
         return uiIsLast > 0
 
-    def xDecompressCU(self, pcCU, pcCUCur, uiAbsPartIdx, uiDepth):
+    def xDecompressCU(self, pcCU, uiAbsPartIdx, uiDepth):
         pcPic = pcCU.getPic()
 
         bBoundary = False
@@ -272,8 +276,8 @@ class TDecCu(object):
 
         uiCurNumParts = pcPic.getNumPartInCU() >> (uiDepth<<1)
         pcSlice = pcCU.getPic().getSlice(pcCU.getPic().getCurrSliceIdx())
-        bStartInCU = (pcCU.getSCUAddr() + uiAbsPartIdx + uiCurNumParts) > pcSlice.getDependentSliceCurStartCUAddr() and \
-                     (pcCU.getSCUAddr() + uiAbsPartIdx) < pcSlice.getDependentSliceCurStartCUAddr()
+        bStartInCU = (pcCU.getSCUAddr() + uiAbsPartIdx + uiCurNumParts) > pcSlice.getSliceSegmentCurStartCUAddr() and \
+                     (pcCU.getSCUAddr() + uiAbsPartIdx) < pcSlice.getSliceSegmentCurStartCUAddr()
         if bStartInCU or \
            uiRPelX >= pcSlice.getSPS().getPicWidthInLumaSamples() or \
            uiBPelY >= pcSlice.getSPS().getPicHeightInLumaSamples():
@@ -289,12 +293,12 @@ class TDecCu(object):
                 uiLPelX = pcCU.getCUPelX() + g_auiRasterToPelX[g_auiZscanToRaster[uiIdx]]
                 uiTPelY = pcCU.getCUPelY() + g_auiRasterToPelY[g_auiZscanToRaster[uiIdx]]
 
-                binSlice = pcCU.getSCUAddr() + uiIdx + uiQNumParts > pcSlice.getDependentSliceCurStartCUAddr() and \
-                           pcCU.getSCUAddr() + uiIdx < pcSlice.getDependentSliceCurEndCUAddr()
+                binSlice = pcCU.getSCUAddr() + uiIdx + uiQNumParts > pcSlice.getSliceSegmentCurStartCUAddr() and \
+                           pcCU.getSCUAddr() + uiIdx < pcSlice.getSliceSegmentCurEndCUAddr()
                 if binSlice and \
                    uiLPelX < pcSlice.getSPS().getPicWidthInLumaSamples() and \
                    uiTPelY < pcSlice.getSPS().getPicHeightInLumaSamples():
-                    self.xDecompressCU(pcCU, self.m_ppcCU[uiNextDepth], uiIdx, uiNextDepth)
+                    self.xDecompressCU(pcCU, uiIdx, uiNextDepth)
 
                 uiIdx += uiQNumParts
             return
@@ -306,18 +310,18 @@ class TDecCu(object):
 
         predMode = self.m_ppcCU[uiDepth].getPredictionMode(0)
         if predMode == MODE_INTER:
-            self.xReconInter(self.m_ppcCU[uiDepth], uiAbsPartIdx, uiDepth)
+            self.xReconInter(self.m_ppcCU[uiDepth], uiDepth)
         elif predMode == MODE_INTRA:
-            self.xReconIntraQT(self.m_ppcCU[uiDepth], uiAbsPartIdx, uiDepth)
+            self.xReconIntraQT(self.m_ppcCU[uiDepth], uiDepth)
         else:
             assert(False)
         if self.m_ppcCU[uiDepth].isLosslessCoded(0) and \
            self.m_ppcCU[uiDepth].getIPCMFlag(0) == False:
-            self.xFillPCMBuffer(self.m_ppcCU[uiDepth], uiAbsPartIdx, uiDepth)
+            self.xFillPCMBuffer(self.m_ppcCU[uiDepth], uiDepth)
 
         self.xCopyToPic(self.m_ppcCU[uiDepth], pcPic, uiAbsPartIdx, uiDepth)
 
-    def xReconInter(self, pcCU, uiAbsPartIdx, uiDepth):
+    def xReconInter(self, pcCU, uiDepth):
         # inter prediction
         self.m_pcPrediction.motionCompensation(pcCU, self.m_ppcYuvReco[uiDepth])
 
@@ -334,13 +338,13 @@ class TDecCu(object):
                 self.m_ppcYuvReco[uiDepth], 0,
                 pcCU.getWidth(0), pcCU.getHeight(0))
 
-    def xReconIntraQT(self, pcCU, uiAbsPartIdx, uiDepth):
+    def xReconIntraQT(self, pcCU, uiDepth):
         uiInitTrDepth = 0 if pcCU.getPartitionSize(0) == SIZE_2Nx2N else 1
         uiNumPart = pcCU.getNumPartInter()
         uiNumQPart = pcCU.getTotalNumPart() >> 2
 
         if pcCU.getIPCMFlag(0):
-            self.xReconPCM(pcCU, uiAbsPartIdx, uiDepth)
+            self.xReconPCM(pcCU, uiDepth)
             return
 
         for uiPU in xrange(uiNumPart):
@@ -389,7 +393,7 @@ class TDecCu(object):
         #===== get prediction signal =====
         self.m_pcPrediction.predIntraLumaAng(pcCU.getPattern(), uiLumaPredMode,
                                              piPred.cast(), uiStride, uiWidth, uiHeight,
-                                             pcCU, bAboveAvail, bLeftAvail)
+                                             bAboveAvail, bLeftAvail)
 
         #===== inverse transform =====
         self.m_pcTrQuant.setQPforQuant(pcCU.getQP(0), TEXT_LUMA, pcCU.getSlice().getSPS().getQpBDOffsetY(), 0)
@@ -450,6 +454,7 @@ class TDecCu(object):
         piRecIPred = pointer(piRecIPred, type='short *')
         uiRecIPredStride = pcCU.getPic().getPicYuvRec().getCStride()
         useTransformSkipChroma = pcCU.getTransformSkip(uiAbsPartIdx, eText)
+
         #===== init availability pattern =====
         bAboveAvail = False
         bLeftAvail = False
@@ -467,9 +472,9 @@ class TDecCu(object):
         #===== get prediction signal =====
         if uiChromaPredMode == DM_CHROMA_IDX:
             uiChromaPredMode = pcCU.getLumaIntraDir(0)
-        self.m_pcPrediction.predIntraChromaAng(pcCU.getPattern(), pPatChroma, uiChromaPredMode,
+        self.m_pcPrediction.predIntraChromaAng(pPatChroma, uiChromaPredMode,
                                                piPred.cast(), uiStride, uiWidth, uiHeight,
-                                               pcCU, bAboveAvail, bLeftAvail)
+                                               bAboveAvail, bLeftAvail)
 
         #===== inverse transform =====
         curChromaQpOffset = 0
@@ -499,7 +504,7 @@ class TDecCu(object):
             piReco += uiStride
             piRecIPred += uiRecIPredStride
 
-    def xReconPCM(self, pcCU, uiAbsPartIdx, uiDepth):
+    def xReconPCM(self, pcCU, uiDepth):
         # Luma
         uiWidth = cvar.g_uiMaxCUWidth >> uiDepth
         uiHeight = cvar.g_uiMaxCUHeight >> uiDepth
@@ -627,7 +632,7 @@ class TDecCu(object):
     def setdQPFlag(self, b):
         self.m_bDecoderDQP = b
 
-    def xFillPCMBuffer(self, pcCU, uiAbsPartIdx, uiDepth):
+    def xFillPCMBuffer(self, pcCU, uiDepth):
         # Luma
         uiWidth = cvar.g_uiMaxCUWidth >> uiDepth
         uiHeight = cvar.g_uiMaxCUHeight >> uiDepth

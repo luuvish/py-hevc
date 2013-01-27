@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecSbac.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 import sys
@@ -9,8 +9,7 @@ import sys
 from ... import pointer
 from ... import Trace
 
-from ... import ArrayUInt, ArrayInt, ArrayBool
-from ... import ArraySaoLcuParamPtr, ArraySaoLcuParam
+from ... import ArrayUInt, ArrayInt
 
 from ... import cvar
 
@@ -74,23 +73,6 @@ from ..TLibCommon.TComRom import (
     g_uiMinInGroup, g_uiGroupIdx, g_aucConvertToBit,
     g_auiSigLastScan, g_sigLastScan8x8, g_sigLastScanCG32x32
 )
-
-
-def copySaoOneLcuParam(psDst, psSrc):
-    src_offset = pointer(psSrc.offset, type='int *')
-    dst_offset = pointer(psDst.offset, type='int *')
-
-    psDst.partIdx = psSrc.partIdx
-    psDst.typeIdx = psSrc.typeIdx
-    if psDst.typeIdx != -1:
-        psDst.subTypeIdx = psSrc.subTypeIdx
-        psDst.length = psSrc.length
-        for i in xrange(psDst.length):
-            dst_offset[i] = src_offset[i]
-    else:
-        psDst.length = 0
-        for i in xrange(SAO_BO_LEN):
-            dst_offset[i] = 0
 
 
 class TDecSbac(TDecEntropy):
@@ -281,34 +263,42 @@ class TDecSbac(TDecEntropy):
 
     def parseSaoOneLcuInterleaving(self, rx, ry, pSaoParam,
         pcCU, iCUAddrInSlice, iCUAddrUpInSlice, allowMergeLeft, allowMergeUp):
+
+        def copySaoOneLcuParam(psDst, psSrc):
+            src_offset = pointer(psSrc.offset, type='int *')
+            dst_offset = pointer(psDst.offset, type='int *')
+
+            psDst.partIdx = psSrc.partIdx
+            psDst.typeIdx = psSrc.typeIdx
+            if psDst.typeIdx != -1:
+                psDst.subTypeIdx = psSrc.subTypeIdx
+                psDst.length = psSrc.length
+                for i in xrange(psDst.length):
+                    dst_offset[i] = src_offset[i]
+            else:
+                psDst.length = 0
+                for i in xrange(SAO_BO_LEN):
+                    dst_offset[i] = 0
+
         iAddr = pcCU.getAddr()
         uiSymbol = 0
-##      bSaoFlag = pointer(pSaoParam.bSaoFlag, type='bool *')
-##      saoLcuParamPtr = pointer(pSaoParam.saoLcuParam, type='SaoLcuParam **')
-##      saoLcuParam = (pointer(saoLcuParamPtr[0], type='SaoLcuParam *'),
-##                     pointer(saoLcuParamPtr[1], type='SaoLcuParam *'),
-##                     pointer(saoLcuParamPtr[2], type='SaoLcuParam *'))
-##      offset = (pointer(saoLcuParam[0][iAddr].offset, type='int *'),
-##                pointer(saoLcuParam[1][iAddr].offset, type='int *'),
-##                pointer(saoLcuParam[2][iAddr].offset, type='int *'))
-        bSaoFlag = ArrayBool.frompointer(pSaoParam.bSaoFlag)
-        saoLcuParamPtr = ArraySaoLcuParamPtr.frompointer(pSaoParam.saoLcuParam)
-        saoLcuParam = (ArraySaoLcuParam.frompointer(saoLcuParamPtr[0]),
-                       ArraySaoLcuParam.frompointer(saoLcuParamPtr[1]),
-                       ArraySaoLcuParam.frompointer(saoLcuParamPtr[2]))
-        offset = (ArrayInt.frompointer(saoLcuParam[0][iAddr].offset),
-                  ArrayInt.frompointer(saoLcuParam[1][iAddr].offset),
-                  ArrayInt.frompointer(saoLcuParam[2][iAddr].offset))
+
+        bSaoFlag = pointer(pSaoParam.bSaoFlag, type='bool *')
+        saoLcuParamG = pointer(pSaoParam.saoLcuParam, type='SaoLcuParam **')
+        saoLcuParam = (pointer(saoLcuParamG[0], type='SaoLcuParam *'),
+                       pointer(saoLcuParamG[1], type='SaoLcuParam *'),
+                       pointer(saoLcuParamG[2], type='SaoLcuParam *'))
 
         for iCompIdx in xrange(3):
-            saoLcuParam[iCompIdx][iAddr].mergeUpFlag = 0
+            saoLcuParam[iCompIdx][iAddr].mergeUpFlag   = 0
             saoLcuParam[iCompIdx][iAddr].mergeLeftFlag = 0
-            saoLcuParam[iCompIdx][iAddr].subTypeIdx = 0
-            saoLcuParam[iCompIdx][iAddr].typeIdx = -1
-            offset[iCompIdx][0] = 0
-            offset[iCompIdx][1] = 0
-            offset[iCompIdx][2] = 0
-            offset[iCompIdx][3] = 0
+            saoLcuParam[iCompIdx][iAddr].subTypeIdx    = 0
+            saoLcuParam[iCompIdx][iAddr].typeIdx       = -1
+            offset = pointer(saoLcuParam[iCompIdx][iAddr].offset, type='int *')
+            offset[0] = 0
+            offset[1] = 0
+            offset[2] = 0
+            offset[3] = 0
         if bSaoFlag[0] or bSaoFlag[1]:
             if rx > 0 and iCUAddrInSlice != 0 and allowMergeLeft:
                 uiSymbol = self.parseSaoMerge(uiSymbol)
@@ -343,6 +333,8 @@ class TDecSbac(TDecEntropy):
                 saoLcuParam[iCompIdx][iAddr].subTypeIdx = 0
 
     def parseSaoOffset(self, psSaoLcuParam, compIdx):
+        offset = pointer(psSaoLcuParam.offset, type='int *')
+
         iTypeLength = (
             SAO_EO_LEN,
             SAO_EO_LEN,
@@ -356,9 +348,6 @@ class TDecSbac(TDecEntropy):
             uiSymbol = psSaoLcuParam.typeIdx + 1
         else:
             uiSymbol = self.parseSaoTypeIdx(uiSymbol)
-
-##      offset = pointer(psSaoLcuParam.offset, type='int *')
-        offset = ArrayInt.frompointer(psSaoLcuParam.offset)
 
         psSaoLcuParam.typeIdx = uiSymbol - 1
         if uiSymbol:
@@ -543,7 +532,7 @@ class TDecSbac(TDecEntropy):
             Trace.DTRACE_CABAC_V(uiAbsPartIdx)
             Trace.DTRACE_CABAC_T('\n')
 
-    def parseMergeIndex(self, pcCU, ruiMergeIdx, uiAbsPartIdx, uiDepth):
+    def parseMergeIndex(self, pcCU, ruiMergeIdx):
         uiUnaryIdx = 0
         uiNumCand = pcCU.getSlice().getMaxNumMergeCand()
         if uiNumCand > 1:
@@ -683,7 +672,7 @@ class TDecSbac(TDecEntropy):
             uiSymbol = uiAllowedChromaDir[uiIPredMode]
         pcCU.setChromIntraDirSubParts(uiSymbol, uiAbsPartIdx, uiDepth)
 
-    def parseInterDir(self, pcCU, ruiInterDir, uiAbsPartIdx, uiDepth):
+    def parseInterDir(self, pcCU, ruiInterDir, uiAbsPartIdx):
         uiCtx = pcCU.getCtxInterDir(uiAbsPartIdx)
         pCtx = self.m_cCUInterDirSCModel.get(0)
         uiSymbol = 0
@@ -701,7 +690,7 @@ class TDecSbac(TDecEntropy):
         ruiInterDir = uiSymbol
         return ruiInterDir
 
-    def parseRefFrmIdx(self, pcCU, riRefFrmIdx, uiAbsPartIdx, uiDepth, eRefList):
+    def parseRefFrmIdx(self, pcCU, riRefFrmIdx, eRefList):
         uiSymbol = 0
         pCtx = self.m_cCURefPicSCModel.get(0)
         uiSymbol = self.m_pcTDecBinIf.decodeBin(uiSymbol, pCtx[0])
@@ -805,7 +794,7 @@ class TDecSbac(TDecEntropy):
 
         pcCU.setCbfSubParts(uiSymbol<<uiTrDepth, eType, uiAbsPartIdx, uiDepth)
 
-    def parseQtRootCbf(self, pcCU, uiAbsPartIdx, uiDepth, uiQtRootCbf):
+    def parseQtRootCbf(self, uiAbsPartIdx, uiQtRootCbf):
         uiSymbol = 0
         uiCtx = 0
         uiSymbol = self.m_pcTDecBinIf.decodeBin(
@@ -847,7 +836,7 @@ class TDecSbac(TDecEntropy):
             iDQp = uiDQp
             if uiSign:
                 iDQp = -iDQp
-            qp = ((pcCU.getRefQP(uiAbsPartIdx) + iDQp + 52 + 2 * qpBdOffsetY) %
+            qp = ((pcCU.getRefQP(uiAbsPartIdx) + iDQp + 52 + 2 * qpBdOffsetY) % \
                   (52 + qpBdOffsetY)) - qpBdOffsetY
         else:
             iDQp = 0
@@ -1073,7 +1062,7 @@ class TDecSbac(TDecEntropy):
             else:
                 uiSigCoeffGroup = 0
                 uiCtxSig = TComTrQuant.getSigCoeffGroupCtxInc(
-                    uiSigCoeffGroupFlag.cast(), iCGPosX, iCGPosY, uiScanIdx, uiWidth, uiHeight)
+                    uiSigCoeffGroupFlag.cast(), iCGPosX, iCGPosY, uiWidth, uiHeight)
                 uiSigCoeffGroup = self.m_pcTDecBinIf.decodeBin(uiSigCoeffGroup, baseCoeffGroupCtx[uiCtxSig])
                 uiSigCoeffGroupFlag[iCGBlkPos] = uiSigCoeffGroup
 
@@ -1089,7 +1078,7 @@ class TDecSbac(TDecEntropy):
                 if uiSigCoeffGroupFlag[iCGBlkPos]:
                     if iScanPosSig > iSubPos or iSubSet == 0 or numNonZero:
                         uiCtxSig = TComTrQuant.getSigCtxInc(
-                            patternSigCtx, uiScanIdx, uiPosX, uiPosY, uiLog2BlockSize, uiWidth, uiHeight, eTType)
+                            patternSigCtx, uiScanIdx, uiPosX, uiPosY, uiLog2BlockSize, eTType)
                         uiSig = self.m_pcTDecBinIf.decodeBin(uiSig, baseCtx[uiCtxSig])
                     else:
                         uiSig = 1

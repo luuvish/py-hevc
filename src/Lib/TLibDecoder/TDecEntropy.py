@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecEntropy.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 import sys
@@ -56,8 +56,7 @@ class TDecEntropy(object):
         for uiPartIdx in xrange(uiNumPU):
             self.decodeMergeFlag(pcCU, uiSubPartIdx, uiDepth, uiPartIdx)
             if pcCU.getMergeFlag(uiSubPartIdx):
-                self.decodeMergeIndex(pcCU, uiPartIdx, uiSubPartIdx, ePartSize,
-                                      uhInterDirNeighbours.cast(), cMvFieldNeighbours.cast(), uiDepth)
+                self.decodeMergeIndex(pcCU, uiPartIdx, uiSubPartIdx, uiDepth)
                 uiMergeIndex = pcCU.getMergeIndex(uiSubPartIdx)
                 if pcCU.getSlice().getPPS().getLog2ParallelMergeLevelMinus2() and \
                    ePartSize != SIZE_2Nx2N and pcSubCU.getWidth(0) <= 8:
@@ -100,7 +99,7 @@ class TDecEntropy(object):
         if pcCU.getSlice().isInterP():
             uiInterDir = 1
         else:
-            uiInterDir = self.m_pcEntropyDecoderIf.parseInterDir(pcCU, uiInterDir, uiAbsPartIdx, uiDepth)
+            uiInterDir = self.m_pcEntropyDecoderIf.parseInterDir(pcCU, uiInterDir, uiAbsPartIdx)
 
         pcCU.setInterDirSubParts(uiInterDir, uiAbsPartIdx, uiPartIdx, uiDepth)
 
@@ -109,7 +108,7 @@ class TDecEntropy(object):
         iParseRefFrmIdx = pcCU.getInterDir(uiAbsPartIdx) & (1 << eRefList)
 
         if pcCU.getSlice().getNumRefIdx(eRefList) > 1 and iParseRefFrmIdx:
-            iRefFrmIdx = self.m_pcEntropyDecoderIf.parseRefFrmIdx(pcCU, iRefFrmIdx, uiAbsPartIdx, uiDepth, eRefList)
+            iRefFrmIdx = self.m_pcEntropyDecoderIf.parseRefFrmIdx(pcCU, iRefFrmIdx, eRefList)
         elif not iParseRefFrmIdx:
             iRefFrmIdx = NOT_VALID
         else:
@@ -141,7 +140,7 @@ class TDecEntropy(object):
         pcSubCU.setMVPNumSubParts(pAMVPInfo.iN, eRefList, uiPartAddr, uiPartIdx, uiDepth)
         pcSubCU.setMVPIdxSubParts(iMVPIdx, eRefList, uiPartAddr, uiPartIdx, uiDepth)
         if iRefIdx >= 0:
-            cMv = self.m_pcPrediction.getMvPredAMVP(pcSubCU, uiPartIdx, uiPartAddr, eRefList, iRefIdx)
+            cMv = self.m_pcPrediction.getMvPredAMVP(pcSubCU, uiPartIdx, uiPartAddr, eRefList)
             cMv = cMv + pcSubCUMvField.getMvd(uiPartAddr)
 
         ePartSize = pcSubCU.getPartitionSize(uiPartAddr)
@@ -157,10 +156,8 @@ class TDecEntropy(object):
         self.m_pcEntropyDecoderIf.parseVPS(pcVPS)
     def decodeSPS(self, pcSPS):
         self.m_pcEntropyDecoderIf.parseSPS(pcSPS)
-    def decodePPS(self, pcPPS, parameterSet):
+    def decodePPS(self, pcPPS):
         self.m_pcEntropyDecoderIf.parsePPS(pcPPS)
-    def decodeSEI(self, seis):
-        self.m_pcEntropyDecoderIf.parseSEI(seis)
     def decodeSliceHeader(self, rpcSlice, parameterSetManager):
         self.m_pcEntropyDecoderIf.parseSliceHeader(rpcSlice, parameterSetManager)
     def decodeTerminatingBit(self, ruiIsLast):
@@ -177,10 +174,9 @@ class TDecEntropy(object):
         self.m_pcEntropyDecoderIf.parseCUTransquantBypassFlag(pcCU, uiAbsPartIdx, uiDepth)
     def decodeMergeFlag(self, pcCU, uiAbsPartIdx, uiDepth, uiPUIdx):
         self.m_pcEntropyDecoderIf.parseMergeFlag(pcCU, uiAbsPartIdx, uiDepth, uiPUIdx)
-    def decodeMergeIndex(self, pcCU, uiPartIdx, uiAbsPartIdx,
-                         eCUMode, puhInterDirNeighbours, pcMvFieldNeighbours, uiDepth):
+    def decodeMergeIndex(self, pcCU, uiPartIdx, uiAbsPartIdx, uiDepth):
         uiMergeIndex = 0
-        uiMergeIndex = self.m_pcEntropyDecoderIf.parseMergeIndex(pcCU, uiMergeIndex, uiAbsPartIdx, uiDepth)
+        uiMergeIndex = self.m_pcEntropyDecoderIf.parseMergeIndex(pcCU, uiMergeIndex)
         pcCU.setMergeIndexSubParts(uiMergeIndex, uiAbsPartIdx, uiPartIdx, uiDepth)
     def decodePredMode(self, pcCU, uiAbsPartIdx, uiDepth):
         self.m_pcEntropyDecoderIf.parsePredMode(pcCU, uiAbsPartIdx, uiDepth)
@@ -209,8 +205,7 @@ class TDecEntropy(object):
         self.m_pcEntropyDecoderIf.updateContextTables(eSliceType, iQp)
 
     def xDecodeTransform(self, pcCU, offsetLuma, offsetChroma,
-                         uiAbsPartIdx, absTUPartIdx, uiDepth, uiWidth, uiHeight,
-                         uiTrIdx, uiInnerQuadIdx, bCodeDQP):
+                         uiAbsPartIdx, uiDepth, uiWidth, uiHeight, uiTrIdx, bCodeDQP):
         uiSubdiv = 0
         uiLog2TrafoSize = g_aucConvertToBit[pcCU.getSlice().getSPS().getMaxCUWidth()] + 2 - uiDepth
 
@@ -268,8 +263,8 @@ class TDecEntropy(object):
 
             for i in xrange(4):
                 nsAddr = uiAbsPartIdx
-                bCodeDQP = self.xDecodeTransform(pcCU, offsetLuma, offsetChroma, uiAbsPartIdx, nsAddr,
-                    uiDepth, uiWidth, uiHeight, uiTrIdx, i, bCodeDQP)
+                bCodeDQP = self.xDecodeTransform(pcCU, offsetLuma, offsetChroma, uiAbsPartIdx,
+                    uiDepth, uiWidth, uiHeight, uiTrIdx, bCodeDQP)
                 uiYCbf |= pcCU.getCbf(uiAbsPartIdx, TEXT_LUMA, uiTrDepth+1)
                 uiUCbf |= pcCU.getCbf(uiAbsPartIdx, TEXT_CHROMA_U, uiTrDepth+1)
                 uiVCbf |= pcCU.getCbf(uiAbsPartIdx, TEXT_CHROMA_V, uiTrDepth+1)
@@ -362,15 +357,16 @@ class TDecEntropy(object):
         uiLumaOffset = uiMinCoeffSize * uiAbsPartIdx
         uiChromaOffset = uiLumaOffset >> 2
 
-        if not pcCU.isIntra(uiAbsPartIdx):
+        if pcCU.isIntra(uiAbsPartIdx):
+            pass
+        else:
             uiQtRootCbf = 1
             if not (pcCU.getPartitionSize(uiAbsPartIdx) == SIZE_2Nx2N and pcCU.getMergeFlag(uiAbsPartIdx)):
-                uiQtRootCbf = self.m_pcEntropyDecoderIf.parseQtRootCbf(pcCU, uiAbsPartIdx, uiDepth, uiQtRootCbf)
+                uiQtRootCbf = self.m_pcEntropyDecoderIf.parseQtRootCbf(uiAbsPartIdx, uiQtRootCbf)
             if not uiQtRootCbf:
                 pcCU.setCbfSubParts(0, 0, 0, uiAbsPartIdx, uiDepth)
                 pcCU.setTrIdxSubParts(0, uiAbsPartIdx, uiDepth)
                 return bCodeDQP
         bCodeDQP = self.xDecodeTransform(pcCU, uiLumaOffset, uiChromaOffset,
-                                         uiAbsPartIdx, uiAbsPartIdx, uiDepth, uiWidth, uiHeight,
-                                         0, 0, bCodeDQP)
+                                         uiAbsPartIdx, uiDepth, uiWidth, uiHeight, 0, bCodeDQP)
         return bCodeDQP

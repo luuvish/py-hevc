@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecSlice.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 import sys
@@ -35,11 +35,16 @@ class TDecSlice(object):
 
         self.CTXMem                       = VectorTDecSbac()
 
+    def __del__(self):
+        for i in self.CTXMem:
+            del i
+        self.CTXMem.clear()
+
     def init(self, pcEntropyDecoder, pcCuDecoder):
         self.m_pcEntropyDecoder = pcEntropyDecoder
         self.m_pcCuDecoder = pcCuDecoder
 
-    def create(self, pcSlice, iWidth, iHeight, uiMaxWidth, uiMaxHeight, uiMaxDepth):
+    def create(self):
         pass
 
     def destroy(self):
@@ -56,14 +61,14 @@ class TDecSlice(object):
             del self.m_pcBufferLowLatBinCABACs
             self.m_pcBufferLowLatBinCABACs = None
 
-    def decompressSlice(self, pcBitstream, ppcSubstreams, rpcPic, pcSbacDecoder, pcSbacDecoders):
+    def decompressSlice(self, ppcSubstreams, rpcPic, pcSbacDecoder, pcSbacDecoders):
         ppcSubstreams = pointer(ppcSubstreams, type='TComInputBitstream **')
         pcSbacDecoders = pointer(pcSbacDecoders, type='TDecSbac *')
 
         pcCU = None
         uiIsLast = 0
         iStartCUEncOrder = max(rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getSliceCurStartCUAddr() // rpcPic.getNumPartInCU(),
-                               rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getDependentSliceCurStartCUAddr() // rpcPic.getNumPartInCU())
+                               rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getSliceSegmentCurStartCUAddr() // rpcPic.getNumPartInCU())
         iStartCUAddr = rpcPic.getPicSym().getCUOrderMap(iStartCUEncOrder)
 
         # decoder don't need prediction & residual frame buffer
@@ -113,15 +118,19 @@ class TDecSlice(object):
 
         uiTileCol = uiTileStartLCU = uiTileLCUX = 0
         iNumSubstreamsPerTile = 1 # if independent.
-
-        bAllowDependence = False
-        if rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getPPS().getDependentSliceEnabledFlag():
-            bAllowDependence = True
-        if bAllowDependence:
-            if not rpcPic.getSlice(rpcPic.getCurrSliceIdx()).isNextSlice():
-                uiTileCol = 0
+        depSliceSegmentsEnabled = rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getPPS().getDependentSliceSegmentsEnabledFlag()
+        uiTileStartLCU = rpcPic.getPicSym().getTComTile(rpcPic.getPicSym().getTileIdxMap(iStartCUAddr)).getFirstCUAddr()
+        if depSliceSegmentsEnabled:
+            if not rpcPic.getSlice(rpcPic.getCurrSliceIdx()).isNextSlice() and \
+               iStartCUAddr != rpcPic.getPicSym().getTComTile(rpcPic.getPicSym().getTileIdxMap(iStartCUAddr)).getFirstCUAddr():
                 if pcSlice.getPPS().getEntropyCodingSyncEnabledFlag():
+                    uiTileCol = rpcPic.getPicSym().getTileIdxMap(iStartCUAddr) % (rpcPic.getPicSym().getNumColumnsMinus1()+1)
                     self.m_pcBufferSbacDecoders[uiTileCol].loadContexts(self.CTXMem[1]) #2.LCU
+                    if (iStartCUAddr % uiWidthInLCUs + 1) >= uiWidthInLCUs:
+                        uiTileLCUX = uiTileStartLCU % uiWidthInLCUs
+                        uiCol = iStartCUAddr % uiWidthInLCUs
+                        if uiCol == uiTileLCUX:
+                            self.CTXMem[0].loadContexts(pcSbacDecoder)
                 pcSbacDecoder.loadContexts(self.CTXMem[0]) # end of depSlice-1
                 pcSbacDecoders[uiSubStrm].loadContexts(pcSbacDecoder)
             else:
@@ -142,7 +151,7 @@ class TDecSlice(object):
             uiLin = (iCUAddr//uiWidthInLCUs) - (iStartCUAddr//uiWidthInLCUs)
             # inherit from TR if necessary, select substream to use.
             if (pcSlice.getPPS().getNumSubstreams() > 1) or \
-               (bAllowDependence and uiCol == uiTileLCUX and
+               (depSliceSegmentsEnabled and uiCol == uiTileLCUX and
                 pcSlice.getPPS().getEntropyCodingSyncEnabledFlag()):
                 # independent tiles => substreams are "per tile".  iNumSubstreams has already been multiplied.
                 iNumSubstreamsPerTile = iNumSubstreams / rpcPic.getPicSym().getNumTiles()
@@ -151,7 +160,7 @@ class TDecSlice(object):
                 self.m_pcEntropyDecoder.setBitstream(ppcSubstreams[uiSubStrm])
                 # Synchronize cabac probabilities with upper-right LCU if it's available and we're at the start of a line.
                 if (pcSlice.getPPS().getNumSubstreams() > 1) or \
-                   (bAllowDependence and uiCol == uiTileLCUX and
+                   (depSliceSegmentsEnabled and uiCol == uiTileLCUX and
                     pcSlice.getPPS().getEntropyCodingSyncEnabledFlag()):
                     # We'll sync if the TR is available.
                     pcCUUp = pcCU.getCUAbove()
@@ -162,13 +171,9 @@ class TDecSlice(object):
                     uiMaxParts = 1 << (pcSlice.getSPS().getMaxCUDepth()<<1)
 
                     if pcCUTR == None or pcCUTR.getSlice() == None or \
-                       rpcPic.getPicSym().getTileIdxMap(pcCUTR.getAddr()) != rpcPic.getPicSym().getTileIdxMap(iCUAddr) or \
                        (pcCUTR.getSCUAddr() + uiMaxParts - 1) < pcSlice.getSliceCurStartCUAddr() or \
-                       (pcCUTR.getSCUAddr() + uiMaxParts - 1) < pcSlice.getDependentSliceCurStartCUAddr():
-                        if iCUAddr != 0 and pcCUTR and \
-                           (pcCUTR.getSCUAddr() + uiMaxParts - 1) >= pcSlice.getSliceCurStartCUAddr() and \
-                           bAllowDependence:
-                            pcSbacDecoders[uiSubStrm].loadContexts(self.m_pcBufferSbacDecoders[uiTileCol])
+                       rpcPic.getPicSym().getTileIdxMap(pcCUTR.getAddr()) != rpcPic.getPicSym().getTileIdxMap(iCUAddr):
+                        pass
                         # TR not available.
                     else:
                         # TR is available, we use it.
@@ -183,7 +188,7 @@ class TDecSlice(object):
             if iCUAddr == rpcPic.getPicSym().getTComTile(rpcPic.getPicSym().getTileIdxMap(iCUAddr)).getFirstCUAddr() and \
                iCUAddr != 0 and \
                iCUAddr != rpcPic.getPicSym().getPicSCUAddr(rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getSliceCurStartCUAddr()) // rpcPic.getNumPartInCU() and \
-               iCUAddr != rpcPic.getPicSym().getPicSCUAddr(rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getDependentSliceCurStartCUAddr()) // rpcPic.getNumPartInCU():
+               iCUAddr != rpcPic.getPicSym().getPicSCUAddr(rpcPic.getSlice(rpcPic.getCurrSliceIdx()).getSliceSegmentCurStartCUAddr()) // rpcPic.getNumPartInCU():
                # !1st in frame && !1st in slice
                 if pcSlice.getPPS().getNumSubstreams() > 1:
                     # We're crossing into another tile, tiles are independent.
@@ -225,7 +230,28 @@ class TDecSlice(object):
                         allowMergeUp = 0
                 pcSbacDecoder.parseSaoOneLcuInterleaving(rx, ry, saoParam, pcCU,
                     cuAddrInSlice, cuAddrUpInSlice, allowMergeLeft, allowMergeUp)
+            elif pcSlice.getSPS().getUseSAO():
+                addr = pcCU.getAddr()
+                saoParam = rpcPic.getPicSym().getSaoParam()
 
+                saoLcuParamG = pointer(saoParam.saoLcuParam, type='SaoLcuParam **')
+                saoLcuParamP = (pointer(saoLcuParamG[0], type='SaoLcuParam *'),
+                                pointer(saoLcuParamG[1], type='SaoLcuParam *'),
+                                pointer(saoLcuParamG[2], type='SaoLcuParam *'))
+
+                for cIdx in xrange(3):
+                    saoLcuParam = saoLcuParamP[cIdx][addr]
+                    offset = pointer(saoLcuParam.offset, type='int *')
+                    if (cIdx == 0 and not pcSlice.getSaoEnabledFlag()) or \
+                       ((cIdx == 1 or cIdx == 2) and not pcSlice.getSaoEnabledFlagChroma()):
+                        saoLcuParam.mergeUpFlag   = 0
+                        saoLcuParam.mergeLeftFlag = 0
+                        saoLcuParam.subTypeIdx    = 0
+                        saoLcuParam.typeIdx       = -1
+                        offset[0] = 0
+                        offset[1] = 0
+                        offset[2] = 0
+                        offset[3] = 0
             uiIsLast = self.m_pcCuDecoder.decodeCU(pcCU, uiIsLast)
             self.m_pcCuDecoder.decompressCU(pcCU)
  
@@ -233,10 +259,10 @@ class TDecSlice(object):
 
             # Store probabilities of second LCU in line into buffer
             if uiCol == uiTileLCUX + 1 and \
-               (bAllowDependence or pcSlice.getPPS().getNumSubstreams() > 1) and \
+               (depSliceSegmentsEnabled or pcSlice.getPPS().getNumSubstreams() > 1) and \
                pcSlice.getPPS().getEntropyCodingSyncEnabledFlag():
                 self.m_pcBufferSbacDecoders[uiTileCol].loadContexts(pcSbacDecoders[uiSubStrm])
-            if uiIsLast and bAllowDependence:
+            if uiIsLast and depSliceSegmentsEnabled:
                 if pcSlice.getPPS().getEntropyCodingSyncEnabledFlag():
                     self.CTXMem[1].loadContexts(self.m_pcBufferSbacDecoders[uiTileCol]) #ctx 2.LCU
                 self.CTXMem[0].loadContexts(pcSbacDecoder) #ctx end of dep.slice

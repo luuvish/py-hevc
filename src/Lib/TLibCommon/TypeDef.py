@@ -5,7 +5,7 @@
 """
 
 MAX_VPS_NUM_HRD_PARAMETERS                   = 1
-MAX_VPS_NUM_HRD_PARAMETERS_ALLOWED_PLUS1     = 1024
+MAX_VPS_OP_SETS_PLUS1                        = 1024
 MAX_VPS_NUH_RESERVED_ZERO_LAYER_ID_PLUS1     = 1
 
 RATE_CONTROL_LAMBDA_DOMAIN                   = 1  # JCTVC-K0103, rate control by R-lambda model

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/ContextTables.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 
@@ -205,15 +205,15 @@ INIT_SAO_MERGE_FLAG = (
 )
 
 INIT_SAO_TYPE_IDX = (
-    (200, ),
-    (185, ),
     (160, ),
+    (185, ),
+    (200, ),
 )
 
 INIT_TRANS_SUBDIV_FLAG = (
-    (153, 138, 138),
-    (124, 138,  94),
     (224, 167, 122),
+    (124, 138,  94),
+    (153, 138, 138),
 )
 
 INIT_TRANSFORMSKIP_FLAG = (

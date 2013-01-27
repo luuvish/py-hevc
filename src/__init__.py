@@ -15,7 +15,7 @@ from .pointer import pointer
 from .trace import Trace
 
 
-use_swig = 4
+use_swig = 9
 
 
 from swig.hevc import VectorBool, VectorUint8, VectorInt
@@ -69,26 +69,12 @@ if 5 <= use_swig:
     from swig.hevc import ParameterSetManager
     from swig.hevc import ParameterSetMapTComVPS, ParameterSetMapTComSPS, ParameterSetMapTComPPS
 
-if 4 <= use_swig <= 8:
-    from swig.hevc import ArrayTDecSbac, ArrayTDecBinCABAC
-elif 9 <= use_swig:
-    def ArrayTDecBinCABAC(size):
-        from src.Lib.TLibDecoder.TDecBinCoderCABAC import TDecBinCABAC
-        return pointer([TDecBinCABAC() for i in xrange(size)])
-    def ArrayTDecSbac(size):
-        from src.Lib.TLibDecoder.TDecSbac import TDecSbac
-        return pointer([TDecSbac() for i in xrange(size)])
 if 4 <= use_swig:
     from swig.hevc import ArrayTComInputBitstream
-if 5 <= use_swig:
-    from swig.hevc import VectorTDecSbac
 if 6 <= use_swig:
     from swig.hevc import TComYuv, ArrayTComYuv
     from swig.hevc import TComDataCU, ArrayTComDataCU
     from swig.hevc import TComMv, ArrayTComMvField
-if 9 <= use_swig:
-    from swig.hevc import ArraySaoLcuParamPtr, ArraySaoLcuParam
-
 
 
 
@@ -168,9 +154,20 @@ elif 9 <= use_swig:
 if 3 <= use_swig <= 8:
     from swig.hevc import TDecBinCABAC
     from swig.hevc import TDecSbac
+    if 4 <= use_swig:
+        from swig.hevc import ArrayTDecSbac, ArrayTDecBinCABAC
+    if 5 <= use_swig:
+        from swig.hevc import VectorTDecSbac
 elif 9 <= use_swig:
     from src.Lib.TLibDecoder.TDecBinCoderCABAC import TDecBinCABAC
     from src.Lib.TLibDecoder.TDecSbac import TDecSbac
+    def ArrayTDecBinCABAC(size):
+        from src.Lib.TLibDecoder.TDecBinCoderCABAC import TDecBinCABAC
+        return pointer([TDecBinCABAC() for i in xrange(size)])
+    def ArrayTDecSbac(size):
+        from src.Lib.TLibDecoder.TDecSbac import TDecSbac
+        return pointer([TDecSbac() for i in xrange(size)])
+    from swig.hevc import VectorTDecSbac
 if 3 <= use_swig <= 7:
     from swig.hevc import TDecCavlc
 elif 8 <= use_swig:

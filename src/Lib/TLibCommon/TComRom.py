@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/TComRom.py
-    HM 9.1 Python Implementation
+    HM 9.2 Python Implementation
 """
 
 import sys
@@ -276,9 +276,10 @@ def initROM():
         g_auiSigLastScan[0][i] = (c*c) * [0]
         g_auiSigLastScan[1][i] = (c*c) * [0]
         g_auiSigLastScan[2][i] = (c*c) * [0]
-        initSigLastScan(
-            g_auiSigLastScan[0][i], g_auiSigLastScan[1][i], g_auiSigLastScan[2][i],
-            c, c, i)
+        initSigLastScan(g_auiSigLastScan[0][i],
+                        g_auiSigLastScan[1][i],
+                        g_auiSigLastScan[2][i],
+                        c, c)
         c <<= 1
 
 def destroyROM():
@@ -336,7 +337,7 @@ def initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
     for i in xrange(1, uiNumPartInWidth*uiNumPartInHeight):
         uiTempY[i] = (i // uiNumPartInWidth) * uiMinCUWidth
 
-def initSigLastScan(pBuffD, pBuffH, pBuffV, iWidth, iHeight, iDepth):
+def initSigLastScan(pBuffD, pBuffH, pBuffV, iWidth, iHeight):
     pBuffD = pointer(pBuffD)
     pBuffH = pointer(pBuffH)
     pBuffV = pointer(pBuffV)

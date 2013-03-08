@@ -15,7 +15,7 @@ CLOCKS_PER_SEC = 1
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 
-NV_VERSION          = "9.1" # Current software version
+NV_VERSION          = "9.2" # Current software version
 
 __GNUC__            = 4
 __GNUC_MINOR__      = 2

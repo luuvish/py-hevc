@@ -5,7 +5,7 @@ from distutils.extension import Extension
 from Cython.Build import cythonize
 from Cython.Distutils import build_ext
 
-hm_dir = '../hm-9.1'
+hm_dir = '../hm-9.2'
 hm_obj = hm_dir + '/build/linux/app'
 
 include_dirs = [hm_dir+'/source/'+inc for inc in ['Lib', 'App/TAppDecoder', 'App/TAppEncoder']]
@@ -32,12 +32,12 @@ extra_link_args = ['-Wall']
 
 setup(
     name='py-hevc',
-    version='0.9.1',
+    version='0.9.2',
     cmdclass={'build_ext': build_ext},
     ext_modules=cythonize([
         Extension(
-            'App/TAppDecoder/TAppDecCfg',
-            sources=['App/TAppDecoder/TAppDecCfg.pyx'],
+            '../src/Lib/TLibVideoIO/CVideoIOYuv',
+            sources=['../src/Lib/TLibVideoIO/CVideoIOYuv.pyx'],
             include_dirs=include_dirs,
             define_macros=define_macros,
             library_dirs=library_dirs,
@@ -48,8 +48,8 @@ setup(
             language='c++'
         ),
         Extension(
-            'App/TAppDecoder/TAppDecTop',
-            sources=['App/TAppDecoder/TAppDecTop.pyx'],
+            'App/TAppDecoder/TAppDecCfg',
+            sources=['App/TAppDecoder/TAppDecCfg.pyx'],
             include_dirs=include_dirs,
             define_macros=define_macros,
             library_dirs=library_dirs,

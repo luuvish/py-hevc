@@ -15,7 +15,7 @@ from .pointer import pointer
 from .trace import Trace
 
 
-use_swig = 9
+use_swig = 2
 
 
 from swig.hevc import VectorBool, VectorUint8, VectorInt
@@ -178,10 +178,10 @@ if 3 <= use_swig <= 6:
 elif 7 <= use_swig:
     from src.Lib.TLibDecoder.TDecEntropy import TDecEntropy
 
-if 2 <= use_swig:
-    from swig.hevc import TVideoIOYuv
-elif 6 <= use_swig:
-    from src.Lib.TLibVideoIO.TVideoIOYuv import TVideoIOYuv
+#if 2 <= use_swig:
+#    from swig.hevc import TVideoIOYuv
+#elif 6 <= use_swig:
+from src.Lib.TLibVideoIO.TVideoIOYuv import TVideoIOYuv
 
 if 3 <= use_swig <= 5:
     from swig.hevc import TDecCu

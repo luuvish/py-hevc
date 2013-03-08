@@ -19,25 +19,16 @@ MAX_NUM_LAYER_IDS = 64
 
 
 cdef class TAppDecCfg:
-    cdef char* m_pchBitstreamFile
-    cdef char* m_pchReconFile
-    cdef int   m_iSkipFrame
-    cdef int   m_outputBitDepthY
-    cdef int   m_outputBitDepthC
-
-    cdef int   m_iMaxTemporalLayer
-    cdef int   m_decodePictureHashSEIEnabled
-
-    cdef vector[int] m_targetDecLayerIdSet
 
     def __cinit__(self):
-        self.m_pchBitstreamFile            = NULL
-        self.m_pchReconFile                = NULL
-        self.m_iSkipFrame                  = 0
-        self.m_outputBitDepthY             = 0
-        self.m_outputBitDepthC             = 0
-        self.m_iMaxTemporalLayer           = -1
-        self.m_decodePictureHashSEIEnabled = 0
+        self.m_pchBitstreamFile             = NULL
+        self.m_pchReconFile                 = NULL
+        self.m_iSkipFrame                   = 0
+        self.m_outputBitDepthY              = 0
+        self.m_outputBitDepthC              = 0
+        self.m_iMaxTemporalLayer            = -1
+        self.m_decodedPictureHashSEIEnabled = 0
+        self.m_respectDefDispWindow         = 0
 
     def __dealloc__(self):
         pass
@@ -49,14 +40,38 @@ cdef class TAppDecCfg:
 
         p = optparse.OptionParser()
 
-        p.add_option('-b', '--BitstreamFile', action='store', type='string', dest='m_pchBitstreamFile', default='', help='bitstream input file name')
-        p.add_option('-o', '--ReconFile', action='store', type='string', dest='m_pchReconFile', default='', help='reconstructed YUV output file name\nYUV writing is skipped if omitted')
-        p.add_option('-s', '--SkipFrames', action='store', type='int', dest='m_iSkipFrame', default=0, help='number of frames to skip before random access')
-        p.add_option('-d', '--OutputBitDepth', action='store', type='int', dest='m_outputBitDepthY', default=0, help='bit depth of YUV output luma component (default: use 0 for native depth)')
-        p.add_option('-d', '--OutputBitDepthC', action='store', type='int', dest='m_outputBitDepthC', default=0, help='bit depth of YUV output chroma component (default: use 0 for native depth)')
-        p.add_option('-t', '--MaxTemporalLayer', action='store', type='int', dest='m_iMaxTemporalLayer', default=-1, help='Maximum Temporal Layer to be decoded. -1 to decode all layers')
-        p.add_option('--SEIpictureDigest', action='store', type='int', dest='m_decodedPictureHashSEIEnabled', default=1, help='Control handling of decoded picture hash SEI messages\n\t1: check hash in SEI messages if available in the bitstream\n\t0: ignore SEI message')
-        p.add_option('-l', '--TarDecLayerIdSetFile', action='store', type='string', dest='m_targetDecLayerIdSetFile', default='', help='targetDecLayerIdSet file name. The file should include white space separated LayerId values to be decoded. Omitting the option or a value of -1 in the file decodes all layers.')
+        p.add_option('-b', '--BitstreamFile',
+            action='store', type='string', dest='m_pchBitstreamFile', default='',
+            help='bitstream input file name')
+        p.add_option('-o', '--ReconFile',
+            action='store', type='string', dest='m_pchReconFile', default='',
+            help='reconstructed YUV output file name\n' +
+                 'YUV writing is skipped if omitted')
+        p.add_option('-s', '--SkipFrames',
+            action='store', type='int', dest='m_iSkipFrame', default=0,
+            help='number of frames to skip before random access')
+        p.add_option('-d', '--OutputBitDepth',
+            action='store', type='int', dest='m_outputBitDepthY', default=0,
+            help='bit depth of YUV output luma component (default: use 0 for native depth)')
+        p.add_option('-e', '--OutputBitDepthC',
+            action='store', type='int', dest='m_outputBitDepthC', default=0,
+            help='bit depth of YUV output chroma component (default: use 0 for native depth)')
+        p.add_option('-t', '--MaxTemporalLayer',
+            action='store', type='int', dest='m_iMaxTemporalLayer', default=-1,
+            help='Maximum Temporal Layer to be decoded. -1 to decode all layers')
+        p.add_option('--SEIpictureDigest',
+            action='store', type='int', dest='m_decodedPictureHashSEIEnabled', default=1,
+            help='Control handling of decoded picture hash SEI messages\n' +
+                 '\t1: check hash in SEI messages if available in the bitstream\n' +
+                 '\t0: ignore SEI message')
+        p.add_option('-l', '--TarDecLayerIdSetFile',
+            action='store', type='string', dest='m_targetDecLayerIdSetFile', default='',
+            help='targetDecLayerIdSet file name. ' +
+                 'The file should include white space separated LayerId values to be decoded. ' +
+                 'Omitting the option or a value of -1 in the file decodes all layers.')
+        p.add_option('-w', '--RespectDefDispWindow',
+            action='store', type='int', dest='m_respectDefDispWindow', default=0,
+            help='Only output content inside the default display window\n')
 
         args = [argv[i] for i in xrange(argc)]
         opt, args = p.parse_args(args)
@@ -76,6 +91,7 @@ cdef class TAppDecCfg:
         self.m_outputBitDepthC              = opt.m_outputBitDepthC
         self.m_iMaxTemporalLayer            = opt.m_iMaxTemporalLayer
         self.m_decodedPictureHashSEIEnabled = opt.m_decodedPictureHashSEIEnabled
+        self.m_respectDefDispWindow         = opt.m_respectDefDispWindow
 
         if not self.m_pchBitstreamFile:
             fprintf(stderr, "No input file specifed, aborting\n")

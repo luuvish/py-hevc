@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/App/TAppDecoder/TAppDecTop.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
@@ -173,8 +173,7 @@ class TAppDecTop(TAppDecCfg):
                 not_displayed -= 1
                 if self.m_pchReconFile:
                     conf = pcPic.getConformanceWindow()
-                    defDisp = pcPic.getSlice(0).getSPS().getVuiParameters().getDefaultDisplayWindow() \
-                        if self.m_respectDefDispWindow or not pcPic.getSlice(0).getSPS().getVuiParametersPresentFlag() else Window()
+                    defDisp = pcPic.getDefDisplayWindow() if self.m_respectDefDispWindow else Window()
                     self.m_cTVideoIOYuvReconFile.write(pcPic.getPicYuvRec(),
                         conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
                         conf.getWindowRightOffset() + defDisp.getWindowRightOffset(),
@@ -201,8 +200,7 @@ class TAppDecTop(TAppDecCfg):
                 # write to file
                 if self.m_pchReconFile:
                     conf = pcPic.getConformanceWindow()
-                    defDisp = pcPic.getSlice(0).getSPS().getVuiParameters().getDefaultDisplayWindow() \
-                        if self.m_respectDefDispWindow or not pcPic.getSlice(0).getSPS().getVuiParametersPresentFlag() else Window()
+                    defDisp = pcPic.getDefDisplayWindow() if self.m_respectDefDispWindow else Window()
                     self.m_cTVideoIOYuvReconFile.write(pcPic.getPicYuvRec(),
                         conf.getWindowLeftOffset() + defDisp.getWindowLeftOffset(),
                         conf.getWindowRightOffset() + defDisp.getWindowRightOffset(),

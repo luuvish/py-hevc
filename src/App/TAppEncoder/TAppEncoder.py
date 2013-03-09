@@ -1,30 +1,20 @@
 # -*- coding: utf-8 -*-
 """
     module : src/App/TAppEncoder/TAppEncoder.py
-    HM 8.0 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
-from time import clock
 
-use_swig = True
-if use_swig:
-    sys.path.insert(0, '../../..')
-    from swig.hevc import TAppEncTop
-else:
-    from .TAppEncTop import TAppEncTop
+from ... import clock, CLOCKS_PER_SEC
+from ... import TAppEncTop
 
-CLOCKS_PER_SEC = 1
-
-NV_VERSION = "8.0" # Current software version
-
-__GNUC__ = 4
-__GNUC_MINOR__ = 2
-__GNUC_PATCHLEVEL__ = 1
-
-NVM_COMPILEDBY = "[GCC %d.%d.%d]" % (__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
-NVM_ONOS = "[Mac OS X]"
-NVM_BITS = "[%d bit] " % 64 # used for checking 64-bit O/S
+from ...Lib.TLibCommon.CommonDef import (
+    NV_VERSION,
+    NVM_COMPILEDBY,
+    NVM_ONOS,
+    NVM_BITS
+)
 
 
 def TAppEncoder(argv):
@@ -42,8 +32,12 @@ def TAppEncoder(argv):
     cTAppEncTop.create()
 
     # parse configuration
-    if not cTAppEncTop.parseCfg(argv):
-        cTAppEncTop.destroy()
+    try:
+        if not cTAppEncTop.parseCfg(argv):
+            cTAppEncTop.destroy()
+            return False
+    except error:
+        sys.stderr.write("Error parsing option \"%r\" with argument \"%r\"\n." % (error, error))
         return False
 
     # starting time

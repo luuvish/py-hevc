@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecTop.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
@@ -13,6 +13,7 @@ from ... import TComListTComPic
 from ... import SEI, SEIMessages
 from ... import getSeisByType, extractSeisByType, deleteSEIs
 from ... import TComSlice, TComVPS, TComSPS, TComPPS
+from ... import Window
 
 from ... import cvar
 from ... import initROM, destroyROM
@@ -99,7 +100,8 @@ class TDecTop(object):
     def isSkipPictureForBLA(self, iPOCLastDisplay):
         if self.m_prevRAPisBLA and \
            self.m_apcSlicePilot.getPOC() < self.m_pocCRA and \
-           self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_TFD:
+           (self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_TFD or
+            self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_RASL_N):
             iPOCLastDisplay += 1
             return True, iPOCLastDisplay
         return False, iPOCLastDisplay
@@ -126,7 +128,8 @@ class TDecTop(object):
                 return True, iSkipFrame, iPOCLastDisplay
         # skip the reordered pictures, if necessary
         elif self.m_apcSlicePilot.getPOC() < self.m_pocRandomAccess and \
-             self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_TFD:
+             (self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_TFD or
+              self.m_apcSlicePilot.getNalUnitType() == NAL_UNIT_CODED_SLICE_RASL_N):
             iPOCLastDisplay += 1
             return True, iSkipFrame, iPOCLastDisplay
         # if we reach here, then the picture is not skipped.
@@ -193,7 +196,9 @@ class TDecTop(object):
              nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_IDR or \
              nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_IDR_N_LP or \
              nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_CRA or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_RADL_N or \
              nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_DLP or \
+             nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_RASL_N or \
              nalu.m_nalUnitType == NAL_UNIT_CODED_SLICE_TFD:
             return self.xDecodeSlice(nalu, iSkipFrame, iPOCLastDisplay)
 
@@ -237,6 +242,8 @@ class TDecTop(object):
     def xGetNewPicBuffer(self, pcSlice, rpcPic):
         numReorderPics = ArrayInt(MAX_TLAYER)
         conformanceWindow = pcSlice.getSPS().getConformanceWindow()
+        defaultDisplayWindow = pcSlice.getSPS().getVuiParameters().getDefaultDisplayWindow() \
+            if pcSlice.getSPS().getVuiParametersPresentFlag() else Window()
 
         for temporalLayer in xrange(MAX_TLAYER):
             numReorderPics[temporalLayer] = pcSlice.getSPS().getNumReorderPics(temporalLayer)
@@ -250,7 +257,7 @@ class TDecTop(object):
             rpcPic.create(pcSlice.getSPS().getPicWidthInLumaSamples(),
                           pcSlice.getSPS().getPicHeightInLumaSamples(),
                           cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight, cvar.g_uiMaxCUDepth,
-                          conformanceWindow, numReorderPics.cast(), True)
+                          conformanceWindow, defaultDisplayWindow, numReorderPics.cast(), True)
             rpcPic.getPicSym().allocSaoParam(self.m_cSAO)
             self.m_cListPic.pushBack(rpcPic)
 
@@ -279,7 +286,7 @@ class TDecTop(object):
         rpcPic.create(pcSlice.getSPS().getPicWidthInLumaSamples(),
                       pcSlice.getSPS().getPicHeightInLumaSamples(),
                       cvar.g_uiMaxCUWidth, cvar.g_uiMaxCUHeight, cvar.g_uiMaxCUDepth,
-                      conformanceWindow, numReorderPics.cast(), True)
+                      conformanceWindow, defaultDisplayWindow, numReorderPics.cast(), True)
         rpcPic.getPicSym().allocSaoParam(self.m_cSAO)
 
         return rpcPic
@@ -372,6 +379,17 @@ class TDecTop(object):
         self.m_apcSlicePilot.setTLayerInfo(nalu.m_temporalId)
 
         self.m_cEntropyDecoder.decodeSliceHeader(self.m_apcSlicePilot, self.m_parameterSetManagerDecoder)
+        if self.m_apcSlicePilot.isNextSlice():
+            # Skip pictures due to random access
+            ret, iSkipFrame, iPOCLastDisplay = \
+                self.isRandomAccessSkipPicture(iSkipFrame, iPOCLastDisplay)
+            if ret:
+                return False, iSkipFrame, iPOCLastDisplay
+            # Skip TFD pictures associated with BLA/BLANT pictures
+            ret, iPOCLastDisplay = self.isSkipPictureForBLA(iPOCLastDisplay)
+            if ret:
+                return False, iSkipFrame, iPOCLastDisplay
+
         # exit when a new picture is found
         if self.m_apcSlicePilot.isNextSlice() and \
            self.m_apcSlicePilot.getPOC() != self.m_prevPOC and \
@@ -386,17 +404,7 @@ class TDecTop(object):
         if self.m_apcSlicePilot.isNextSlice():
             self.m_prevPOC = self.m_apcSlicePilot.getPOC()
         self.m_bFirstSliceInSequence = False
-        if self.m_apcSlicePilot.isNextSlice():
-            # Skip pictures due to random access
-            ret, iSkipFrame, iPOCLastDisplay = \
-                self.isRandomAccessSkipPicture(iSkipFrame, iPOCLastDisplay)
-            if ret:
-                return False, iSkipFrame, iPOCLastDisplay
-            # Skip TFD pictures associated with BLA/BLANT pictures
-            ret, iPOCLastDisplay = self.isSkipPictureForBLA(iPOCLastDisplay)
-            if ret:
-                return False, iSkipFrame, iPOCLastDisplay
-        # detect lost reference picture and insert copy of earlier frame.
+        #detect lost reference picture and insert copy of earlier frame.
         lostPoc = 0
         while True:
             lostPoc = self.m_apcSlicePilot.checkThatAllRefPicsAreAvailable(
@@ -614,5 +622,6 @@ class TDecTop(object):
             if activeParamSets.size() > 0:
                 seiAps = activeParamSets.front()
                 self.m_parameterSetManagerDecoder.applyPrefetchedPS()
+                assert(seiAps.activeSeqParamSetId.size() > 0)
                 if not self.m_parameterSetManagerDecoder.activateSPSWithSEI(seiAps.activeSeqParamSetId[0]):
                     sys.stdout.write("Warning SPS activation with Active parameter set SEI failed")

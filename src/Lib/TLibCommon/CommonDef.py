@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/CommonDef.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
@@ -9,7 +9,7 @@ import sys
 from .TComRom import g_bitDepthY, g_bitDepthC
 
 
-NV_VERSION                  = "9.2" # Current software version
+NV_VERSION                  = "10.0" # Current software version
 
 __GNUC__                    = 4
 __GNUC_MINOR__              = 2
@@ -34,7 +34,7 @@ _SUMMARY_PIC_               = 0  # print-out PSNR results for each slice type to
 MAX_GOP                     = 64 # max. value of hierarchical GOP size
 
 MAX_NUM_REF_PICS            = 16 # max. number of pictures used for reference
-MAX_NUM_REF                 = 4  # max. value of multiple reference frames
+MAX_NUM_REF                 = 16 # max. value of multiple reference frames
 MAX_NUM_REF_LC              = MAX_NUM_REF_PICS # TODO: remove this macro definition (leftover from combined list concept)
 
 MAX_UINT                    = 0xFFFFFFFF  # max. value of unsigned 32-bit integer
@@ -57,39 +57,39 @@ Clip3 = lambda minVal, maxVal, a: min(max(minVal, a), maxVal)
 
 
 DATA_ALIGN                  = 1
-FATAL_ERROR_0 = lambda message, exitcode: (sys.stdout.write(message), sys.exit(exitcode))
+FATAL_ERROR_0 = lambda MESSAGE, EXITCODE: (sys.stdout.write(MESSAGE), sys.exit(EXITCODE))
 
 
 # AMVP: advanced motion vector prediction
-AMVP_MAX_NUM_CANDS          = 2    # max number of final candidates
-AMVP_MAX_NUM_CANDS_MEM      = 3    # max number of candidates
+AMVP_MAX_NUM_CANDS             = 2  # max number of final candidates
+AMVP_MAX_NUM_CANDS_MEM         = 3  # max number of candidates
 # MERGE
-MRG_MAX_NUM_CANDS           = 5
+MRG_MAX_NUM_CANDS              = 5
 
 # Reference memory management
-DYN_REF_FREE                = 0    # dynamic free of reference memories
+DYN_REF_FREE                   = 0  # dynamic free of reference memories
 
 # Explicit temporal layer QP offset
-MAX_TLAYER                  = 8    # max number of temporal layer
-HB_LAMBDA_FOR_LDC           = 1    # use of B-style lambda for non-key pictures in low-delay mode
+MAX_TLAYER                     = 8  # max number of temporal layer
+HB_LAMBDA_FOR_LDC              = 1  # use of B-style lambda for non-key pictures in low-delay mode
 
 # Fast estimation of generalized B in low-delay mode
-GPB_SIMPLE                  = 1    # Simple GPB mode
+GPB_SIMPLE                     = 1  # Simple GPB mode
 if GPB_SIMPLE:
-    GPB_SIMPLE_UNI          = 1    # Simple mode for uni-direction
+    GPB_SIMPLE_UNI             = 1  # Simple mode for uni-direction
 
 # Fast ME using smoother MV assumption
-FASTME_SMOOTHER_MV          = 1    # reduce ME time using faster option
+FASTME_SMOOTHER_MV             = 1  # reduce ME time using faster option
 
 # Adaptive search range depending on POC difference
-ADAPT_SR_SCALE              = 1    # division factor for adaptive search range
+ADAPT_SR_SCALE                 = 1  # division factor for adaptive search range
 
-CLIP_TO_709_RANGE           = 0
+CLIP_TO_709_RANGE              = 0
 
 # Early-skip threshold (encoder)
-EARLY_SKIP_THRES            = 1.50 # if RD < thres*avg[BestSkipRD]
+EARLY_SKIP_THRES               = 1.50 # if RD < thres*avg[BestSkipRD]
 
-MAX_CHROMA_FORMAT_IDC       = 3
+MAX_CHROMA_FORMAT_IDC          = 3
 
 
 # NalUnitType

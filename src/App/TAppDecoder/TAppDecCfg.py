@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/App/TAppDecoder/TAppDecCfg.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
@@ -47,11 +47,14 @@ class TAppDecCfg(object):
         p.add_option('-t', '--MaxTemporalLayer',
             action='store', type='int', dest='m_iMaxTemporalLayer', default=-1,
             help='Maximum Temporal Layer to be decoded. -1 to decode all layers')
-        p.add_option('--SEIpictureDigest',
+        p.add_option('--SEIDecodedPictureHash',
             action='store', type='int', dest='m_decodedPictureHashSEIEnabled', default=1,
-            help='Control handling of picture_digest SEI messages\n' +
+            help='Control handling of decoded picture hash SEI messages\n' +
                  '\t1: check hash in SEI messages if available in the bitstream\n' +
                  '\t0: ignore SEI message')
+        p.add_option('--SEIpictureDigest',
+            action='store', type='int', dest='m_decodedPictureHashSEIEnabled', default=1,
+            help='deprecated alias for SEIDecodedPictureHash')
         p.add_option('-l', '--TarDecLayerIdSetFile',
             action='store', type='string', dest='m_targetDecLayerIdSetFile', default='',
             help='targetDecLayerIdSet file name. ' +

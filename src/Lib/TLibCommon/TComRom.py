@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/TComRom.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
@@ -15,27 +15,27 @@ from .TypeDef import NUM_INTRA_MODE, SCAN_DIAG
 g_md5_mismatch = False
 
 
-MAX_CU_DEPTH  = 7 # log2(LCUSize)
-MAX_CU_SIZE   = (1 << MAX_CU_DEPTH) # maximum allowable size of CU
-MIN_PU_SIZE   = 4
-MAX_NUM_SPU_W = MAX_CU_SIZE / MIN_PU_SIZE # maximum number of SPU in horizontal line
+MAX_CU_DEPTH         = 7 # log2(LCUSize)
+MAX_CU_SIZE          = (1 << MAX_CU_DEPTH) # maximum allowable size of CU
+MIN_PU_SIZE          = 4
+MAX_NUM_SPU_W        = MAX_CU_SIZE / MIN_PU_SIZE # maximum number of SPU in horizontal line
 
 # flexible conversion from relative to absolute index
-g_auiZscanToRaster = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
-g_auiRasterToZscan = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
+g_auiZscanToRaster   = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
+g_auiRasterToZscan   = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
 
 # conversion of partition index to picture pel position
-g_auiRasterToPelX = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
-g_auiRasterToPelY = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
+g_auiRasterToPelX    = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
+g_auiRasterToPelY    = (MAX_NUM_SPU_W * MAX_NUM_SPU_W) * [0]
 
 # global variable (LCU width/height, max. CU depth)
-g_uiMaxCUWidth  = MAX_CU_SIZE
-g_uiMaxCUHeight = MAX_CU_SIZE
-g_uiMaxCUDepth  = MAX_CU_DEPTH
-g_uiAddCUDepth  = 0
+g_uiMaxCUWidth       = MAX_CU_SIZE
+g_uiMaxCUHeight      = MAX_CU_SIZE
+g_uiMaxCUDepth       = MAX_CU_DEPTH
+g_uiAddCUDepth       = 0
 
-MAX_TS_WIDTH  = 4
-MAX_TS_HEIGHT = 4
+MAX_TS_WIDTH         = 4
+MAX_TS_HEIGHT        = 4
 
 g_auiPUOffset = (0, 8, 4, 4, 2, 10, 1, 5)
 
@@ -44,8 +44,8 @@ QUANT_SHIFT          = 14 # Q(4) = 2^14
 SCALE_BITS           = 15 # Inherited from TMuC, pressumably for fractional bit estimates in RDOQ
 MAX_TR_DYNAMIC_RANGE = 15 # Maximum transform dynamic range (excluding sign bit)
 
-SHIFT_INV_1ST =  7 # Shift after first inverse transform stage
-SHIFT_INV_2ND = 12 # Shift after second inverse transform stage
+SHIFT_INV_1ST        =  7 # Shift after first inverse transform stage
+SHIFT_INV_2ND        = 12 # Shift after second inverse transform stage
 
 g_quantScales = (26214, 23302, 20560, 18396, 16384, 14564)
 g_invQuantScales = (40, 45, 51, 57, 64, 72)
@@ -129,7 +129,7 @@ g_aucChromaScale = (
     45,46,47,48,49,50,51
 )
 
-g_auiSigLastScan = [[None for j in xrange(MAX_CU_DEPTH)] for i in xrange(4)]
+g_auiSigLastScan = [[None for j in xrange(MAX_CU_DEPTH)] for i in xrange(3)]
 
 g_uiGroupIdx = (0,1,2,3,4,4,5,5,6,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9)
 g_uiMinInGroup = (0,1,2,3,4,6,8,12,16,24)
@@ -297,18 +297,18 @@ def _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):
         rpuiCurrIdx += 1
     else:
         iStep = iStride >> iDepth
-        _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal, rpuiCurrIdx)
-        _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep, rpuiCurrIdx)
-        _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride, rpuiCurrIdx)
+        _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal,                     rpuiCurrIdx)
+        _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep,               rpuiCurrIdx)
+        _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride,       rpuiCurrIdx)
         _initZscanToRaster(iMaxDepth, iDepth+1, uiStartVal+iStep*iStride+iStep, rpuiCurrIdx)
 def initZscanToRaster(iMaxDepth, iDepth, uiStartVal, rpuiCurrIdx):
     _initZscanToRaster(iMaxDepth, iDepth, uiStartVal, pointer(rpuiCurrIdx))
 
 def initRasterToZscan(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
-    uiMinCUWidth = uiMaxCUWidth  >> (uiMaxDepth - 1)
+    uiMinCUWidth  = uiMaxCUWidth  >> (uiMaxDepth - 1)
     uiMinCUHeight = uiMaxCUHeight >> (uiMaxDepth - 1)
   
-    uiNumPartInWidth = uiMaxCUWidth // uiMinCUWidth
+    uiNumPartInWidth  = uiMaxCUWidth  // uiMinCUWidth
     uiNumPartInHeight = uiMaxCUHeight // uiMinCUHeight
   
     for i in xrange(uiNumPartInWidth*uiNumPartInHeight):
@@ -318,10 +318,10 @@ def initRasterToPelXY(uiMaxCUWidth, uiMaxCUHeight, uiMaxDepth):
     uiTempX = pointer(g_auiRasterToPelX)
     uiTempY = pointer(g_auiRasterToPelY)
   
-    uiMinCUWidth = uiMaxCUWidth >> (uiMaxDepth - 1)
+    uiMinCUWidth  = uiMaxCUWidth  >> (uiMaxDepth - 1)
     uiMinCUHeight = uiMaxCUHeight >> (uiMaxDepth - 1)
   
-    uiNumPartInWidth = uiMaxCUWidth // uiMinCUWidth
+    uiNumPartInWidth  = uiMaxCUWidth  // uiMinCUWidth
     uiNumPartInHeight = uiMaxCUHeight // uiMinCUHeight
 
     uiTempX[0] = 0

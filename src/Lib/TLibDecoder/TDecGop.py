@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecGop.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
@@ -148,7 +148,7 @@ class TDecGop(object):
         rpcPic.compressMotion()
         c = 'I' if pcSlice.isIntra() else 'P' if pcSlice.isInterP() else 'B'
         if not pcSlice.isReferenced():
-            c.lower()
+            c = c.lower()
 
         #-- For time output for each slice
         sys.stdout.write("\nPOC %4d TId: %1d ( %c-SLICE, QP%3d ) " %

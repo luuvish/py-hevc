@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecSlice.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
@@ -154,14 +154,13 @@ class TDecSlice(object):
                (depSliceSegmentsEnabled and uiCol == uiTileLCUX and
                 pcSlice.getPPS().getEntropyCodingSyncEnabledFlag()):
                 # independent tiles => substreams are "per tile".  iNumSubstreams has already been multiplied.
-                iNumSubstreamsPerTile = iNumSubstreams / rpcPic.getPicSym().getNumTiles()
+                iNumSubstreamsPerTile = iNumSubstreams // rpcPic.getPicSym().getNumTiles()
                 uiSubStrm = rpcPic.getPicSym().getTileIdxMap(iCUAddr) * iNumSubstreamsPerTile + \
                             uiLin % iNumSubstreamsPerTile
                 self.m_pcEntropyDecoder.setBitstream(ppcSubstreams[uiSubStrm])
                 # Synchronize cabac probabilities with upper-right LCU if it's available and we're at the start of a line.
-                if (pcSlice.getPPS().getNumSubstreams() > 1) or \
-                   (depSliceSegmentsEnabled and uiCol == uiTileLCUX and
-                    pcSlice.getPPS().getEntropyCodingSyncEnabledFlag()):
+                if (pcSlice.getPPS().getNumSubstreams() > 1 or depSliceSegmentsEnabled) and \
+                   uiCol == uiTileLCUX and pcSlice.getPPS().getEntropyCodingSyncEnabledFlag():
                     # We'll sync if the TR is available.
                     pcCUUp = pcCU.getCUAbove()
                     uiWidthInLCU = rpcPic.getFrameWidthInCU()

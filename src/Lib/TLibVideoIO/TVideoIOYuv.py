@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibVideoIO/TVideoIOYuv.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import os
@@ -165,7 +165,7 @@ class TVideoIOYuv(object):
 
         return True
 
-    def write(self, pPicYuv, cropLeft=0, cropRight=0, cropTop=0, cropBottom=0):
+    def write(self, pPicYuv, confLeft=0, confRight=0, confTop=0, confBottom=0):
 
         def writePlane(fd, src, is16bit, stride, width, height):
             write_len = width * (2 if is16bit else 1)
@@ -186,7 +186,7 @@ class TVideoIOYuv(object):
             #       return False
                 src += stride
             del buf
-            return False
+            return True
 
         # compute actual YUV frame size excluding padding size
         iStride = pPicYuv.getStride()
@@ -213,7 +213,7 @@ class TVideoIOYuv(object):
             dstPicYuv = pPicYuv
 
         # location of upper left pel in a plane
-        planeOffset = 0 #cropLeft + cropTop * iStride;
+        planeOffset = confLeft + confTop * iStride;
 
         if not writePlane(self.m_cHandle, pointer(dstPicYuv.getLumaAddr(), base=planeOffset, type='short *'), is16bit, iStride, width, height):
             retval = False
@@ -221,10 +221,12 @@ class TVideoIOYuv(object):
         width >>= 1
         height >>= 1
         iStride >>= 1
-        cropLeft >>= 1
-        cropRight >>= 1
+        confLeft >>= 1
+        confRight >>= 1
+        confTop >>= 1
+        confBottom >>= 1
 
-        planeOffset = 0 # cropLeft + cropTop * iStride;
+        planeOffset = confLeft + confTop * iStride;
 
         if not writePlane(self.m_cHandle, pointer(dstPicYuv.getCbAddr(), base=planeOffset, type='short *'), is16bit, iStride, width, height):
             retval = False

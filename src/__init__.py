@@ -15,7 +15,7 @@ from .pointer import pointer
 from .trace import Trace
 
 
-use_swig = 6
+use_swig = 9
 
 
 from swig.hevc import VectorBool, VectorUint8, VectorInt

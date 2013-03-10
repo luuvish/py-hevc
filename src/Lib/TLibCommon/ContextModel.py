@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/ContextModel.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 from .CommonDef import Clip3

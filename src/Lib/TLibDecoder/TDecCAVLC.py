@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecCAVLC.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
@@ -127,9 +127,7 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
 
             for uiBits in xrange(uiNumberOfBits):
                 uiSymbol = self.xReadFlag(uiSymbol)
-
-                if uiSymbol:
-                    sys.stdout.write("\nWarning! pcm_align_zero include a non-zero value.\n")
+                assert(uiSymbol == 0)
 
     def xGetBit(self):
         ruiCode = 0
@@ -235,7 +233,6 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
         uiCode = self.xReadCode(16, uiCode, 'vps_reserved_ffff_16bits')
         assert(uiCode == 0xffff)
         self.parsePTL(pcVPS.getPTL(), True, pcVPS.getMaxTLayers()-1)
-        self.parseBitratePicRateInfo(pcVPS.getBitratePicrateInfo(), 0, pcVPS.getMaxTLayers()-1)
         subLayerOrderingInfoPresentFlag = 0
         subLayerOrderingInfoPresentFlag = self.xReadFlag(subLayerOrderingInfoPresentFlag, 'vps_sub_layer_ordering_info_present_flag')
         for i in xrange(pcVPS.getMaxTLayers()):
@@ -266,18 +263,32 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
                 uiCode = self.xReadFlag(uiCode, 'layer_id_included_flag[opsIdx][i]')
                 pcVPS.setLayerIdIncludedFlag(True if uiCode == 1 else False, opsIdx, i)
 
-        uiCode = self.xReadUvlc(uiCode, 'vps_num_hrd_parameters')
-        pcVPS.setNumHrdParameters(uiCode)
+        timingInfo = pcVPS.getTimingInfo()
+        uiCode = self.xReadFlag(uiCode, 'vps_timing_info_present_flag')
+        timingInfo.setTimingInfoPresentFlag(True if uiCode else False)
+        if timingInfo.getTimingInfoPresentFlag():
+            uiCode = self.xReadCode(32, uiCode, 'vps_num_units_in_tick')
+            timingInfo.setNumUnitsInTick(uiCode)
+            uiCode = self.xReadCode(32, uiCode, 'vps_time_scale')
+            timingInfo.setTimeScale(uiCode)
+            uiCode = self.xReadFlag(uiCode, 'vps_poc_proportional_to_timing_flag')
+            timingInfo.setPocProportionalToTimingFlag(True if uiCode else False)
+            if timingInfo.getPocProportionalToTimingFlag():
+                uiCode = self.xReadUvlc(uiCode, 'vps_num_ticks_poc_diff_one_minus1')
+                timingInfo.setNumTicksPocDiffOneMinus1(uiCode)
 
-        if pcVPS.getNumHrdParameters() > 0:
-            pcVPS.createHrdParamBuffer()
-        for i in xrange(pcVPS.getNumHrdParameters()):
-            uiCode = self.xReadUvlc(uiCode, 'hrd_op_set_idx')
-            pcVPS.setHrdOpSetIdx(uiCode, i)
-            if i > 0:
-                uiCode = self.xReadFlag(uiCode, 'cprms_present_flag[i]')
-                pcVPS.setCprmsPresentFlag(True if uiCode == 1 else False, i)
-            self.parseHrdParameters(pcVPS.getHrdParameters(i), pcVPS.getCprmsPresentFlag(i), pcVPS.getMaxTLayers()-1)
+            uiCode = self.xReadUvlc(uiCode, 'vps_num_hrd_parameters')
+            pcVPS.setNumHrdParameters(uiCode)
+
+            if pcVPS.getNumHrdParameters() > 0:
+                pcVPS.createHrdParamBuffer()
+            for i in xrange(pcVPS.getNumHrdParameters()):
+                uiCode = self.xReadUvlc(uiCode, 'hrd_op_set_idx')
+                pcVPS.setHrdOpSetIdx(uiCode, i)
+                if i > 0:
+                    uiCode = self.xReadFlag(uiCode, 'cprms_present_flag[i]')
+                    pcVPS.setCprmsPresentFlag(True if uiCode == 1 else False, i)
+                self.parseHrdParameters(pcVPS.getHrdParameters(i), pcVPS.getCprmsPresentFlag(i), pcVPS.getMaxTLayers()-1)
 
         uiCode = self.xReadFlag(uiCode, 'vps_extension_flag')
         if uiCode:
@@ -294,6 +305,10 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
         pcSPS.setMaxTLayers(uiCode+1)
         uiCode = self.xReadFlag(uiCode, 'sps_temporal_id_nesting_flag')
         pcSPS.setTemporalIdNestingFlag(True if uiCode > 0 else False)
+        if pcSPS.getMaxTLayers() == 1:
+            # sps_temporal_id_nesting_flag must be 1 when sps_max_sub_layers_minus1 is 0
+            assert(uiCode == 1)
+
         self.parsePTL(pcSPS.getPTL(), 1, pcSPS.getMaxTLayers() - 1)
         uiCode = self.xReadUvlc(uiCode, 'sps_seq_parameter_set_id')
         pcSPS.setSPSId(uiCode)
@@ -447,13 +462,18 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
         uiCode = 0
         iCode = 0
 
-        uiCode = self.xReadUvlc(uiCode, 'pic_parameter_set_id')
+        uiCode = self.xReadUvlc(uiCode, 'pps_pic_parameter_set_id')
         pcPPS.setPPSId(uiCode)
-        uiCode = self.xReadUvlc(uiCode, 'seq_parameter_set_id')
+        uiCode = self.xReadUvlc(uiCode, 'pps_seq_parameter_set_id')
         pcPPS.setSPSId(uiCode)
 
         uiCode = self.xReadFlag(uiCode, 'dependent_slice_segments_enabled_flag')
         pcPPS.setDependentSliceSegmentsEnabledFlag(uiCode == 1)
+        uiCode = self.xReadFlag(uiCode, 'output_flag_present_flag')
+        pcPPS.setOutputFlagPresentFlag(uiCode == 1)
+
+        uiCode = self.xReadCode(3, uiCode, 'num_extra_slice_header_bits')
+        pcPPS.setNumExtraSliceHeaderBits(uiCode)
         uiCode = self.xReadFlag(uiCode, 'sign_data_hiding_flag')
         pcPPS.setSignHideFlag(uiCode)
 
@@ -461,8 +481,10 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
         pcPPS.setCabacInitPresentFlag(True if uiCode else False)
 
         uiCode = self.xReadUvlc(uiCode, 'num_ref_idx_l0_default_active_minus1')
+        assert(uiCode <= 14)
         pcPPS.setNumRefIdxL0DefaultActive(uiCode+1)
         uiCode = self.xReadUvlc(uiCode, 'num_ref_idx_l1_default_active_minus1')
+        assert(uiCode <= 14)
         pcPPS.setNumRefIdxL1DefaultActive(uiCode+1)
 
         iCode = self.xReadSvlc(iCode, 'init_qp_minus26')
@@ -496,11 +518,6 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
         pcPPS.setUseWP(uiCode == 1)
         uiCode = self.xReadFlag(uiCode, 'weighted_bipred_flag') # Use of Bi-Directional Weighting Prediction (B_SLICE)
         pcPPS.setWPBiPred(uiCode == 1)
-        sys.stdout.write("TDecCavlc::parsePPS():\tm_bUseWeightPred=%d\tm_uiBiPredIdc=%d\n" %
-            (pcPPS.getUseWP(), pcPPS.getWPBiPred()))
-
-        uiCode = self.xReadFlag(uiCode, 'output_flag_present_flag')
-        pcPPS.setOutputFlagPresentFlag(uiCode == 1)
 
         uiCode = self.xReadFlag(uiCode, 'transquant_bypass_enable_flag')
         pcPPS.setTransquantBypassEnableFlag(True if uiCode else False)
@@ -559,9 +576,6 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
 
         uiCode = self.xReadUvlc(uiCode, 'log2_parallel_merge_level_minus2')
         pcPPS.setLog2ParallelMergeLevelMinus2(uiCode)
-
-        uiCode = self.xReadCode(3, uiCode, 'num_extra_slice_header_bits')
-        pcPPS.setNumExtraSliceHeaderBits(uiCode)
 
         uiCode = self.xReadFlag(uiCode, 'slice_segment_header_extension_present_flag')
         pcPPS.setSliceHeaderExtensionPresentFlag(uiCode)
@@ -631,23 +645,33 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
         if uiCode != 0:
             defDisp = pcVUI.getDefaultDisplayWindow()
             uiCode = self.xReadUvlc(uiCode, 'def_disp_win_left_offset')
-            defDisp.setWindowLeftOffset(uiCode)
+            defDisp.setWindowLeftOffset(uiCode * TComSPS.getWinUnitX(pcSPS.getChromaFormatIdc()))
             uiCode = self.xReadUvlc(uiCode, 'def_disp_win_right_offset')
-            defDisp.setWindowRightOffset(uiCode)
+            defDisp.setWindowRightOffset(uiCode * TComSPS.getWinUnitX(pcSPS.getChromaFormatIdc()))
             uiCode = self.xReadUvlc(uiCode, 'def_disp_win_top_offset')
-            defDisp.setWindowTopOffset(uiCode)
+            defDisp.setWindowTopOffset(uiCode * TComSPS.getWinUnitY(pcSPS.getChromaFormatIdc()))
             uiCode = self.xReadUvlc(uiCode, 'def_disp_win_bottom_offset')
-            defDisp.setWindowBottomOffset(uiCode)
+            defDisp.setWindowBottomOffset(uiCode * TComSPS.getWinUnitY(pcSPS.getChromaFormatIdc()))
 
-        uiCode = self.xReadFlag(uiCode, 'hrd_parameters_present_flag')
-        pcVUI.setHrdParametersPresentFlag(uiCode)
-        if pcVUI.getHrdParametersPresentFlag():
-            self.parseHrdParameters(pcVUI.getHrdParameters(), 1, pcSPS.getMaxTLayers()-1)
-        uiCode = self.xReadFlag(uiCode, 'poc_proportional_to_timing_flag')
-        pcVUI.setPocProportionalToTimingFlag(True if uiCode else False)
-        if pcVUI.getPocProportionalToTimingFlag() and pcVUI.getHrdParameters().getTimingInfoPresentFlag():
-            uiCode = self.xReadUvlc(uiCode, 'num_ticks_poc_diff_one_minus1')
-            pcVUI.setNumTicksPocDiffOneMinus1(uiCode)
+        timingInfo = pcYUV.getTimingInfo()
+        uiCode = self.xReadFlag(uiCode, 'vui_timing_info_present_flag')
+        timingInfo.setTimingInfoPresentFlag(True if uiCode else False)
+        if timingInfo.getTimingInfoPresentFlag():
+            uiCode = self.xReadCode(32, uiCode, 'vui_num_units_in_tick')
+            timingInfo.setNumUnitsInTick(uiCode)
+            uiCode = self.xReadCode(32, uiCode, 'vui_time_scale')
+            timingInfo.setTimeScale(uiCode)
+            uiCode = self.xReadFlag(uiCode, 'vui_poc_proportional_to_timing_flag')
+            timingInfo.setPocProportionalToTimingFlag(True if uiCode else False)
+            if timingInfo.getPocProportionalToTimingFlag():
+                uiCode = self.xReadUvlc(uiCode, 'vui_num_ticks_poc_diff_one_minus1')
+                timingInfo.setNumTicksPocDiffOneMinus1(uiCode)
+
+            uiCode = self.xReadFlag(uiCode, 'hrd_parameters_present_flag')
+            pcVUI.setHrdParametersPresentFlag(uiCode)
+            if pcVUI.getHrdParametersPresentFlag():
+                self.parseHrdParameters(pcVUI.getHrdParameters(), 1, pcSPS.getMaxTLayers()-1)
+
         uiCode = self.xReadFlag(uiCode, 'bitstream_restriction_flag')
         pcVUI.setBitstreamRestrictionFlag(uiCode)
         if pcVUI.getBitstreamRestrictionFlag():
@@ -657,8 +681,9 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
             pcVUI.setMotionVectorsOverPicBoundariesFlag(uiCode)
             uiCode = self.xReadFlag(uiCode, 'restricted_ref_pic_lists_flag')
             pcVUI.setRestrictedRefPicListsFlag(uiCode)
-            uiCode = self.xReadCode(8, uiCode, 'min_spatial_segmentation_idc')
+            uiCode = self.xReadUvlc(uiCode, 'min_spatial_segmentation_idc')
             pcVUI.setMinSpatialSegmentationIdc(uiCode)
+            assert(uiCode < 4096)
             uiCode = self.xReadUvlc(uiCode, 'max_bytes_per_pic_denom')
             pcVUI.setMaxBytesPerPicDenom(uiCode)
             uiCode = self.xReadUvlc(uiCode, 'max_bits_per_mincu_denom')
@@ -684,6 +709,13 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
                 rpcPTL.setSubLayerProfilePresentFlag(i, uiCode)
             uiCode = self.xReadFlag(uiCode, 'sub_layer_level_present_flag[i]')
             rpcPTL.setSubLayerLevelPresentFlag(i, uiCode)
+
+        if maxNumSubLayersMinus1 > 0:
+            for i in xrange(maxNumSubLayersMinus1, 8):
+                uiCode = self.xReadCode(2, uiCode, 'reserved_zero_2bits')
+                assert(uiCode == 0)
+
+        for i in xrange(maxNumSubLayersMinus1):
             if profilePresentFlag and rpcPTL.getSubLayerProfilePresentFlag(i):
                 self.parseProfileTier(rpcPTL.getSubLayerPTL(i))
             if rpcPTL.getSubLayerLevelPresentFlag(i):
@@ -701,37 +733,26 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
         for j in xrange(32):
             uiCode = self.xReadFlag(uiCode, 'XXX_profile_compatibility_flag[][j]')
             ptl.setProfileCompatibilityFlag(j, 1 if uiCode else 0)
-        uiCode = self.xReadCode(16, uiCode, 'XXX_reserved_zero_16bits[]')
-        assert(uiCode == 0)
 
-    def parseBitratePicRateInfo(self, info, tempLevelLow, tempLevelHigh):
-        uiCode = 0
-        for i in xrange(tempLevelLow, tempLevelHigh+1):
-            uiCode = self.xReadFlag(uiCode, 'bit_rate_info_present_flag[i]')
-            info.setBitRateInfoPresentFlag(i, True if uiCode else False)
-            uiCode = self.xReadFlag(uiCode, 'pic_rate_info_present_flag[i]')
-            info.setPicRateInfoPresentFlag(i, True if uiCode else False)
-            if info.getBitRateInfoPresentFlag(i):
-                uiCode = self.xReadCode(16, uiCode, 'avg_bit_rate[i]')
-                info.setAvgBitRate(i, uiCode)
-                uiCode = self.xReadCode(16, uiCode, 'max_bit_rate[i]')
-                info.setMaxBitRate(i, uiCode)
-            if info.getPicRateInfoPresentFlag(i):
-                uiCode = self.xReadCode(2, uiCode, 'constant_pic_rate_idc[i]')
-                info.setConstantPicRateIdc(i, uiCode)
-                uiCode = self.xReadCode(16, uiCode, 'avg_pic_rate[i]')
-                info.setAvgPicRate(i, uiCode)
+        uiCode = self.xReadFlag(uiCode, 'general_progressive_source_flag')
+        ptl.setProgressiveSourceFlag(True if uiCode else False)
+
+        uiCode = self.xReadFlag(uiCode, 'general_interlaced_source_flag')
+        ptl.setInterlacedSourceFlag(True if uiCode else False)
+
+        uiCode = self.xReadFlag(uiCode, 'general_non_packed_constraint_flag')
+        ptl.setNonPackedConstraintFlag(True if uiCode else False)
+
+        uiCode = self.xReadFlag(uiCode, 'general_frame_only_constraint_flag')
+        ptl.setFrameOnlyConstraintFlag(True if uiCode else False)
+
+        uiCode = self.xReadCode(16, uiCode, 'XXX_reserved_zero_44bits[0..15]')
+        uiCode = self.xReadCode(16, uiCode, 'XXX_reserved_zero_44bits[16..31]')
+        uiCode = self.xReadCode(12, uiCode, 'XXX_reserved_zero_44bits[32..43]')
 
     def parseHrdParameters(self, hrd, commonInfPresentFlag, maxNumSubLayersMinus1):
         uiCode = 0
         if commonInfPresentFlag:
-            uiCode = self.xReadFlag(uiCode, 'timing_info_present_flag')
-            hrd.setTimingInfoPresentFlag(True if uiCode == 1 else False)
-            if hrd.getTimingInfoPresentFlag():
-                uiCode = self.xReadCode(32, uiCode, 'num_units_in_tick')
-                hrd.setNumUnitsInTick(uiCode)
-                uiCode = self.xReadCode(32, uiCode, 'time_scale')
-                hrd.setTimeScale(uiCode)
             uiCode = self.xReadFlag(uiCode, 'nal_hrd_parameters_present_flag')
             hrd.setNalHrdParametersPresentFlag(True if uiCode == 1 else False)
             uiCode = self.xReadFlag(uiCode, 'vcl_hrd_parameters_present_flag')
@@ -746,6 +767,8 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
                     hrd.setDuCpbRemovalDelayLengthMinus1(uiCode)
                     uiCode = self.xReadFlag(uiCode, 'sub_pic_cpb_params_in_pic_timing_sei_flag')
                     hrd.setSubPicCpbParamsInPicTimingSEIFlag(True if uiCode == 1 else False)
+                    uiCode = self.xReadCode(5, uiCode, 'dpb_output_delay_du_length_minus1')
+                    hrd.setDpbOutputDelayDuLengthMinus1(uiCode)
                 uiCode = self.xReadCode(4, uiCode, 'bit_rate_scale')
                 hrd.setBitRateScale(uiCode)
                 uiCode = self.xReadCode(4, uiCode, 'cpb_size_scale')
@@ -760,34 +783,42 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
                 uiCode = self.xReadCode(5, uiCode, 'dpb_output_delay_length_minus1')
                 hrd.setDpbOutputDelayLengthMinus1(uiCode)
 
-            for i in xrange(maxNumSubLayersMinus1):
-                uiCode = self.xReadFlag(uiCode, 'fixed_pic_rate_general_flag')
-                hrd.setFixedPicRateFlag(i, True if uiCode == 1 else False)
-                if not hrd.getFixedPicRateFlag(i):
-                    uiCode = self.xReadFlag(uiCode, 'fixed_pic_rate_within_cvs_flag')
-                    hrd.setFixedPicRateWithinCvsFlag(i, True if uiCode == 1 else False)
-                else:
-                    hrd.setFixedPicRateWithinCvsFlag(i, True)
-                if hrd.getFixedPicRateWithinCvsFlag(i):
-                    uiCode = self.xReadUvlc(uiCode, 'elemental_duration_in_tc_minus1')
-                    hrd.setPicDurationInTcMinus1(i, uiCode)
+        for i in xrange(maxNumSubLayersMinus1):
+            uiCode = self.xReadFlag(uiCode, 'fixed_pic_rate_general_flag')
+            hrd.setFixedPicRateFlag(i, True if uiCode == 1 else False)
+            if not hrd.getFixedPicRateFlag(i):
+                uiCode = self.xReadFlag(uiCode, 'fixed_pic_rate_within_cvs_flag')
+                hrd.setFixedPicRateWithinCvsFlag(i, True if uiCode == 1 else False)
+            else:
+                hrd.setFixedPicRateWithinCvsFlag(i, True)
+
+            hrd.setLowDelayHrdFlag(i, 0) # Infered to be 0 when not present
+            hrd.setCpbCntMinus1(i, 0) # Infered to be 0 when not present
+
+            if hrd.getFixedPicRateWithinCvsFlag(i):
+                uiCode = self.xReadUvlc(uiCode, 'elemental_duration_in_tc_minus1')
+                hrd.setPicDurationInTcMinus1(i, uiCode)
+            else:
                 uiCode = self.xReadFlag(uiCode, 'low_delay_hrd_flag')
                 hrd.setLowDelayHrdFlag(i, True if uiCode == 1 else False)
+            if not hrd.getLowDelayHrdFlag(i):
                 uiCode = self.xReadUvlc(uiCode, 'cpb_cnt_minus1')
                 hrd.setCpbCntMinus1(i, uiCode)
-                for nalOrVcl in xrange(2):
-                    if (nalOrVcl == 0 and hrd.getNalHrdParametersPresentFlag()) or \
-                       (nalOrVcl == 1 and hrd.getVclHrdParametersPresentFlag()):
-                        for j in xrange(hrd.getCpbCntMinus1(i) + 1):
-                            uiCode = self.xReadUvlc(uiCode, 'bit_size_value_minus1')
-                            hrd.setBitRateValueMinus1(i, j, nalOrVcl, uiCode)
-                            uiCode = self.xReadUvlc(uiCode, 'cpb_size_value_minus1')
-                            hrd.setCpbSizeValueMinus1(i, j, nalOrVcl, uiCode)
-                            if hrd.getSubPicCpbParamsPresentFlag():
-                                uiCode = self.xReadUvlc(uiCode, 'cpb_size_du_value_minus1')
-                                hrd.setDuCpbSizeValueMinus1(i, j, nalOrVcl, uiCode)
-                            uiCode = self.xReadFlag(uiCode, 'cbr_flag')
-                            hrd.setCbrFlag(i, j, nalOrVcl, True if uiCode == 1 else False)
+            for nalOrVcl in xrange(2):
+                if (nalOrVcl == 0 and hrd.getNalHrdParametersPresentFlag()) or \
+                   (nalOrVcl == 1 and hrd.getVclHrdParametersPresentFlag()):
+                    for j in xrange(hrd.getCpbCntMinus1(i) + 1):
+                        uiCode = self.xReadUvlc(uiCode, 'bit_rate_value_minus1')
+                        hrd.setBitRateValueMinus1(i, j, nalOrVcl, uiCode)
+                        uiCode = self.xReadUvlc(uiCode, 'cpb_size_value_minus1')
+                        hrd.setCpbSizeValueMinus1(i, j, nalOrVcl, uiCode)
+                        if hrd.getSubPicCpbParamsPresentFlag():
+                            uiCode = self.xReadUvlc(uiCode, 'bit_rate_du_value_minus1')
+                            hrd.setDuBitRateValueMinus1(i, j, nalOrVcl, uiCode)
+                            uiCode = self.xReadUvlc(uiCode, 'cpb_size_du_value_minus1')
+                            hrd.setDuCpbSizeValueMinus1(i, j, nalOrVcl, uiCode)
+                        uiCode = self.xReadFlag(uiCode, 'cbr_flag')
+                        hrd.setCbrFlag(i, j, nalOrVcl, True if uiCode == 1 else False)
 
     @Trace.trace(Trace.on, before=lambda self, pSlice, psm: xTraceSliceHeader(pSlice))
     def parseSliceHeader(self, rpcSlice, parameterSetManager):
@@ -909,7 +940,7 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
                         numLtrpInSPS = uiCode
                         numOfLtrp += numLtrpInSPS
                         rps.setNumberOfLongtermPictures(numOfLtrp)
-                    bitsForLtrpInSPS = 1
+                    bitsForLtrpInSPS = 0
                     while rpcSlice.getSPS().getNumLongTermRefPicSPS() > (1<<bitsForLtrpInSPS):
                         bitsForLtrpInSPS += 1
                     uiCode = self.xReadUvlc(uiCode, 'num_long_term_pics')
@@ -976,6 +1007,8 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
                 if rpcSlice.getSPS().getTMVPFlagsPresent():
                     uiCode = self.xReadFlag(uiCode, 'slice_temporal_mvp_enable_flag')
                     rpcSlice.setEnableTMVPFlag(True if uiCode == 1 else False)
+                else:
+                    rpcSlice.setEnableTMVPFlag(False)
             if sps.getUseSAO():
                 uiCode = self.xReadFlag(uiCode, 'slice_sao_luma_flag')
                 rpcSlice.setSaoEnabledFlag(uiCode)
@@ -1151,8 +1184,8 @@ class TDecCavlc(SyntaxElementParser, TDecEntropy):
                 offsetLenMinus1 = self.xReadUvlc(offsetLenMinus1, 'offset_len_minus1')
             entryPointOffset = numEntryPointOffsets * [0]
             for idx in xrange(numEntryPointOffsets):
-                uiCode = self.xReadCode(offsetLenMinus1+1, uiCode, 'entry_point_offset')
-                entryPointOffset[idx] = uiCode
+                uiCode = self.xReadCode(offsetLenMinus1+1, uiCode, 'entry_point_offset_minus1')
+                entryPointOffset[idx] = uiCode + 1
 
             if pps.getTilesEnabledFlag():
                 rpcSlice.setTileLocationCount(numEntryPointOffsets)

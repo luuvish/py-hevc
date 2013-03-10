@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibCommon/TComCABACTables.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 sm_aucLPSTable = (

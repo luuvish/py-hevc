@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecSbac.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
@@ -1233,4 +1233,5 @@ class TDecSbac(TDecEntropy):
 
         self.m_pcTDecBinIf.start()
 
-    def parseScalingList(self, scalingList): pass
+    def parseScalingList(self, scalingList):
+        pass

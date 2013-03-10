@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     module : src/Lib/TLibDecoder/TDecEntropy.py
-    HM 9.2 Python Implementation
+    HM 10.0 Python Implementation
 """
 
 import sys
@@ -262,7 +262,6 @@ class TDecEntropy(object):
             uiVCbf = 0
 
             for i in xrange(4):
-                nsAddr = uiAbsPartIdx
                 bCodeDQP = self.xDecodeTransform(pcCU, offsetLuma, offsetChroma, uiAbsPartIdx,
                     uiDepth, uiWidth, uiHeight, uiTrIdx, bCodeDQP)
                 uiYCbf |= pcCU.getCbf(uiAbsPartIdx, TEXT_LUMA, uiTrDepth+1)
